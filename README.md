@@ -1,58 +1,60 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# JE RELAIS
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Plateforme des observateurs citoyens de REFLET TV : site public, back-office coordonnateur, console REFLET TV et API REST v1 pour l'application mobile.
 
-## About Laravel
+Procédure de développement : skill `.claude/skills/jerelais-dev` et document « JE RELAIS — Procédure de développement de la plateforme ».
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Prérequis
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- PHP 8.3+ (8.4 recommandé), Composer 2
+- Node 22 (`.nvmrc`)
+- Docker (PostgreSQL + PostGIS, Redis, Mailpit, ClamAV)
+- FFmpeg
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Installation
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cp .env.example .env              # puis renseigner WAS_ACCESS_KEY, WAS_SECRET_KEY, WASABI_BUCKET…
+docker compose up -d              # PostGIS :5442, Redis :6390, Mailpit :8025
+composer install
+php artisan key:generate
+php artisan reverb:install        # génère les clés REVERB_*
+php artisan migrate --seed
+npm ci && npm run build
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+ClamAV (utile à partir de l'étape 3) : `docker compose --profile media up -d`.
 
-## Contributing
+## Lancer en local
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+composer run dev                  # serveur, file, logs, Vite
+php artisan reverb:start          # temps réel (port 8085)
+php artisan horizon               # files de tâches
+```
 
-## Code of Conduct
+- Site public : http://localhost:8000
+- Maquettes (hors production) : `/maquettes/console`, `/maquettes/coordinateur`
+- Documentation de l'API : `/docs/api`
+- Mails : http://localhost:8025
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Qualité
 
-## Security Vulnerabilities
+```bash
+vendor/bin/pint                   # style
+vendor/bin/phpstan analyse        # Larastan niveau 8
+php artisan test --compact        # Pest (base jerelais_test sur PostGIS)
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Référentiel géographique
 
-## License
+```bash
+php artisan territoire:import-communes chemin/communes.geojson \
+    --name-field=NOM --region-field=REGION --code-field=CODE
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Documentation
+
+- `docs/securite/modele-de-menaces.md`
+- `docs/architecture/modele-de-donnees.md`
+- `docs/api/contrat-v0.md`

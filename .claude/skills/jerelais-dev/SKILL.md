@@ -14,7 +14,7 @@ Source de vérité : cahier des charges v1.2 (30/09/2026) et le document « JE R
 
 ## Stack imposée
 
-Laravel 13 · PHP 8.3+ · PostgreSQL + PostGIS (`clickbar/laravel-magellan`) · Redis · Horizon · Reverb · Fortify (2FA) · Sanctum (API) · `spatie/laravel-permission` · `spatie/laravel-model-states` · Livewire 3 + Flux + Tailwind · S3 privé · FFmpeg (`pbmedia/laravel-ffmpeg`) · ClamAV · Leaflet/OSM · Scramble (OpenAPI) · Pest 4 · Larastan · Pint · Sentry.
+Laravel 13 · PHP 8.3+ · PostgreSQL + PostGIS (`clickbar/laravel-magellan`) · Redis · Horizon · Reverb · Fortify (2FA) · Sanctum (API) · `spatie/laravel-permission` · `spatie/laravel-model-states` · Livewire 4 + design system maison (Blade + Tailwind 4, style Apple) · Wasabi (S3, privé) · FFmpeg (`pbmedia/laravel-ffmpeg`) · ClamAV · Leaflet/OSM · Scramble (OpenAPI) · Pest 4 · Larastan · Pint · Sentry.
 
 Ne pas ajouter de paquet hors de cette liste sans le signaler et le justifier à l'utilisateur.
 
