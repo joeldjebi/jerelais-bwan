@@ -1,82 +1,39 @@
 @php
-    $headlines = [
-        __('Abobo — coupure d’électricité depuis 6 h'),
-        __('Bouaké — le prix de la tomate s’envole au grand marché'),
-        __('Cocody — rentrée à l’université Félix Houphouët-Boigny'),
-        __('Korhogo — un nouveau centre de santé ouvre ses portes'),
-        __('Yopougon — pluies diluviennes à Niangon'),
-    ];
     $places = [__('Communes'), __('Quartiers'), __('Villages'), __('Écoles'), __('Universités'), __('Marchés'), __('Gares'), __('Capitales régionales')];
 @endphp
 
 <x-layouts.public>
-    {{-- 1. HERO --}}
-    <section class="flex min-h-[92svh] flex-col items-center justify-center px-5 pt-24 pb-10 text-center">
-        <p class="text-[0.9375rem] font-medium text-graphite" data-hero-fade>{{ __('REFLET TV présente') }}</p>
-        <h1 class="mt-3 text-[clamp(4.5rem,15vw,12.5rem)] leading-[0.92] font-semibold tracking-[-0.045em]" data-hero-title>Je relais.</h1>
-        <p class="mt-7 max-w-xl text-[clamp(1.25rem,2.2vw,1.75rem)] leading-snug font-medium tracking-tight text-onyx/90" data-hero-fade>
-            {{ __('Ce que vous voyez près de chez vous peut passer à l’antenne.') }}
-        </p>
-        <div class="mt-9 flex flex-wrap items-center justify-center gap-6" data-hero-fade>
-            <a href="#devenir-relais" class="press rounded-full bg-relais-500 px-6 py-3 text-[1.0625rem] font-medium text-white transition-colors duration-300 hover:bg-relais-600">{{ __('Devenir Relais') }}</a>
-            <a href="#principe" class="group inline-flex items-center gap-1 text-[1.0625rem] text-relais-600 hover:underline">
-                {{ __('Voir comment ça marche') }}
-                <x-ui.icon name="arrow-right" class="size-4 transition-transform duration-500 ease-out-expo group-hover:translate-x-0.5" />
-            </a>
-        </div>
-        <p class="mt-16 text-xs tracking-wide text-graphite" data-hero-fade data-screen-hint>{{ __('Faites défiler') }}</p>
-    </section>
-
-    {{-- 2. ÉCRAN « EN DIRECT » --}}
-    <section class="relative h-[100svh] overflow-hidden bg-white" data-screen-wrap aria-label="{{ __('Un relais à l’antenne de REFLET TV') }}">
-        <div class="absolute inset-0 origin-center overflow-hidden bg-black text-white will-change-transform" style="transform: scale(0.72); border-radius: 40px" data-screen data-nav-theme="dark">
-            <div class="absolute inset-0 grid place-items-center" aria-hidden="true">
-                <span class="absolute size-[70vmin] animate-ring rounded-full border border-white/20"></span>
-                <span class="absolute size-[70vmin] animate-ring rounded-full border border-white/20 [animation-delay:1.2s]"></span>
-                <span class="absolute size-[70vmin] animate-ring rounded-full border border-white/20 [animation-delay:2.4s]"></span>
-                <span class="relative size-4 rounded-full bg-relais-500"></span>
-            </div>
-
-            <div class="absolute top-16 left-6 flex items-center gap-3 sm:top-20 sm:left-12" data-screen-bug>
-                <span class="font-display text-lg font-semibold tracking-[0.18em] sm:text-2xl">REFLET<span class="text-relais-500">TV</span></span>
-            </div>
-            <div class="absolute top-16 right-6 flex items-center gap-3 sm:top-20 sm:right-12" data-screen-bug>
-                <span class="inline-flex items-center gap-2 rounded-md bg-[#ff3b30] px-2.5 py-1 text-xs font-bold tracking-[0.12em] sm:text-sm">
-                    <span class="size-2 animate-blink rounded-full bg-white"></span>{{ __('EN DIRECT') }}
-                </span>
-                <span class="font-display text-sm font-semibold tabular-nums sm:text-lg" data-live-clock>19:42</span>
-            </div>
-
-            <div class="absolute right-6 bottom-24 left-6 max-w-3xl sm:bottom-28 sm:left-12" data-lower-third>
-                <span class="inline-block bg-relais-500 px-3 py-1.5 text-xs font-bold tracking-[0.16em] uppercase sm:text-sm">{{ __('Je relais') }}</span>
-                <p class="bg-white px-4 py-3 font-display text-xl font-semibold tracking-tight text-black sm:px-6 sm:py-4 sm:text-4xl">{{ __('Pluies diluviennes à Yopougon') }}</p>
-                <p class="inline-block bg-onyx px-4 py-2 text-xs text-white/85 sm:px-6 sm:text-base">{{ __('Relayé par un Relais de Niangon · vérifié par le coordonnateur communal') }}</p>
-            </div>
-
-            <div class="absolute inset-x-0 bottom-0 flex h-11 items-stretch bg-white text-black sm:h-14">
-                <span class="z-10 flex shrink-0 items-center bg-relais-500 px-4 text-xs font-bold tracking-[0.14em] text-white uppercase sm:px-6 sm:text-sm">{{ __('Info Relais') }}</span>
-                <div class="relative flex-1 overflow-hidden">
-                    <div class="flex h-full w-max animate-crawl items-center whitespace-nowrap">
-                        @foreach ([1, 2] as $copy)
-                            @foreach ($headlines as $headline)
-                                <span class="px-8 text-sm font-medium sm:text-lg" @if ($copy === 2) aria-hidden="true" @endif>{{ $headline }}</span>
-                                <span class="size-1.5 shrink-0 rounded-full bg-relais-500" aria-hidden="true"></span>
-                            @endforeach
-                        @endforeach
-                    </div>
-                </div>
+    {{-- 1. HERO : mosaïque de relais en parallaxe --}}
+    <section class="relative h-[100svh] min-h-[38rem] overflow-hidden bg-white" data-hero>
+        <div class="relative z-20 flex flex-col items-center px-5 pt-24 text-center sm:pt-28" data-hero-copy>
+            <p class="inline-flex items-center gap-2 text-[0.9375rem] font-medium text-graphite" data-hero-fade>
+                {{ __('REFLET TV présente') }}
+            </p>
+            <h1 class="mt-3 text-[clamp(3.75rem,11vw,9rem)] leading-[0.92] font-semibold tracking-[-0.045em]" data-hero-title>Je relais.</h1>
+            <p class="mt-5 max-w-xl text-[clamp(1.125rem,2vw,1.5rem)] leading-snug font-medium tracking-tight text-onyx/85" data-hero-fade>
+                {{ __('Ce que vous voyez près de chez vous peut passer à l’antenne.') }}
+            </p>
+            <div class="mt-7 flex flex-wrap items-center justify-center gap-6" data-hero-fade>
+                <a href="#devenir-relais" class="press rounded-full bg-relais-500 px-6 py-3 text-[1.0625rem] font-medium text-white transition-colors duration-300 hover:bg-relais-600">{{ __('Devenir Relais') }}</a>
+                <a href="#principe" class="group inline-flex items-center gap-1 text-[1.0625rem] text-relais-600 hover:underline">
+                    {{ __('Voir comment ça marche') }}
+                    <x-ui.icon name="arrow-right" class="size-4 transition-transform duration-500 ease-out-expo group-hover:translate-x-0.5" />
+                </a>
             </div>
         </div>
+
+        @include('public.partials.hero-wall')
+
     </section>
 
-    {{-- 3. MANIFESTE --}}
+    {{-- 2. MANIFESTE --}}
     <section id="principe" class="bg-white px-5 py-36 sm:py-48">
         <p class="mx-auto max-w-[1024px] text-[clamp(2rem,4.6vw,4rem)] leading-[1.12] font-semibold tracking-[-0.03em]" data-scrub-text>
             {{ __('Partout où l’information naît — dans les communes, les quartiers, les villages, les écoles, les marchés — un Relais est là. Il filme. Son coordonnateur vérifie. REFLET TV diffuse.') }}
         </p>
     </section>
 
-    {{-- 4. RÉCIT ÉPINGLÉ : TROIS TEMPS --}}
+    {{-- 3. RÉCIT ÉPINGLÉ : TROIS TEMPS --}}
     <section class="flex min-h-[100svh] items-center bg-mist px-5 py-20" data-story>
         <div class="mx-auto grid w-full max-w-[1024px] items-center gap-8 md:grid-cols-2 md:gap-16">
             <div>
@@ -165,8 +122,7 @@
                                 <span class="size-2.5 rounded-full bg-relais-500"></span>
                             </div>
                             <div class="absolute inset-x-4 bottom-10">
-                                <span class="inline-flex items-center gap-1.5 rounded bg-[#ff3b30] px-1.5 py-0.5 text-[0.5625rem] font-bold tracking-[0.1em]"><span class="size-1 animate-blink rounded-full bg-white"></span>{{ __('EN DIRECT') }}</span>
-                                <p class="mt-2 inline-block bg-relais-500 px-2 py-0.5 text-[0.5625rem] font-bold tracking-[0.12em] uppercase">{{ __('Je relais') }}</p>
+                                <p class="inline-block bg-relais-500 px-2 py-0.5 text-[0.5625rem] font-bold tracking-[0.12em] uppercase">{{ __('Je relais') }}</p>
                                 <p class="bg-white px-2.5 py-1.5 font-display text-[0.8125rem] font-semibold text-black">{{ __('Pluies diluviennes à Yopougon') }}</p>
                             </div>
                         </div>
@@ -176,8 +132,62 @@
         </div>
     </section>
 
-    {{-- 5. TÉLÉSCRIPTEUR DES LIEUX --}}
-    <section class="overflow-hidden bg-black py-20 sm:py-28" data-nav-theme="dark" aria-label="{{ __('Là où naît l’information') }}">
+    {{-- 4. CE QUE VOUS POUVEZ RELAYER (Annexe B) --}}
+    <section class="bg-white px-5 py-32 sm:py-40">
+        <div class="mx-auto max-w-[1024px]">
+            <div class="flex flex-wrap items-end justify-between gap-6" data-anim>
+                <h2 class="max-w-xl text-[clamp(2.75rem,6vw,4.5rem)] leading-[1.02] font-semibold tracking-[-0.04em]">{{ __('Ce que vous pouvez relayer.') }}</h2>
+                <p class="max-w-xs text-lg leading-snug text-graphite">{{ __('Tout ce qui fait la vie de votre commune mérite d’être vu.') }}</p>
+            </div>
+            <div class="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-categories>
+                @foreach ([
+                    ['bolt', __('Faits divers et accidents'), __('Accident de la circulation, incendie, effondrement')],
+                    ['cloud-rain', __('Météo et environnement'), __('Pluies, inondations, érosion, insalubrité')],
+                    ['home', __('Vie de quartier'), __('Travaux, coupures d’eau ou d’électricité, voirie')],
+                    ['book', __('Éducation'), __('Écoles et universités, examens, rentrée')],
+                    ['heart', __('Santé'), __('Centres de santé, campagnes, situations sanitaires')],
+                    ['cart', __('Économie et consommation'), __('Marchés, prix, commerces, transport')],
+                    ['hand', __('Société et solidarité'), __('Initiatives citoyennes, associations, portraits')],
+                    ['music', __('Culture, sport et loisirs'), __('Concerts, compétitions locales, événements')],
+                    ['landmark', __('Politique et institutions'), __('Vie municipale, cérémonies, services publics')],
+                ] as [$icon, $title, $examples])
+                    <article class="group relative overflow-hidden rounded-[1.5rem] bg-mist p-7 transition-colors duration-500 ease-out-expo hover:bg-onyx" data-category>
+                        <span class="grid size-12 place-items-center rounded-2xl bg-white text-onyx transition-[transform,background-color,color] duration-700 ease-spring group-hover:scale-110 group-hover:-rotate-6 group-hover:bg-relais-500 group-hover:text-white">
+                            <x-ui.icon :name="$icon" class="size-6" stroke="1.6" />
+                        </span>
+                        <h3 class="mt-10 text-xl font-semibold tracking-tight transition-colors duration-500 group-hover:text-white">{{ $title }}</h3>
+                        <p class="mt-2 leading-relaxed text-graphite transition-colors duration-500 group-hover:text-white/60">{{ $examples }}</p>
+                        <x-ui.icon name="arrow-up-right" class="absolute top-7 right-7 size-5 text-white opacity-0 transition-all duration-500 ease-out-expo group-hover:opacity-100" />
+                    </article>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    {{-- 5. PARTOUT EN CÔTE D'IVOIRE : CARTE + TÉLÉSCRIPTEURS --}}
+    <section class="overflow-hidden bg-black text-white" data-nav-theme="dark">
+        <div class="mx-auto grid max-w-[1024px] items-center gap-16 px-5 pt-32 pb-20 sm:pt-40 md:grid-cols-[1fr_1.15fr]">
+            <div>
+                <p class="text-sm font-semibold tracking-[0.12em] text-relais-500 uppercase" data-anim>{{ __('Partout en Côte d’Ivoire') }}</p>
+                <h2 class="mt-4 text-[clamp(2.75rem,6vw,4.5rem)] leading-[1.02] font-semibold tracking-[-0.04em] text-white" data-anim>{{ __('Un réseau dans chaque commune.') }}</h2>
+                <p class="mt-6 max-w-md text-lg leading-relaxed text-white/60" data-anim>{{ __('Des communes d’Abidjan aux capitales régionales, chaque relais est vérifié par un coordonnateur qui connaît le terrain, puis remonte vers la rédaction de REFLET TV.') }}</p>
+                <dl class="mt-10 grid max-w-sm grid-cols-2 gap-6 border-t border-white/15 pt-8" data-anim>
+                    <div>
+                        <dt class="text-sm text-white/50">{{ __('Rattachement') }}</dt>
+                        <dd class="mt-1 text-lg font-semibold">{{ __('Votre commune') }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm text-white/50">{{ __('Vérification') }}</dt>
+                        <dd class="mt-1 text-lg font-semibold">{{ __('Sur le terrain') }}</dd>
+                    </div>
+                </dl>
+            </div>
+            <div class="relative" data-anim>
+                @include('public.partials.carte-civ')
+            </div>
+        </div>
+
+        <div class="pb-24 sm:pb-32" aria-label="{{ __('Là où naît l’information') }}">
         @foreach (['left' => 'text-white', 'right' => 'text-white/30'] as $direction => $tone)
             <div class="overflow-hidden" data-marquee="{{ $direction }}" data-speed="{{ $direction === 'left' ? 46 : 54 }}">
                 <div class="flex w-max items-center py-2 whitespace-nowrap {{ $tone }}">
@@ -190,6 +200,7 @@
                 </div>
             </div>
         @endforeach
+        </div>
     </section>
 
     {{-- 6. SUR LE TERRAIN --}}
@@ -251,7 +262,76 @@
         </div>
     </section>
 
-    {{-- 7. CHIFFRES --}}
+    {{-- 7. LA RÉDACTION : CONSOLE ANIMÉE --}}
+    <section class="overflow-hidden bg-mist px-5 py-32 sm:py-40">
+        <div class="mx-auto max-w-[1024px]">
+            <div class="mx-auto max-w-2xl text-center" data-anim>
+                <p class="text-sm font-semibold tracking-[0.12em] text-relais-600 uppercase">{{ __('Côté rédaction') }}</p>
+                <h2 class="mt-4 text-[clamp(2.75rem,6vw,4.5rem)] leading-[1.02] font-semibold tracking-[-0.04em]">{{ __('Chaque relais compte. Aucun ne se perd.') }}</h2>
+                <p class="mt-5 text-xl leading-snug text-graphite">{{ __('Dès votre envoi, votre relais arrive chez le coordonnateur de votre commune et sous les yeux de la rédaction.') }}</p>
+            </div>
+            <div class="mt-16" data-console-rise>
+                @include('public.partials.console-apercu')
+            </div>
+            <p class="mt-4 text-center text-xs text-graphite">{{ __('Aperçu de la console REFLET TV — données de démonstration.') }}</p>
+            <div class="mt-16 grid gap-10 sm:grid-cols-3">
+                @foreach ([
+                    ['inbox', __('Reçu tout de suite'), __('Votre relais apparaît dans la file de validation de votre commune.')],
+                    ['shield', __('Vérifié sérieusement'), __('Lieu, date, origine du média : le coordonnateur contrôle avant toute exploitation.')],
+                    ['bell', __('Vous êtes informé'), __('Une notification à chaque étape : reçu, validé, sélectionné, diffusé.')],
+                ] as [$icon, $title, $text])
+                    <div data-anim>
+                        <x-ui.icon :name="$icon" class="size-7 text-relais-500" stroke="1.5" />
+                        <h3 class="mt-4 text-xl font-semibold tracking-tight">{{ $title }}</h3>
+                        <p class="mt-2 leading-relaxed text-graphite">{{ $text }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    {{-- 8. APPELS À RELAIS --}}
+    <section class="bg-white px-5 py-32 sm:py-40" data-calls>
+        <div class="mx-auto grid max-w-[1024px] items-center gap-16 md:grid-cols-2">
+            <div>
+                <p class="text-sm font-semibold tracking-[0.12em] text-relais-600 uppercase" data-anim>{{ __('Appels à relais') }}</p>
+                <h2 class="mt-4 text-[clamp(2.5rem,4.8vw,3.75rem)] leading-[1.04] font-semibold tracking-[-0.04em]" data-anim>{{ __('Quand l’actualité tombe, la rédaction vous appelle.') }}</h2>
+                <p class="mt-6 max-w-md text-lg leading-relaxed text-graphite" data-anim>{{ __('La rédaction cible une commune, un quartier ou un type de lieu, et envoie ses consignes aux Relais concernés. Vos réponses remontent en priorité.') }}</p>
+                <ul class="mt-8 space-y-3" data-anim>
+                    @foreach ([__('Zone ciblée : commune, région ou rayon autour d’un point'), __('Consignes claires et date limite'), __('Réponse directe depuis la notification')] as $point)
+                        <li class="flex items-start gap-3 text-lg"><x-ui.icon name="check" class="mt-1 size-5 text-relais-500" stroke="2.25" />{{ $point }}</li>
+                    @endforeach
+                </ul>
+            </div>
+            <div class="mx-auto w-[min(80vw,320px)]">
+                <div class="rounded-[3.2rem] bg-onyx p-3">
+                    <div class="relative aspect-[9/19.5] overflow-hidden rounded-[2.5rem] bg-mist px-3 pt-24">
+                        <div class="absolute top-3 left-1/2 h-6 w-24 -translate-x-1/2 rounded-full bg-onyx"></div>
+                        <p class="absolute inset-x-0 top-10 text-center font-display text-4xl font-semibold tracking-tight text-onyx/90 tabular-nums">09:41</p>
+                        <div class="space-y-2.5">
+                            @foreach ([
+                                [__('Appel à relais · Abobo'), __('Fortes pluies annoncées : envoyez vos images de la montée des eaux.'), __('maintenant')],
+                                [__('Appel à relais · Adjamé'), __('Marché : relevez les prix du riz et de l’huile ce matin.'), __('il y a 2 min')],
+                                [__('Appel à relais · Bouaké'), __('Rentrée scolaire : comment se passe l’accueil des élèves ?'), __('il y a 9 min')],
+                                [__('Message de votre coordonnateur'), __('Merci pour votre relais d’hier, il a été validé.'), __('il y a 1 h')],
+                            ] as [$title, $text, $when])
+                                <div class="rounded-2xl bg-white/90 p-3 shadow-[0_8px_24px_-12px_rgb(0_0_0/0.25)] backdrop-blur-xl" data-call>
+                                    <div class="flex items-center gap-2">
+                                        <x-ui.logo compact class="scale-[0.8]" />
+                                        <p class="flex-1 truncate text-[0.6875rem] font-semibold">{{ $title }}</p>
+                                        <span class="text-[0.625rem] text-graphite">{{ $when }}</span>
+                                    </div>
+                                    <p class="mt-1.5 text-[0.75rem] leading-snug text-onyx/80">{{ $text }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- 9. CHIFFRES --}}
     <section class="border-t border-black/10 bg-white px-5 py-28">
         <div class="mx-auto grid max-w-[1024px] gap-14 text-center sm:grid-cols-3">
             @foreach ([[2, __('minutes'), __('pour envoyer un relais')], [3, __('appuis'), __('au maximum pour relayer')], [30, __('minutes'), __('pour vérifier un relais urgent')]] as [$number, $unit, $label])
@@ -264,7 +344,7 @@
         </div>
     </section>
 
-    {{-- 8. DEVENIR RELAIS : DÉFILEMENT HORIZONTAL --}}
+    {{-- 10. DEVENIR RELAIS : DÉFILEMENT HORIZONTAL --}}
     <section id="devenir-relais" class="flex min-h-[100svh] flex-col justify-center overflow-hidden bg-mist py-24" data-hscroll>
         <div class="mx-auto w-full max-w-[1024px] px-5" data-anim>
             <h2 class="text-[clamp(2.75rem,6vw,4.5rem)] leading-[1.02] font-semibold tracking-[-0.04em]">{{ __('Devenir Relais.') }}</h2>
@@ -291,7 +371,7 @@
         </div>
     </section>
 
-    {{-- 9. CONFIANCE --}}
+    {{-- 11. CONFIANCE --}}
     <section id="confiance" class="bg-white px-5 py-32 sm:py-40">
         <div class="mx-auto max-w-[1024px]">
             <h2 class="max-w-2xl text-[clamp(2.75rem,6vw,4.5rem)] leading-[1.02] font-semibold tracking-[-0.04em]" data-anim>{{ __('Fiable pour la chaîne. Sûr pour vous.') }}</h2>
@@ -312,7 +392,7 @@
         </div>
     </section>
 
-    {{-- 10. QUESTIONS --}}
+    {{-- 12. QUESTIONS --}}
     <section id="faq" class="border-t border-black/10 bg-white px-5 py-28">
         <div class="mx-auto max-w-[760px]">
             <h2 class="text-[clamp(2.25rem,4.5vw,3.5rem)] font-semibold tracking-[-0.035em]" data-anim>{{ __('Questions fréquentes.') }}</h2>
@@ -338,7 +418,7 @@
         </div>
     </section>
 
-    {{-- 11. FINAL --}}
+    {{-- 13. FINAL --}}
     <section class="bg-black px-5 py-40 text-center text-white sm:py-52" data-nav-theme="dark">
         <h2 class="text-[clamp(3.5rem,11vw,9rem)] leading-[0.95] font-semibold tracking-[-0.05em] text-white" data-finale-title>{{ __('Votre regard compte.') }}</h2>
         <p class="mx-auto mt-8 max-w-lg text-xl leading-snug text-white/60" data-anim>{{ __('L’application JE RELAIS arrive bientôt sur Android et iPhone.') }}</p>

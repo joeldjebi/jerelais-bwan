@@ -105,6 +105,8 @@
     --animate-resume: resume 4s var(--ease-apple) infinite;
     --animate-toggle: toggle 3s var(--ease-spring) infinite;
     --animate-blink: blink 1.6s steps(1) infinite;
+    --animate-cycle: cycle 6s var(--ease-out-expo) infinite;
+    --animate-scan: scan 3.2s ease-in-out infinite;
 
     @keyframes pulse-dot {
         0%, 100% { box-shadow: 0 0 0 0 currentColor; }
@@ -141,6 +143,18 @@
         0%, 40% { transform: translateX(0); }
         50%, 90% { transform: translateX(1.25rem); }
         100% { transform: translateX(0); }
+    }
+
+    @keyframes cycle {
+        0%, 28% { transform: translateY(0); }
+        33%, 61% { transform: translateY(-33.333%); }
+        66%, 100% { transform: translateY(-66.666%); }
+    }
+
+    @keyframes scan {
+        0%, 100% { transform: translateY(-40%); opacity: 0; }
+        20%, 80% { opacity: 1; }
+        50% { transform: translateY(40%); }
     }
 
     @keyframes blink {
@@ -297,6 +311,86 @@
     details[open]::details-content {
         block-size: auto;
     }
+}
+
+/* Carte du réseau : les points s'allument en onde depuis Abidjan */
+[data-map-dots] circle {
+    fill: rgb(255 255 255 / 0.12);
+    transition: fill 0.8s var(--ease-out-expo);
+    transition-delay: calc(var(--d) * 1.4s);
+}
+
+[data-map-links] path {
+    stroke: var(--color-relais-500);
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    opacity: 0.85;
+    transition: stroke-dashoffset 1.8s var(--ease-out-expo);
+    transition-delay: calc(0.9s + var(--d) * 1s);
+}
+
+.map-pulse {
+    fill: #fff;
+    opacity: 0;
+    transition: opacity 0.6s;
+    transition-delay: calc(2.2s + var(--d) * 1s);
+}
+
+.map-city {
+    opacity: 0;
+    transition: opacity 0.9s var(--ease-out-expo);
+    transition-delay: calc(0.5s + var(--d) * 1s);
+}
+
+.map-city text {
+    fill: rgb(255 255 255 / 0.82);
+    stroke: #000;
+    stroke-width: 4px;
+    stroke-linejoin: round;
+    paint-order: stroke;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+.map-hub text {
+    fill: #fff;
+    font-weight: 600;
+}
+
+.map-dot {
+    fill: #fff;
+}
+
+.map-hub .map-dot {
+    fill: var(--color-relais-500);
+}
+
+.map-ring {
+    fill: none;
+    stroke: rgb(255 255 255 / 0.35);
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ring 2.8s var(--ease-out-expo) infinite;
+}
+
+.map-hub .map-ring {
+    stroke: var(--color-relais-500);
+}
+
+[data-map][data-lit] [data-map-dots] circle {
+    fill: rgb(255 255 255 / 0.38);
+}
+
+[data-map][data-lit] [data-map-links] path {
+    stroke-dashoffset: 0;
+}
+
+[data-map][data-lit] .map-pulse,
+[data-map][data-lit] .map-city {
+    opacity: 1;
 }
 
 /* Barre de navigation publique au-dessus d'une section sombre */
