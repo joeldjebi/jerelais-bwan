@@ -50,7 +50,7 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 60 * 24 * 60), // 60 jours, puis reconnexion par code SMS
 
     /*
     |--------------------------------------------------------------------------

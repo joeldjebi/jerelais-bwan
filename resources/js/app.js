@@ -2,9 +2,9 @@ import './motion';
 import './theme';
 
 /**
- * Echo exposes an expressive API for subscribing to channels and listening
- * for events that are broadcast by Laravel. Echo and event broadcasting
- * allow your team to quickly build robust real-time web applications.
+ * Temps réel (Laravel Echo + Reverb) : chargé uniquement sur les pages qui le déclarent
+ * avec <body data-realtime>, pour ne pas ouvrir de connexion inutile.
  */
-
-import './echo';
+if (document.body?.hasAttribute('data-realtime')) {
+    import('./echo');
+}

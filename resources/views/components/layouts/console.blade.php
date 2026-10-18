@@ -53,10 +53,18 @@
 
             <div class="mt-auto flex items-center gap-3 rounded-2xl p-2 ring-1 ring-line">
                 <span class="grid size-9 place-items-center rounded-full bg-navy-700 text-sm font-semibold text-white">{{ Str::of($userName)->explode(' ')->map(fn ($part) => Str::substr($part, 0, 1))->take(2)->implode('') }}</span>
-                <div class="min-w-0 text-sm">
+                <div class="min-w-0 flex-1 text-sm">
                     <p class="truncate font-medium">{{ $userName }}</p>
                     <p class="truncate text-xs text-mute">{{ $userRole }}</p>
                 </div>
+                @auth
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="press grid size-8 place-items-center rounded-full text-mute hover:bg-ink/5 hover:text-ink" aria-label="{{ __('Se déconnecter') }}">
+                            <x-ui.icon name="log-out" class="size-4" />
+                        </button>
+                    </form>
+                @endauth
             </div>
         </aside>
 

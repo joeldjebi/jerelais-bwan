@@ -21,5 +21,5 @@ it("n'émet HSTS qu'en HTTPS [§10 Sécurité]", function () {
 });
 
 it('sert l’API sous le préfixe versionné /api/v1', function () {
-    $this->getJson('/api/v1/user')->assertUnauthorized();
+    $this->getJson('/api/v1/me')->assertUnauthorized();
 });

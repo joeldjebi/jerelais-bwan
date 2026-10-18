@@ -21,15 +21,17 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 
 `200` OK · `201` créé · `204` sans contenu · `401` non authentifié · `403` interdit · `404` introuvable · `409` conflit (verrou) · `422` validation · `426` mise à jour requise · `429` trop de requêtes.
 
-## Routes prévues
+## Routes
+
+✅ = disponible sur `develop` (voir `/docs/api` pour le détail des champs).
 
 | Méthode | Route | Rôle | Étape | Exigences |
 |---|---|---|---|---|
-| POST | `/auth/otp` | Demander un code SMS | 1 | MOB-01 |
-| POST | `/auth/verify` | Vérifier le code, obtenir un jeton | 1 | MOB-01 |
-| POST | `/auth/login` · `/auth/logout` | Connexion mot de passe, révocation du jeton | 1 | MOB-01 |
-| POST | `/devices` | Enregistrer l'appareil et son jeton FCM | 1 | MOB-21 |
-| GET | `/communes` · `/categories` · `/settings` | Référentiels | 1 | MOB-13, MOB-14 |
+| POST ✅ | `/auth/otp` | Demander un code SMS | 1 | MOB-01 |
+| POST ✅ | `/auth/verify` | Vérifier le code, obtenir un jeton | 1 | MOB-01 |
+| POST ✅ | `/auth/login` · `/auth/logout` | Connexion mot de passe, révocation du jeton | 1 | MOB-01 |
+| PUT ✅ | `/devices/current` | Jeton FCM et version de l'application de l'appareil courant | 1 | MOB-21 |
+| GET ✅ | `/communes` · `/categories` · `/settings` | Référentiels | 1 | MOB-13, MOB-14 |
 | GET/PUT | `/candidature` · `/candidature/steps/{step}` | Dossier en étapes | 2 | MOB-02, MOB-06 |
 | POST | `/candidature/documents` | Pièce d'identité, selfie | 2 | MOB-03 |
 | POST | `/consents` · `/quiz/attempts` | Charte, quiz | 2 | MOB-04, MOB-05 |
@@ -39,7 +41,8 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | POST | `/relais/{uuid}/complement` | Répondre à un complément | 3 | MOB-22 |
 | GET | `/appels` · `/appels/{uuid}` | Appels à relais de ma zone | 4 | MOB-23 |
 | GET/POST | `/conversations` · `/conversations/{uuid}/messages` | Messagerie | 4 | MOB-22 |
-| GET | `/me` · `/me/stats` · `/me/badge` | Profil, statistiques, badge | 2–4 | MOB-07, MOB-24 |
+| GET ✅ / PUT ✅ | `/me` · `/me/password` | Profil, définition du mot de passe | 1 | MOB-01 |
+| GET | `/me/stats` · `/me/badge` | Statistiques, badge | 2–4 | MOB-07, MOB-24 |
 | GET/DELETE | `/me/export` · `/me` | Droits des personnes | 5 | §9.4 |
 | GET | `/coordination/queue` | File du coordonnateur (mode mobile) | 3 | §4.5 |
 | POST | `/relais/{uuid}/lock` · `/relais/{uuid}/decision` | Verrou, décision | 3 | COO-14 |
