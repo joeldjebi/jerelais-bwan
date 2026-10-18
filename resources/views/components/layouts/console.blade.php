@@ -52,7 +52,7 @@
             </nav>
 
             <div class="mt-auto flex items-center gap-3 rounded-2xl p-2 ring-1 ring-line">
-                <span class="grid size-9 place-items-center rounded-full bg-linear-to-br from-navy-400 to-navy-700 text-sm font-semibold text-white">{{ Str::of($userName)->explode(' ')->map(fn ($part) => Str::substr($part, 0, 1))->take(2)->implode('') }}</span>
+                <span class="grid size-9 place-items-center rounded-full bg-navy-700 text-sm font-semibold text-white">{{ Str::of($userName)->explode(' ')->map(fn ($part) => Str::substr($part, 0, 1))->take(2)->implode('') }}</span>
                 <div class="min-w-0 text-sm">
                     <p class="truncate font-medium">{{ $userName }}</p>
                     <p class="truncate text-xs text-mute">{{ $userRole }}</p>

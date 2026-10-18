@@ -73,8 +73,7 @@
                         <h2 class="text-base font-semibold">Carte du réseau</h2>
                         <span class="text-xs text-mute">Leaflet + OpenStreetMap à l’étape 4</span>
                     </header>
-                    <div class="relative m-4 aspect-[4/3] overflow-hidden rounded-2xl bg-linear-to-br from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-950">
-                        <div class="absolute inset-0 bg-[linear-gradient(var(--line)_1px,transparent_1px),linear-gradient(90deg,var(--line)_1px,transparent_1px)] bg-[size:28px_28px]"></div>
+                    <div class="relative m-4 aspect-[4/3] overflow-hidden rounded-2xl bg-mist dark:bg-onyx">
                         @foreach ($communes as [$name, $x, $y, $count])
                             <div class="group absolute -translate-x-1/2 -translate-y-1/2" style="left: {{ $x }}%; top: {{ $y + 12 }}%">
                                 <span class="absolute inset-0 animate-ping rounded-full bg-relais-500/30"></span>

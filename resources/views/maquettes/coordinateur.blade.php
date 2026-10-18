@@ -43,8 +43,7 @@
 
         <section class="flex flex-col gap-6" data-reveal style="--reveal-delay: 120ms">
             <div class="card overflow-hidden">
-                <div class="relative grid aspect-video place-items-center bg-linear-to-br from-navy-800 to-navy-950 text-white">
-                    <div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(242,140,40,0.25),transparent_60%)]"></div>
+                <div class="relative grid aspect-video place-items-center bg-black text-white">
                     <button type="button" class="press relative grid size-16 place-items-center rounded-full bg-white/15 backdrop-blur-xl ring-1 ring-white/25" aria-label="Lire la vidéo">
                         <svg viewBox="0 0 24 24" class="ml-1 size-7 fill-white" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
                     </button>

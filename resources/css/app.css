@@ -64,6 +64,11 @@
     --color-navy-900: #13284a;
     --color-navy-950: #0a1730;
 
+    /* Neutres façon apple.com */
+    --color-mist: #f5f5f7;
+    --color-graphite: #6e6e73;
+    --color-onyx: #1d1d1f;
+
     --color-relais-50: #fff6ec;
     --color-relais-100: #ffe9d1;
     --color-relais-300: #ffbe7a;
@@ -94,6 +99,12 @@
     --animate-pulse-dot: pulse-dot 2s var(--ease-apple) infinite;
     --animate-float: float 8s ease-in-out infinite;
     --animate-feed-in: feed-in 0.7s var(--ease-out-expo) both;
+    --animate-ring: ring 3.6s var(--ease-out-expo) infinite;
+    --animate-crawl: crawl 38s linear infinite;
+    --animate-wave: wave 1.2s ease-in-out infinite;
+    --animate-resume: resume 4s var(--ease-apple) infinite;
+    --animate-toggle: toggle 3s var(--ease-spring) infinite;
+    --animate-blink: blink 1.6s steps(1) infinite;
 
     @keyframes pulse-dot {
         0%, 100% { box-shadow: 0 0 0 0 currentColor; }
@@ -103,6 +114,38 @@
     @keyframes float {
         0%, 100% { transform: translate3d(0, 0, 0); }
         50% { transform: translate3d(0, -14px, 0); }
+    }
+
+    @keyframes ring {
+        0% { transform: scale(0.35); opacity: 0.7; }
+        100% { transform: scale(1.6); opacity: 0; }
+    }
+
+    @keyframes crawl {
+        from { transform: translate3d(0, 0, 0); }
+        to { transform: translate3d(-50%, 0, 0); }
+    }
+
+    @keyframes wave {
+        0%, 100% { transform: scaleY(0.3); }
+        50% { transform: scaleY(1); }
+    }
+
+    @keyframes resume {
+        0% { width: 0%; }
+        35%, 50% { width: 48%; }
+        90%, 100% { width: 100%; }
+    }
+
+    @keyframes toggle {
+        0%, 40% { transform: translateX(0); }
+        50%, 90% { transform: translateX(1.25rem); }
+        100% { transform: translateX(0); }
+    }
+
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0.25; }
     }
 
     @keyframes feed-in {
@@ -116,7 +159,7 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         text-rendering: optimizeLegibility;
-        scroll-behavior: smooth;
+        interpolate-size: allow-keywords;
     }
 
     body {
@@ -180,13 +223,6 @@
     }
 }
 
-@utility text-gradient {
-    background-image: linear-gradient(120deg, var(--color-relais-400) 0%, var(--color-relais-600) 45%, var(--color-navy-400) 100%);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-}
-
 @utility eyebrow {
     font-size: 0.8125rem;
     font-weight: 600;
@@ -222,19 +258,60 @@
         filter: none;
     }
 
-    /* Parallaxe douce pilotée par le défilement (navigateurs compatibles) */
-    @supports (animation-timeline: view()) {
-        .parallax-slow {
-            animation: parallax-slow linear both;
-            animation-timeline: view();
-            animation-range: cover;
+    /* Vitrine publique (GSAP) : éléments masqués jusqu'à leur entrée en scène */
+    @media (prefers-reduced-motion: no-preference) {
+        .js [data-hero-title],
+        .js [data-anim] {
+            visibility: hidden;
         }
     }
 
-    @keyframes parallax-slow {
-        from { transform: translate3d(0, -6%, 0) scale(1.04); }
-        to { transform: translate3d(0, 6%, 0) scale(1); }
+    /* Récit épinglé : étapes et écrans superposés quand le JS anime ; sinon liste lisible */
+    [data-story-screen] {
+        height: 100%;
     }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .js [data-story-stack] {
+            display: grid;
+        }
+
+        .js [data-story-stack] > * {
+            grid-area: 1 / 1;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        [data-story-screen]:not(:first-child) {
+            display: none;
+        }
+    }
+
+    /* Accordéons fluides (navigateurs compatibles) */
+    details::details-content {
+        block-size: 0;
+        overflow: hidden;
+        transition: block-size 0.6s var(--ease-out-expo), content-visibility 0.6s allow-discrete;
+    }
+
+    details[open]::details-content {
+        block-size: auto;
+    }
+}
+
+/* Barre de navigation publique au-dessus d'une section sombre */
+html[data-nav-dark] [data-site-nav] {
+    --glass: rgb(22 22 23 / 0.72);
+}
+
+/* Lenis (défilement fluide) */
+html.lenis,
+html.lenis body {
+    height: auto;
+}
+
+.lenis.lenis-smooth {
+    scroll-behavior: auto !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

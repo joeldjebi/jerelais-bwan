@@ -10,7 +10,7 @@
     $base = 'press group/btn inline-flex items-center justify-center gap-2 rounded-(--radius-pill) font-medium whitespace-nowrap transition-[background-color,box-shadow,color] duration-300 ease-apple disabled:pointer-events-none disabled:opacity-40';
 
     $variants = [
-        'primary' => 'bg-relais-500 text-white shadow-[0_8px_24px_-10px_var(--color-relais-500)] hover:bg-relais-600',
+        'primary' => 'bg-relais-500 text-white hover:bg-relais-600',
         'dark' => 'bg-ink text-canvas hover:bg-ink-soft',
         'secondary' => 'bg-ink/[0.06] text-ink hover:bg-ink/10',
         'ghost' => 'text-ink-soft hover:bg-ink/[0.05] hover:text-ink',
