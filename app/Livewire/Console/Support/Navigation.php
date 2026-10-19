@@ -21,6 +21,7 @@ class Navigation
                 'label' => __('Pilotage'),
                 'items' => [
                     ['label' => __('Accueil'), 'route' => 'console.home', 'icon' => 'home', 'tint' => 'orange', 'keywords' => 'tableau de bord accueil', 'permission' => Permission::ConsoleAccess],
+                    ['label' => __('Validation des relais'), 'route' => 'console.validation', 'icon' => 'bolt', 'tint' => 'blue', 'keywords' => 'relais file vérification urgents médias', 'permission' => Permission::RelaisViewPending],
                 ],
             ],
             [

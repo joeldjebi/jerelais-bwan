@@ -2,6 +2,7 @@
 
 use App\Domain\Access\Enums\Permission;
 use App\Http\Controllers\Console\CandidatureDocumentController;
+use App\Http\Controllers\Console\MediaController as ConsoleMediaController;
 use App\Http\Controllers\Console\SecurityController;
 use App\Http\Controllers\Public\BadgeVerificationController;
 use App\Http\Controllers\Public\LegalPageController;
@@ -17,6 +18,8 @@ use App\Livewire\Console\Dashboard;
 use App\Livewire\Console\Legal\Index as LegalPage;
 use App\Livewire\Console\Settings\Index as SettingsPage;
 use App\Livewire\Console\Team\Index as TeamPage;
+use App\Livewire\Console\Validation\Index as ValidationPage;
+use App\Livewire\Console\Validation\Show as ValidationShowPage;
 use App\Livewire\Relais\Dossier;
 use App\Livewire\Relais\Rejoindre;
 use Illuminate\Support\Facades\Route;
@@ -54,6 +57,9 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::livewire('candidatures', CandidaturesPage::class)->middleware('permission:'.Permission::CandidaturesValidate->value)->name('candidatures');
         Route::livewire('candidatures/{candidature}', CandidaturePage::class)->middleware('permission:'.Permission::CandidaturesValidate->value)->name('candidatures.show');
         Route::get('candidatures/pieces/{document}', CandidatureDocumentController::class)->middleware('signed')->name('candidatures.document');
+        Route::livewire('validation', ValidationPage::class)->middleware('permission:'.Permission::RelaisViewPending->value)->name('validation');
+        Route::livewire('validation/{relais}', ValidationShowPage::class)->middleware('permission:'.Permission::RelaisViewPending->value)->name('validation.show');
+        Route::get('medias/{media}/{variant?}', ConsoleMediaController::class)->whereIn('variant', ['thumbnail'])->name('medias.show');
         Route::livewire('textes', LegalPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('legal');
         Route::livewire('journal', AuditPage::class)->middleware('permission:'.Permission::AuditView->value)->name('audit');
     });

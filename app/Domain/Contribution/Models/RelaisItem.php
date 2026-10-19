@@ -15,9 +15,12 @@ use App\Models\Concerns\HasPublicUuid;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Clickbar\Magellan\Data\Geometries\Point;
+use Database\Factories\RelaisItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -68,6 +71,7 @@ use Spatie\ModelStates\HasStates;
  * @property-read Commune|null $declaredCommune
  * @property-read Category|null $category
  * @property-read RejectionReason|null $rejectionReason
+ * @property-read User|null $lockedBy
  * @property-read Collection<int, Media> $medias
  */
 #[Fillable([
@@ -76,9 +80,11 @@ use Spatie\ModelStates\HasStates;
     'has_minors', 'people_consent', 'credit_mode', 'credit_name',
 ])]
 #[Hidden(['internal_note', 'locked_by', 'locked_until'])]
+#[UseFactory(RelaisItemFactory::class)]
 class RelaisItem extends Model
 {
-    use BelongsToCommune, HasPublicUuid, HasStates;
+    /** @use HasFactory<RelaisItemFactory> */
+    use BelongsToCommune, HasFactory, HasPublicUuid, HasStates;
 
     protected $attributes = [
         'urgency' => 'normal',
@@ -163,6 +169,14 @@ class RelaisItem extends Model
     public function statusHistory(): HasMany
     {
         return $this->hasMany(RelaisStatusChange::class)->orderBy('id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function lockedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'locked_by');
     }
 
     public function isLockedFor(User $user): bool

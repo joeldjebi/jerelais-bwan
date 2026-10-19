@@ -92,6 +92,43 @@ Alpine.data('toasts', (initial = []) => ({
     },
 }));
 
+/**
+ * Relais urgent reçu (COO-10) : signal sonore bref et notification.
+ * Le son ne joue qu'après une première interaction avec la page (règle des navigateurs).
+ */
+let audioContext = null;
+
+function chime() {
+    try {
+        audioContext ??= new AudioContext();
+        const now = audioContext.currentTime;
+
+        [880, 1320].forEach((frequency, index) => {
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.value = frequency;
+            gain.gain.setValueAtTime(0.0001, now + index * 0.16);
+            gain.gain.exponentialRampToValueAtTime(0.18, now + index * 0.16 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.16 + 0.35);
+            oscillator.connect(gain).connect(audioContext.destination);
+            oscillator.start(now + index * 0.16);
+            oscillator.stop(now + index * 0.16 + 0.4);
+        });
+    } catch {
+        // Audio indisponible : la notification visuelle suffit.
+    }
+}
+
+document.addEventListener('livewire:init', () => {
+    Livewire.on('urgent-relais', ({ count }) => {
+        chime();
+        window.dispatchEvent(new CustomEvent('toast', {
+            detail: { message: count > 1 ? `${count} nouveaux relais urgents` : 'Nouveau relais urgent', tone: 'error' },
+        }));
+    });
+});
+
 /** Compteur qui défile jusqu'à sa valeur (chiffres des indicateurs). */
 function countUp(element) {
     const target = Number(element.dataset.count);

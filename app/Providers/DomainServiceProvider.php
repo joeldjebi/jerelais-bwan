@@ -12,6 +12,8 @@ use App\Domain\Candidature\Events\CandidatureDecided;
 use App\Domain\Candidature\Listeners\NotifyCandidateOfDecision;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Candidature\Policies\CandidaturePolicy;
+use App\Domain\Contribution\Events\RelaisStatusChanged;
+use App\Domain\Contribution\Listeners\AnnounceRelaisStatusChange;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\Policies\RelaisItemPolicy;
 use App\Domain\Media\Antivirus\ClamAvScanner;
@@ -75,6 +77,7 @@ class DomainServiceProvider extends ServiceProvider
     {
         Event::subscribe(RecordAuthenticationEvents::class);
         Event::listen(CandidatureDecided::class, NotifyCandidateOfDecision::class);
+        Event::listen(RelaisStatusChanged::class, AnnounceRelaisStatusChange::class);
 
         Gate::policy(Candidature::class, CandidaturePolicy::class);
         Gate::policy(RelaisItem::class, RelaisItemPolicy::class);
