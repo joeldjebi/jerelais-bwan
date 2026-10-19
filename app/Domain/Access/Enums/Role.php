@@ -42,7 +42,7 @@ enum Role: string
             // L'administrateur voit et paramètre tout, mais n'envoie pas de relais (Annexe A).
             self::Admin => array_values(array_filter(
                 Permission::cases(),
-                fn (Permission $permission) => ! in_array($permission, [Permission::RelaisSubmit, Permission::RelaisViewOwn], true),
+                fn (Permission $permission) => ! in_array($permission, [Permission::RelaisSubmit, Permission::RelaisViewOwn, Permission::CandidatureApply], true),
             )),
             self::RedacteurEnChef, self::Journaliste => [
                 Permission::ConsoleAccess, Permission::RelaisViewPending, Permission::RelaisArbitrate,
@@ -59,7 +59,7 @@ enum Role: string
                 Permission::IdentityView, Permission::AppelsCreateLocal, Permission::RelaisProfilesSuspend,
             ],
             self::Relais => [Permission::RelaisSubmit, Permission::RelaisViewOwn],
-            self::Candidat => [],
+            self::Candidat => [Permission::CandidatureApply],
         };
     }
 }

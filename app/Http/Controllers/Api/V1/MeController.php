@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Auth\Models\Device;
+use App\Domain\Relais\Models\RelaisProfile;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\UpdateCurrentDeviceRequest;
 use App\Http\Requests\Api\V1\UpdatePasswordRequest;
+use App\Http\Resources\V1\BadgeResource;
 use App\Http\Resources\V1\DeviceResource;
 use App\Http\Resources\V1\UserResource;
 use App\Models\User;
@@ -24,6 +26,22 @@ class MeController extends Controller
         $user = $request->user();
 
         return new UserResource($user->load('communes'));
+    }
+
+    /**
+     * Mon badge de Relais (MOB-07).
+     *
+     * 404 tant que la candidature n'est pas acceptée.
+     */
+    public function badge(Request $request): BadgeResource
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $profile = RelaisProfile::withoutCommuneRestriction()->with('commune')->where('user_id', $user->id)->first();
+        abort_if($profile === null, 404);
+
+        return new BadgeResource($profile);
     }
 
     /**

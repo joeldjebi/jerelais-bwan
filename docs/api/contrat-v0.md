@@ -32,9 +32,14 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | POST ✅ | `/auth/login` · `/auth/logout` | Connexion mot de passe, révocation du jeton | 1 | MOB-01 |
 | PUT ✅ | `/devices/current` | Jeton FCM et version de l'application de l'appareil courant | 1 | MOB-21 |
 | GET ✅ | `/communes` · `/categories` · `/settings` | Référentiels | 1 | MOB-13, MOB-14 |
-| GET/PUT | `/candidature` · `/candidature/steps/{step}` | Dossier en étapes | 2 | MOB-02, MOB-06 |
-| POST | `/candidature/documents` | Pièce d'identité, selfie | 2 | MOB-03 |
-| POST | `/consents` · `/quiz/attempts` | Charte, quiz | 2 | MOB-04, MOB-05 |
+| GET ✅ / PUT ✅ | `/candidature` · `/candidature/steps/{identite\|territoire\|profil}` | Dossier en étapes, sauvegarde automatique (champs facultatifs, 409 si dossier verrouillé) | 2 | MOB-02, MOB-06 |
+| POST ✅ | `/candidature/submit` | Dépôt (422 avec la liste des éléments manquants) | 2 | MOB-06 |
+| GET ✅ | `/candidature/options` · `/communes/{uuid}/localites` | Listes du formulaire, quartiers d'une commune | 2 | MOB-02 |
+| POST ✅ / DELETE ✅ | `/candidature/documents` · `/candidature/documents/{type}` | Pièces (multipart `type` + `file`) : photo de profil, recto, verso, selfie, autorisation parentale si mineur. JPEG/PNG/HEIC (PDF pour l'autorisation), 10 Mo, antivirus ; 503 si l'antivirus est indisponible | 2 | MOB-03 |
+| GET ✅ | `/legal` | Textes en vigueur (charte, conditions, confidentialité), Markdown et HTML | 2 | MOB-04 |
+| GET ✅ / POST ✅ | `/consents` | Mes acceptations ; accepter en envoyant les `uuid` de toutes les versions en vigueur (422 si une version a changé) | 2 | MOB-04 |
+| GET ✅ | `/formation` | Fiches de formation (Markdown et HTML) | 2 | MOB-05 |
+| GET ✅ / POST ✅ | `/quiz` · `/quiz/attempts` | Questions sans les bonnes réponses ; correction avec explications ; score minimal paramétrable ; 10 tentatives par heure | 2 | MOB-05 |
 | POST | `/relais` | Créer un relais (`client_uuid`) | 3 | MOB-10 à MOB-15 |
 | — | Téléversement tus ou multipart S3 signé | Médias reprenables | 3 | MOB-16, MOB-18 |
 | GET | `/relais` · `/relais/{uuid}` | Mes relais et statuts | 3 | MOB-20 |
@@ -42,7 +47,8 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | GET | `/appels` · `/appels/{uuid}` | Appels à relais de ma zone | 4 | MOB-23 |
 | GET/POST | `/conversations` · `/conversations/{uuid}/messages` | Messagerie | 4 | MOB-22 |
 | GET ✅ / PUT ✅ | `/me` · `/me/password` | Profil, définition du mot de passe | 1 | MOB-01 |
-| GET | `/me/stats` · `/me/badge` | Statistiques, badge | 2–4 | MOB-07, MOB-24 |
+| GET ✅ | `/me/badge` | Badge : numéro, prénom + initiale, commune, statut, photo (lien signé 15 min), `qr_payload` à encoder en QR ; 404 avant acceptation | 2 | MOB-07 |
+| GET | `/me/stats` | Statistiques | 4 | MOB-24 |
 | GET/DELETE | `/me/export` · `/me` | Droits des personnes | 5 | §9.4 |
 | GET | `/coordination/queue` | File du coordonnateur (mode mobile) | 3 | §4.5 |
 | POST | `/relais/{uuid}/lock` · `/relais/{uuid}/decision` | Verrou, décision | 3 | COO-14 |

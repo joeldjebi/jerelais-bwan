@@ -9,6 +9,16 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Quartier, village ou sous-préfecture d'une commune.
+ *
+ * @property int $id
+ * @property string $uuid
+ * @property int $commune_id
+ * @property string $name
+ * @property LocaliteType $type
+ * @property Point|null $location
+ */
 #[Fillable(['commune_id', 'name', 'type', 'location'])]
 class Localite extends Model
 {

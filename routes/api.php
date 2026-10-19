@@ -1,8 +1,12 @@
 <?php
 
+use App\Domain\Access\Enums\Permission;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\OtpController;
 use App\Http\Controllers\Api\V1\Auth\PasswordLoginController;
+use App\Http\Controllers\Api\V1\Candidature\CandidatureController;
+use App\Http\Controllers\Api\V1\Formation\FormationController;
+use App\Http\Controllers\Api\V1\Legal\LegalController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\ReferentielController;
 use Illuminate\Support\Facades\Route;
@@ -23,11 +27,31 @@ Route::name('api.v1.')->group(function () {
     Route::get('communes', [ReferentielController::class, 'communes'])->name('communes.index');
     Route::get('categories', [ReferentielController::class, 'categories'])->name('categories.index');
     Route::get('settings', [ReferentielController::class, 'settings'])->name('settings.index');
+    Route::get('communes/{commune}/localites', [CandidatureController::class, 'localites'])->name('communes.localites');
+    Route::get('legal', [LegalController::class, 'index'])->name('legal.index');
+    Route::get('formation', [FormationController::class, 'modules'])->name('formation.index');
+    Route::get('candidature/options', [CandidatureController::class, 'options'])->name('candidature.options');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('auth/logout', LogoutController::class)->name('auth.logout');
         Route::get('me', [MeController::class, 'show'])->name('me.show');
         Route::put('me/password', [MeController::class, 'updatePassword'])->name('me.password');
+        Route::get('me/badge', [MeController::class, 'badge'])->name('me.badge');
         Route::put('devices/current', [MeController::class, 'updateDevice'])->name('devices.current');
+
+        Route::get('consents', [LegalController::class, 'consents'])->name('consents.index');
+        Route::post('consents', [LegalController::class, 'accept'])->name('consents.store');
+
+        Route::get('quiz', [FormationController::class, 'quiz'])->name('quiz.show');
+        Route::post('quiz/attempts', [FormationController::class, 'attempt'])->middleware('throttle:quiz')->name('quiz.attempts.store');
+
+        Route::get('candidature', [CandidatureController::class, 'show'])->name('candidature.show');
+        Route::put('candidature/steps/{step}', [CandidatureController::class, 'updateStep'])->name('candidature.steps.update');
+        Route::post('candidature/documents', [CandidatureController::class, 'storeDocument'])
+            ->middleware('throttle:30,1')->name('candidature.documents.store');
+        Route::delete('candidature/documents/{type}', [CandidatureController::class, 'destroyDocument'])
+            ->middleware('permission:'.Permission::CandidatureApply->value)->name('candidature.documents.destroy');
+        Route::post('candidature/submit', [CandidatureController::class, 'submit'])
+            ->middleware('permission:'.Permission::CandidatureApply->value)->name('candidature.submit');
     });
 });

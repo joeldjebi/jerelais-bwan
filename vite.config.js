@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/public.js', 'resources/js/console.js'],
+            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/public.js', 'resources/js/console.js', 'resources/js/relais.js'],
             refresh: true,
             fonts: [
                 // Inter auto-hébergée pour Android/Windows ; les appareils Apple utilisent SF Pro.

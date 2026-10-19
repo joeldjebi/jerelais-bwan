@@ -9,6 +9,7 @@ use App\Models\User;
  * Le « sa commune » est vérifié séparément (CommuneScope).
  */
 dataset('matrice', [
+    'déposer une candidature' => [Permission::CandidatureApply, [Role::Candidat]],
     'envoyer un relais' => [Permission::RelaisSubmit, [Role::Relais, Role::Coordonnateur]],
     'voir ses propres relais' => [Permission::RelaisViewOwn, [Role::Relais, Role::Coordonnateur]],
     'voir les relais en attente' => [Permission::RelaisViewPending, [Role::Coordonnateur, Role::Superviseur, Role::RedacteurEnChef, Role::Journaliste, Role::LectureSeule, Role::Admin]],

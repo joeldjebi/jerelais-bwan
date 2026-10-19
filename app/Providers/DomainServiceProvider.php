@@ -8,9 +8,17 @@ use App\Domain\Auth\Contracts\SmsGateway;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Sms\LogSmsGateway;
 use App\Domain\Auth\Support\DemoTwoFactorProvider;
+use App\Domain\Candidature\Events\CandidatureDecided;
+use App\Domain\Candidature\Listeners\NotifyCandidateOfDecision;
+use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Candidature\Policies\CandidaturePolicy;
+use App\Domain\Media\Antivirus\ClamAvScanner;
+use App\Domain\Media\Antivirus\FakeVirusScanner;
+use App\Domain\Media\Contracts\VirusScanner;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
@@ -28,6 +36,24 @@ class DomainServiceProvider extends ServiceProvider
             default => throw new InvalidArgumentException('Passerelle SMS non configurée : '.config('jerelais.sms.driver')),
         });
 
+        $this->app->bind(VirusScanner::class, function () {
+            $driver = config('jerelais.antivirus.driver');
+
+            if ($driver === 'fake' && $this->app->isProduction()) {
+                throw new InvalidArgumentException('Antivirus factice interdit en production.');
+            }
+
+            return match ($driver) {
+                'clamav' => new ClamAvScanner(
+                    (string) config('jerelais.antivirus.host'),
+                    (int) config('jerelais.antivirus.port'),
+                    (int) config('jerelais.antivirus.timeout'),
+                ),
+                'fake' => new FakeVirusScanner,
+                default => throw new InvalidArgumentException('Antivirus non configuré : '.$driver),
+            };
+        });
+
         // Une instance par requête : le périmètre calculé ne fuit jamais d'une requête à l'autre.
         $this->app->scoped(CommuneAccess::class);
 
@@ -42,6 +68,9 @@ class DomainServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::subscribe(RecordAuthenticationEvents::class);
+        Event::listen(CandidatureDecided::class, NotifyCandidateOfDecision::class);
+
+        Gate::policy(Candidature::class, CandidaturePolicy::class);
 
         $this->configureRateLimiting();
     }
@@ -72,6 +101,8 @@ class DomainServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by('pwd:'.($phone?->hash() ?? 'invalid').'|'.$request->ip())->response($tooMany);
         });
+
+        RateLimiter::for('quiz', fn (Request $request) => Limit::perHour(10)->by('quiz:'.($request->user()?->getAuthIdentifier() ?? $request->ip()))->response($tooMany));
 
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->id ?: $request->ip()));
     }

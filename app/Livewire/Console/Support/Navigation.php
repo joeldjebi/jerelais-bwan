@@ -26,6 +26,7 @@ class Navigation
             [
                 'label' => __('Réseau'),
                 'items' => [
+                    ['label' => __('Candidatures'), 'route' => 'console.candidatures', 'icon' => 'inbox', 'tint' => 'pink', 'keywords' => 'recrutement dossiers candidats relais décision', 'permission' => Permission::CandidaturesValidate],
                     ['label' => __('Communes'), 'route' => 'console.communes', 'icon' => 'map-pin', 'tint' => 'blue', 'keywords' => 'territoire référentiel régions pilote', 'permission' => Permission::TerritoireManage],
                     ['label' => __('Équipe'), 'route' => 'console.team', 'icon' => 'users', 'tint' => 'green', 'keywords' => 'coordonnateurs journalistes comptes membres', 'permission' => Permission::UsersManage],
                 ],
@@ -34,6 +35,7 @@ class Navigation
                 'label' => __('Administration'),
                 'items' => [
                     ['label' => __('Paramètres'), 'route' => 'console.settings', 'icon' => 'layers', 'tint' => 'gray', 'keywords' => 'réglages délais médias conservation', 'permission' => Permission::SettingsManage],
+                    ['label' => __('Textes juridiques'), 'route' => 'console.legal', 'icon' => 'book', 'tint' => 'teal', 'keywords' => 'charte conditions confidentialité cgu versions', 'permission' => Permission::SettingsManage],
                     ['label' => __('Journal d’audit'), 'route' => 'console.audit', 'icon' => 'shield', 'tint' => 'purple', 'keywords' => 'traçabilité historique sécurité', 'permission' => Permission::AuditView],
                 ],
             ],

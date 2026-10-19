@@ -33,6 +33,21 @@ class AuditPresenter
         'settings.updated' => ['Paramètre modifié', 'layers', 'accent'],
         'territoire.commune.opened' => ['Commune ouverte aux Relais', 'map-pin', 'success'],
         'territoire.commune.closed' => ['Commune fermée aux Relais', 'map-pin', 'warning'],
+        'candidature.submitted' => ['Candidature déposée', 'inbox', 'accent'],
+        'candidature.resubmitted' => ['Candidature complétée et redéposée', 'inbox', 'accent'],
+        'candidature.review_started' => ['Examen d’une candidature commencé', 'inbox', 'neutral'],
+        'candidature.accepted' => ['Candidature acceptée', 'check', 'success'],
+        'candidature.rejected' => ['Candidature refusée', 'x', 'danger'],
+        'candidature.on_hold' => ['Candidature mise en attente', 'clock', 'warning'],
+        'candidature.complement_requested' => ['Complément demandé au candidat', 'inbox', 'warning'],
+        'candidature.document.uploaded' => ['Pièce de candidature reçue', 'photo', 'neutral'],
+        'candidature.document.deleted' => ['Pièce de candidature retirée', 'photo', 'neutral'],
+        'candidature.document.infected' => ['Fichier infecté refusé', 'x', 'danger'],
+        'formation.quiz.attempted' => ['Quiz de formation passé', 'book', 'neutral'],
+        'relais.created' => ['Nouveau Relais', 'signal', 'success'],
+        'legal.accepted' => ['Charte et conditions acceptées', 'flag', 'success'],
+        'legal.published' => ['Nouvelle version d’un texte juridique', 'book', 'accent'],
+        'candidature.document.viewed' => ['Pièce d’identité consultée', 'eye-off', 'warning'],
     ];
 
     public function label(AuditLog $entry): string
