@@ -38,6 +38,17 @@ php artisan horizon               # files de tâches
 - Documentation de l'API : `/docs/api`
 - Mails : http://localhost:8025
 
+## Comptes de démonstration (local uniquement)
+
+Créés par `php artisan migrate --seed` en environnement local :
+
+| Compte | Mot de passe | Rôle |
+|---|---|---|
+| admin@jerelais.com | 12345678 | Administrateur |
+| coordinateur@jerelais.com | 12345678 | Coordonnateur de Yopougon |
+
+Code de double authentification : `123456` (variable `DEMO_TWO_FACTOR_CODE`, ignorée hors environnement local).
+
 ## Qualité
 
 ```bash

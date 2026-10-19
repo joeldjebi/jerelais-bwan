@@ -1,11 +1,11 @@
 /**
- * Thème clair / sombre : suit le système par défaut, mémorise le choix de
- * l'utilisateur (simple préférence d'affichage, aucune donnée personnelle).
+ * Thème clair / sombre / auto : choix mémorisé par l'utilisateur (simple préférence d'affichage).
+ * À défaut, le thème par défaut de l'espace s'applique (la console est sombre, façon régie).
  */
 
 const STORAGE_KEY = 'jerelais.theme';
 
-function storedTheme() {
+export function storedTheme() {
     try {
         return localStorage.getItem(STORAGE_KEY);
     } catch {
@@ -14,20 +14,23 @@ function storedTheme() {
 }
 
 export function applyTheme(theme = storedTheme()) {
-    const dark = theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const effective = theme || document.documentElement.dataset.defaultTheme || 'system';
+    const dark = effective === 'system' ? window.matchMedia('(prefers-color-scheme: dark)').matches : effective === 'dark';
+
     document.documentElement.classList.toggle('dark', dark);
 }
 
-window.toggleTheme = () => {
-    const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-
+export function setTheme(theme) {
     try {
-        localStorage.setItem(STORAGE_KEY, next);
+        localStorage.setItem(STORAGE_KEY, theme);
     } catch {
         // Stockage indisponible (navigation privée) : le choix vaut pour la page.
     }
 
-    applyTheme(next);
-};
+    applyTheme(theme);
+}
+
+window.toggleTheme = () => setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
+window.setTheme = setTheme;
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme());

@@ -71,7 +71,7 @@
 
     {{-- Validation --}}
     <div class="{{ $tileClass }} hidden sm:block" data-tile>
-        <span class="{{ $labelClass }}">{{ __('Validation') }} · Cocody</span>
+        <span class="{{ $labelClass }}">{{ __('Validation communale') }} · Cocody</span>
         <span class="{{ $timecodeClass }}" data-timecode="31277">00:00:00:00</span>
         <div class="absolute top-1/2 left-[12%] h-4 -translate-y-1/2 overflow-hidden sm:h-7">
             <div class="animate-cycle">
