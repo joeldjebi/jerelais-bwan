@@ -94,6 +94,8 @@ class DomainServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by('pwd:'.($phone?->hash() ?? 'invalid').'|'.$request->ip())->response($tooMany);
         });
 
+        RateLimiter::for('quiz', fn (Request $request) => Limit::perHour(10)->by('quiz:'.($request->user()?->getAuthIdentifier() ?? $request->ip()))->response($tooMany));
+
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->id ?: $request->ip()));
     }
 }

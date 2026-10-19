@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             TerritoireSeeder::class,
             ListsSeeder::class,
             LegalDocumentsSeeder::class,
+            FormationSeeder::class,
         ]);
 
         if (app()->isLocal()) {

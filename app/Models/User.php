@@ -7,6 +7,7 @@ use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Enums\UserStatus;
 use App\Domain\Auth\Models\Device;
 use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Formation\Models\QuizAttempt;
 use App\Domain\Legal\Models\Consent;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Region;
@@ -105,6 +106,16 @@ class User extends Authenticatable
     public function consents(): HasMany
     {
         return $this->hasMany(Consent::class);
+    }
+
+    /**
+     * Tentatives au quiz de formation (MOB-05).
+     *
+     * @return HasMany<QuizAttempt, $this>
+     */
+    public function quizAttempts(): HasMany
+    {
+        return $this->hasMany(QuizAttempt::class);
     }
 
     /**

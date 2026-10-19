@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\OtpController;
 use App\Http\Controllers\Api\V1\Auth\PasswordLoginController;
 use App\Http\Controllers\Api\V1\Candidature\CandidatureController;
+use App\Http\Controllers\Api\V1\Formation\FormationController;
 use App\Http\Controllers\Api\V1\Legal\LegalController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\ReferentielController;
@@ -28,6 +29,7 @@ Route::name('api.v1.')->group(function () {
     Route::get('settings', [ReferentielController::class, 'settings'])->name('settings.index');
     Route::get('communes/{commune}/localites', [CandidatureController::class, 'localites'])->name('communes.localites');
     Route::get('legal', [LegalController::class, 'index'])->name('legal.index');
+    Route::get('formation', [FormationController::class, 'modules'])->name('formation.index');
     Route::get('candidature/options', [CandidatureController::class, 'options'])->name('candidature.options');
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -38,6 +40,9 @@ Route::name('api.v1.')->group(function () {
 
         Route::get('consents', [LegalController::class, 'consents'])->name('consents.index');
         Route::post('consents', [LegalController::class, 'accept'])->name('consents.store');
+
+        Route::get('quiz', [FormationController::class, 'quiz'])->name('quiz.show');
+        Route::post('quiz/attempts', [FormationController::class, 'attempt'])->middleware('throttle:quiz')->name('quiz.attempts.store');
 
         Route::get('candidature', [CandidatureController::class, 'show'])->name('candidature.show');
         Route::put('candidature/steps/{step}', [CandidatureController::class, 'updateStep'])->name('candidature.steps.update');

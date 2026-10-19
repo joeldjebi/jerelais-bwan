@@ -16,6 +16,10 @@ use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Candidature\Support\CandidatureChecklist;
 use App\Domain\Candidature\Support\StepRules;
 use App\Domain\Contribution\Models\Category;
+use App\Domain\Formation\Actions\GradeQuizAttempt;
+use App\Domain\Formation\Models\FormationModule;
+use App\Domain\Formation\Models\QuizAttempt;
+use App\Domain\Formation\Models\QuizQuestion;
 use App\Domain\Legal\Actions\AcceptLegalDocuments;
 use App\Domain\Legal\Models\Consent;
 use App\Domain\Legal\Models\LegalDocument;
@@ -51,6 +55,9 @@ use Livewire\WithFileUploads;
  * @property-read Collection<int, Category> $categories
  * @property-read array<string, LegalDocument> $legalDocuments
  * @property-read array<string, Consent> $consents
+ * @property-read Collection<int, FormationModule> $modules
+ * @property-read Collection<int, QuizQuestion> $questions
+ * @property-read QuizAttempt|null $lastAttempt
  */
 #[Layout('layouts::relais')]
 #[Title('Ma candidature')]
@@ -61,6 +68,8 @@ class Dossier extends Component
     public const DOCUMENTS = 'documents';
 
     public const CHARTE = 'charte';
+
+    public const FORMATION = 'formation';
 
     public const RECAP = 'recapitulatif';
 
@@ -78,6 +87,17 @@ class Dossier extends Component
 
     /** @var array<string, bool> textes cochés avant acceptation, par type */
     public array $accepted = ['charte' => false, 'conditions' => false, 'confidentialite' => false];
+
+    /** Formation : « fiches », « quiz » ou « resultat ». */
+    public string $formationView = 'fiches';
+
+    public int $questionIndex = 0;
+
+    /** @var array<string, string> uuid de la question => uuid de la réponse */
+    public array $quizAnswers = [];
+
+    #[Locked]
+    public ?string $attemptUuid = null;
 
     /** @var array<string, TemporaryUploadedFile|null> pièce en cours d'envoi, par type */
     public array $uploads = [];
@@ -244,6 +264,86 @@ class Dossier extends Component
         $this->savedAt = now()->format('H:i');
     }
 
+    public function startQuiz(): void
+    {
+        $this->quizAnswers = [];
+        $this->questionIndex = 0;
+        $this->attemptUuid = null;
+        $this->formationView = 'quiz';
+        $this->dispatch('step-changed');
+    }
+
+    public function answer(string $questionUuid, string $choiceUuid): void
+    {
+        $question = $this->questions->firstWhere('uuid', $questionUuid);
+
+        if ($question === null || $question->choices->firstWhere('uuid', $choiceUuid) === null) {
+            return;
+        }
+
+        $this->quizAnswers[$questionUuid] = $choiceUuid;
+    }
+
+    public function nextQuestion(): void
+    {
+        $this->questionIndex = min($this->questions->count() - 1, $this->questionIndex + 1);
+    }
+
+    public function previousQuestion(): void
+    {
+        $this->questionIndex = max(0, $this->questionIndex - 1);
+    }
+
+    public function submitQuiz(GradeQuizAttempt $grade): void
+    {
+        $this->resetErrorBag('quiz');
+
+        try {
+            $attempt = $grade->handle($this->user(), $this->quizAnswers);
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('quiz', $exception->getMessage());
+
+            return;
+        }
+
+        $this->attemptUuid = $attempt->uuid;
+        $this->formationView = 'resultat';
+        unset($this->checklist, $this->lastAttempt);
+        $this->dispatch('step-changed');
+    }
+
+    public function showFiches(): void
+    {
+        $this->formationView = 'fiches';
+        $this->dispatch('step-changed');
+    }
+
+    /**
+     * @return Collection<int, FormationModule>
+     */
+    #[Computed(persist: true)]
+    public function modules(): Collection
+    {
+        return FormationModule::query()->published()->get();
+    }
+
+    /**
+     * @return Collection<int, QuizQuestion>
+     */
+    #[Computed]
+    public function questions(): Collection
+    {
+        return QuizQuestion::query()->published()->with('choices')->get();
+    }
+
+    #[Computed]
+    public function lastAttempt(): ?QuizAttempt
+    {
+        $query = $this->user()->quizAttempts()->latest('id');
+
+        return $this->attemptUuid !== null ? $query->where('uuid', $this->attemptUuid)->first() : $query->first();
+    }
+
     /**
      * @return array<string, LegalDocument>
      */
@@ -331,7 +431,13 @@ class Dossier extends Component
      */
     public function stepKeys(): array
     {
-        return [...array_map(fn (CandidatureStep $step): string => $step->value, CandidatureStep::cases()), self::DOCUMENTS, self::CHARTE, self::RECAP];
+        return [
+            ...array_map(fn (CandidatureStep $step): string => $step->value, CandidatureStep::cases()),
+            self::DOCUMENTS,
+            self::CHARTE,
+            ...(array_key_exists(self::FORMATION, $this->checklist) ? [self::FORMATION] : []),
+            self::RECAP,
+        ];
     }
 
     public function render(): View

@@ -17,6 +17,7 @@
         'profil' => ['sparkles', __('Ce qui vous anime'), __('Aidez votre coordonnateur à mieux vous connaître.')],
         'documents' => ['shield', __('Vos pièces justificatives'), __('Protégées et stockées à part : seuls votre coordonnateur et l’administration habilitée peuvent les consulter, et chaque consultation est enregistrée.')],
         'charte' => ['flag', __('La charte du Relais'), __('Lisez attentivement ces engagements : ils protègent les personnes filmées, la chaîne et vous-même.')],
+        'formation' => ['book', __('Devenir un bon Relais'), __('Quatre fiches à lire en quelques minutes, puis un court quiz pour vérifier les bons réflexes.')],
         'recapitulatif' => ['check', __('Vérifiez et déposez'), __('Relisez votre dossier. Une fois déposé, il ne sera plus modifiable pendant l’examen.')],
     ];
     $stepLabels = [...collect($this->checklist)->map(fn ($item) => $item['label'])->all(), 'recapitulatif' => __('Dépôt')];
@@ -436,6 +437,134 @@
                             @endif
                             @break
 
+                        @case('formation')
+                            @php
+                                $questions = $this->questions;
+                                $attempt = $this->lastAttempt;
+                                $passing = (int) app(\App\Domain\Settings\Settings::class)->integer('candidature.quiz_min_score');
+                            @endphp
+
+                            @if ($formationView === 'quiz' && $questions->isNotEmpty())
+                                @php
+                                    $question = $questions[$questionIndex];
+                                    $isLast = $questionIndex === $questions->count() - 1;
+                                @endphp
+                                <div data-field>
+                                    <div class="flex items-center justify-between text-[0.8125rem] text-graphite">
+                                        <span>{{ __('Question :current sur :total', ['current' => $questionIndex + 1, 'total' => $questions->count()]) }}</span>
+                                        <button type="button" wire:click="showFiches" class="font-medium text-relais-600 hover:underline">{{ __('Revoir les fiches') }}</button>
+                                    </div>
+                                    <div class="mt-2 flex gap-1">
+                                        @foreach ($questions as $position => $item)
+                                            <span @class(['h-1.5 flex-1 rounded-full transition-colors duration-500', 'bg-relais-500' => isset($quizAnswers[$item->uuid]), 'bg-onyx/70' => $position === $questionIndex && ! isset($quizAnswers[$item->uuid]), 'bg-black/[0.07]' => $position !== $questionIndex && ! isset($quizAnswers[$item->uuid])])></span>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                <fieldset wire:key="q-{{ $question->uuid }}" data-field>
+                                    <legend class="text-[1.375rem] leading-snug font-semibold tracking-[-0.02em]">{{ $question->prompt }}</legend>
+                                    <div class="mt-5 space-y-2.5">
+                                        @foreach ($question->choices as $choice)
+                                            @php $chosen = ($quizAnswers[$question->uuid] ?? null) === $choice->uuid; @endphp
+                                            <button type="button" wire:click="answer('{{ $question->uuid }}', '{{ $choice->uuid }}')" @class([
+                                                'press flex w-full items-center gap-4 rounded-2xl px-5 py-4 text-left text-[1rem] transition-[background-color,box-shadow] duration-300',
+                                                'bg-relais-500/[0.08] ring-2 ring-relais-500' => $chosen,
+                                                'bg-mist ring-1 ring-transparent hover:ring-black/10' => ! $chosen,
+                                            ]) aria-pressed="{{ $chosen ? 'true' : 'false' }}">
+                                                <span @class(['grid size-6 shrink-0 place-items-center rounded-full transition-colors duration-300', 'bg-relais-500 text-white' => $chosen, 'bg-white ring-1 ring-black/15' => ! $chosen])>
+                                                    @if ($chosen)<x-ui.icon name="check" class="size-3.5" stroke="3.5" />@endif
+                                                </span>
+                                                {{ $choice->label }}
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                </fieldset>
+
+                                @error('quiz') <p class="text-[0.8125rem] font-medium text-status-rejected" data-field>{{ $message }}</p> @enderror
+
+                                <div class="flex items-center justify-between gap-3" data-field>
+                                    <x-ui.button variant="secondary" wire:click="previousQuestion" :disabled="$questionIndex === 0">{{ __('Question précédente') }}</x-ui.button>
+                                    @if ($isLast)
+                                        <x-ui.button variant="dark" wire:click="submitQuiz" wire:loading.attr="disabled" wire:target="submitQuiz" :disabled="count($quizAnswers) < $questions->count()">{{ __('Valider mes réponses') }}</x-ui.button>
+                                    @else
+                                        <x-ui.button variant="dark" wire:click="nextQuestion" :disabled="! isset($quizAnswers[$question->uuid])">{{ __('Question suivante') }}</x-ui.button>
+                                    @endif
+                                </div>
+                            @elseif ($formationView === 'resultat' && $attempt)
+                                @php
+                                    $circumference = 2 * M_PI * 52;
+                                    $correction = $questions->keyBy('uuid');
+                                @endphp
+                                <div class="flex flex-col items-center gap-5 rounded-2xl bg-mist p-7 text-center sm:flex-row sm:text-left" data-field>
+                                    <div class="relative grid size-32 shrink-0 place-items-center" data-done-badge>
+                                        <svg viewBox="0 0 120 120" class="absolute inset-0 size-32 -rotate-90" aria-hidden="true">
+                                            <circle cx="60" cy="60" r="52" fill="none" stroke-width="10" class="stroke-black/[0.07]" />
+                                            <circle cx="60" cy="60" r="52" fill="none" stroke-width="10" stroke-linecap="round" @class(['stroke-tile-green' => $attempt->passed, 'stroke-relais-500' => ! $attempt->passed])
+                                                stroke-dasharray="{{ $circumference }}" stroke-dashoffset="{{ $circumference * (1 - $attempt->score / 100) }}" style="transition: stroke-dashoffset 1.2s cubic-bezier(.16,1,.3,1)" />
+                                        </svg>
+                                        <span class="text-[2rem] font-semibold tracking-[-0.03em] tabular-nums">{{ $attempt->score }}<span class="text-[1.125rem]">%</span></span>
+                                    </div>
+                                    <div>
+                                        <p class="text-[1.375rem] font-semibold tracking-[-0.02em]">{{ $attempt->passed ? __('Quiz réussi, bravo !') : __('Encore un effort.') }}</p>
+                                        <p class="mt-1 text-[0.9375rem] leading-relaxed text-graphite">
+                                            {{ __(':correct bonnes réponses sur :total. Il faut :passing % pour réussir.', ['correct' => $attempt->correct_count, 'total' => $attempt->question_count, 'passing' => $attempt->passing_score]) }}
+                                        </p>
+                                        @unless ($attempt->passed)
+                                            <x-ui.button size="sm" class="mt-4" wire:click="startQuiz">{{ __('Réessayer') }}</x-ui.button>
+                                        @endunless
+                                    </div>
+                                </div>
+
+                                <ul class="space-y-2" data-field>
+                                    @foreach ($attempt->answers as $questionUuid => $result)
+                                        @continue(! isset($correction[$questionUuid]))
+                                        <li class="flex gap-3 rounded-2xl px-4 py-3.5 ring-1 ring-black/[0.06]">
+                                            <span @class(['mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-white', 'bg-tile-green' => $result['correct'], 'bg-status-rejected' => ! $result['correct']])>
+                                                <x-ui.icon :name="$result['correct'] ? 'check' : 'x'" class="size-3.5" stroke="3.5" />
+                                            </span>
+                                            <div>
+                                                <p class="text-[0.9375rem] font-semibold">{{ $correction[$questionUuid]->prompt }}</p>
+                                                <p class="mt-0.5 text-[0.8125rem] leading-relaxed text-graphite">{{ $correction[$questionUuid]->explanation }}</p>
+                                            </div>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @else
+                                @if ($attempt && $attempt->passed)
+                                    <div class="flex items-center gap-3 rounded-2xl bg-tile-green/10 px-5 py-4" data-field>
+                                        <span class="grid size-8 shrink-0 place-items-center rounded-full bg-tile-green text-white"><x-ui.icon name="check" class="size-4" stroke="3" /></span>
+                                        <p class="text-[0.9375rem]"><span class="font-semibold">{{ __('Quiz réussi') }}</span> · {{ __('meilleur score :score %', ['score' => \App\Domain\Formation\Actions\GradeQuizAttempt::bestScore(auth()->user())]) }}</p>
+                                    </div>
+                                @endif
+
+                                <div class="grid items-start gap-3 sm:grid-cols-2" data-field>
+                                    @foreach ($this->modules as $module)
+                                        <article x-data="{ open: false }" class="rounded-2xl bg-mist p-5" wire:key="module-{{ $module->uuid }}">
+                                            <button type="button" x-on:click="open = ! open" class="flex w-full items-start gap-3.5 text-left" :aria-expanded="open">
+                                                <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-relais-500 shadow-[0_1px_2px_rgb(0_0_0/0.05)]"><x-ui.icon :name="$module->icon" class="size-5" /></span>
+                                                <span class="flex-1">
+                                                    <span class="block text-[1rem] font-semibold">{{ $module->title }}</span>
+                                                    <span class="mt-0.5 block text-[0.8125rem] leading-snug text-graphite">{{ $module->summary }}</span>
+                                                </span>
+                                                <x-ui.icon name="arrow-right" class="mt-1 size-4 shrink-0 text-graphite transition-transform duration-300" ::class="open && 'rotate-90'" />
+                                            </button>
+                                            <div x-show="open" x-collapse x-cloak class="legal-prose mt-4 border-t border-black/[0.06] pt-4 text-[0.875rem]">{{ $module->html() }}</div>
+                                        </article>
+                                    @endforeach
+                                </div>
+
+                                <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-onyx p-5 text-white sm:p-6" data-field>
+                                    <div>
+                                        <p class="text-[1.0625rem] font-semibold">{{ __('Le quiz') }}</p>
+                                        <p class="text-[0.875rem] text-white/70">{{ __(':count questions · :passing % de bonnes réponses pour réussir', ['count' => $questions->count(), 'passing' => $passing]) }}</p>
+                                    </div>
+                                    <button type="button" wire:click="startQuiz" class="press rounded-full bg-white px-5 py-2.5 text-[0.9375rem] font-semibold text-onyx transition-colors duration-300 hover:bg-white/90">
+                                        {{ $attempt ? __('Repasser le quiz') : __('Commencer le quiz') }}
+                                    </button>
+                                </div>
+                            @endif
+                            @break
+
                         @default
                             <ul class="divide-y divide-black/[0.06] overflow-hidden rounded-2xl bg-mist" data-field>
                                 @foreach ($this->checklist as $key => $item)
@@ -452,6 +581,7 @@
                                                         @case('territoire') {{ collect([$candidature->commune?->name, $candidature->localite?->name])->filter()->join(' · ') ?: __('À compléter') }} @break
                                                         @case('profil') {{ $candidature->occupation?->label() ?? __('À compléter') }} @break
                                                         @case('charte') {{ $item['complete'] ? __('Acceptées') : __('À accepter') }} @break
+                                                        @case('formation') {{ $item['complete'] ? __('Quiz réussi') : __('Quiz à réussir') }} @break
                                                         @case('documents') {{ __(':count sur :total pièces', ['count' => $candidature->documents->count(), 'total' => count(DocumentType::requiredFor($candidature))]) }} @break
                                                     @endswitch
                                                 </span>

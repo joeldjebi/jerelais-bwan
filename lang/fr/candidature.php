@@ -18,6 +18,7 @@ return [
         'profil' => 'Profil et motivation',
         'documents' => 'Pièces justificatives',
         'charte' => 'Charte et conditions',
+        'formation' => 'Formation et quiz',
     ],
 
     'documents' => [

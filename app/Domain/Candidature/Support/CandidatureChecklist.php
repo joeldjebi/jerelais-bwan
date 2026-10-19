@@ -5,17 +5,22 @@ namespace App\Domain\Candidature\Support;
 use App\Domain\Candidature\Enums\CandidatureStep;
 use App\Domain\Candidature\Enums\DocumentType;
 use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Formation\Actions\GradeQuizAttempt;
+use App\Domain\Formation\Models\QuizQuestion;
 use App\Domain\Legal\Actions\AcceptLegalDocuments;
+use App\Domain\Settings\Settings;
 
 /**
  * Ce qui doit être complet avant le dépôt du dossier.
- * La formation s'y ajoute au fil de l'étape 2.
  */
 class CandidatureChecklist
 {
     public const MOTIVATION_MIN_LENGTH = 30;
 
-    public function __construct(private readonly AgeRequirement $age) {}
+    public function __construct(
+        private readonly AgeRequirement $age,
+        private readonly Settings $settings,
+    ) {}
 
     /**
      * @return array<string, array{label: string, complete: bool}>
@@ -41,6 +46,13 @@ class CandidatureChecklist
             'complete' => AcceptLegalDocuments::isUpToDate($candidature->user),
         ];
 
+        if (QuizQuestion::query()->published()->exists()) {
+            $items['formation'] = [
+                'label' => __('candidature.steps.formation'),
+                'complete' => GradeQuizAttempt::hasPassed($candidature->user),
+            ];
+        }
+
         return $items;
     }
 
@@ -55,7 +67,9 @@ class CandidatureChecklist
 
         foreach ($this->items($candidature) as $key => $item) {
             if (! $item['complete']) {
-                $missing[$key] = __('candidature.step_incomplete', ['step' => $item['label']]);
+                $missing[$key] = $key === 'formation'
+                    ? __('formation.not_passed', ['score' => $this->settings->integer('candidature.quiz_min_score')])
+                    : __('candidature.step_incomplete', ['step' => $item['label']]);
             }
         }
 
