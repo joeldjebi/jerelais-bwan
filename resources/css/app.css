@@ -481,3 +481,24 @@ html.lenis body {
         filter: none;
     }
 }
+
+/* Coche ronde façon iOS (listes de sélection multiple) */
+.ios-check {
+    appearance: none;
+    flex-shrink: 0;
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 9999px;
+    border: 1.5px solid rgb(0 0 0 / 0.2);
+    background: var(--color-surface, #fff) center / 70% no-repeat;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.dark .ios-check { border-color: rgb(255 255 255 / 0.25); }
+.ios-check:checked {
+    border-color: var(--color-tile-blue);
+    background-color: var(--color-tile-blue);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12.5 4 4 8-9'/%3E%3C/svg%3E");
+}
+.ios-check:active { transform: scale(0.88); }
+.ios-check:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(10 132 255 / 0.3); }

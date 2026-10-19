@@ -19,7 +19,7 @@
         x-transition:leave="transition duration-150 ease-in"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-[0.98]"
-        class="fixed inset-x-4 top-[12vh] z-[61] mx-auto max-w-xl overflow-hidden rounded-2xl bg-surface shadow-[0_30px_80px_-20px_rgb(0_0_0/0.45)] ring-1 ring-line"
+        class="fixed inset-x-4 top-[14vh] z-[61] mx-auto max-w-xl overflow-hidden rounded-[1.4rem] bg-white/85 shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),0_40px_100px_-20px_rgb(0_0_0/0.45)] backdrop-blur-2xl backdrop-saturate-150 dark:bg-[#2c2c2e]/85"
         role="dialog"
         aria-modal="true"
         aria-label="{{ __('Palette de commandes') }}"
@@ -49,12 +49,12 @@
                         x-on:click="run(command)"
                         x-on:mouseenter="cursor = index"
                         :data-active="cursor === index ? true : null"
-                        :class="cursor === index ? 'bg-ink/[0.05] text-ink' : 'text-ink-soft'"
+                        :class="cursor === index ? 'bg-tile-blue text-white [&_.text-mute]:text-white/75' : 'text-ink'"
                         class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[0.875rem] transition-colors duration-150"
                         role="option"
                     >
-                        <span class="grid size-8 place-items-center rounded-lg bg-ink/[0.04] ring-1 ring-line">
-                            <x-ui.icon name="arrow-right" class="size-4" />
+                        <span class="grid size-7 place-items-center rounded-[0.5rem] text-white" :class="{ orange: 'bg-tile-orange', blue: 'bg-tile-blue', green: 'bg-tile-green', gray: 'bg-tile-gray', purple: 'bg-tile-purple', teal: 'bg-tile-teal', pink: 'bg-tile-pink' }[command.tint] ?? 'bg-tile-gray'">
+                            <x-ui.icon name="arrow-right" class="size-3.5" stroke="2.5" />
                         </span>
                         <span class="flex-1 font-medium" x-text="command.label"></span>
                         <span class="text-xs text-mute" x-text="command.group"></span>
