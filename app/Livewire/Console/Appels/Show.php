@@ -49,7 +49,7 @@ class Show extends Component
     {
         return $this->appel->responses()
             ->where('state', '!=', 'uploading')
-            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'medias' => fn ($query) => $query->with('variants')])
+            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'lockedBy:id,name', 'medias' => fn ($query) => $query->with('variants')])
             ->latest('received_at')
             ->get();
     }

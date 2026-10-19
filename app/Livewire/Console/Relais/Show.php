@@ -94,7 +94,7 @@ class Show extends Component
         return RelaisItem::withoutCommuneRestriction()
             ->where('relais_profile_id', $this->profile->id)
             ->whereNotNull('submitted_at')
-            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'medias' => fn ($query) => $query->with('variants')])
+            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'lockedBy:id,name', 'medias' => fn ($query) => $query->with('variants')])
             ->latest('received_at')
             ->limit(30)
             ->get();

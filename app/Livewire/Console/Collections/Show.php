@@ -39,7 +39,7 @@ class Show extends Component
     public function items(): Collection
     {
         return $this->collection->relais()
-            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'medias' => fn ($query) => $query->with('variants')])
+            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'lockedBy:id,name', 'medias' => fn ($query) => $query->with('variants')])
             ->orderByPivot('created_at', 'desc')
             ->get();
     }

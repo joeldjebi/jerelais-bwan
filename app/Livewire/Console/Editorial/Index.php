@@ -54,7 +54,7 @@ class Index extends Component
         return RelaisItem::query()
             ->where('state', $state)
             ->when($this->tab === 'selection' && $this->mine, fn ($query) => $query->where('assigned_to', Auth::id()))
-            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'assignee:id,name', 'medias' => fn ($query) => $query->with('variants')])
+            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'lockedBy:id,name', 'assignee:id,name', 'medias' => fn ($query) => $query->with('variants')])
             ->orderByRaw("case urgency when 'urgent' then 0 when 'important' then 1 else 2 end")
             ->latest('updated_at')
             ->paginate(25);

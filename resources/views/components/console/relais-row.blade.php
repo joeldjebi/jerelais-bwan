@@ -9,6 +9,11 @@
     $thumb = $media?->variants->firstWhere('kind', 'thumbnail');
     $overdue = $relais->isOverdue();
     $locked = auth()->user() !== null && $relais->isLockedFor(auth()->user());
+
+    // Filet de sécurité : la liste appelante doit charger « lockedBy » ; sinon on ne le charge que pour un relais verrouillé.
+    if ($locked) {
+        $relais->loadMissing('lockedBy:id,name');
+    }
 @endphp
 
 <li wire:key="relais-{{ $relais->uuid }}" class="flex items-center">
