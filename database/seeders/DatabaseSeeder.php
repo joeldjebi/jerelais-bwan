@@ -3,7 +3,9 @@
 namespace Database\Seeders;
 
 use App\Domain\Access\Enums\Role;
+use App\Domain\Territoire\Enums\LocaliteType;
 use App\Domain\Territoire\Models\Commune;
+use App\Domain\Territoire\Models\Localite;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -44,6 +46,16 @@ class DatabaseSeeder extends Seeder
 
         if ($yopougon !== null) {
             $coordinateur->communes()->syncWithoutDetaching([$yopougon->id => ['assignment' => 'titulaire']]);
+
+            // Commune pilote ouverte, avec quelques quartiers, pour tester la candidature.
+            $yopougon->update(['is_active' => true]);
+
+            foreach (['Niangon', 'Selmer', 'Toits Rouges', 'Siporex', 'Andokoi', 'Maroc', 'Wassakara', 'Sideci'] as $quartier) {
+                Localite::query()->firstOrCreate(
+                    ['commune_id' => $yopougon->id, 'name' => $quartier],
+                    ['type' => LocaliteType::Quartier],
+                );
+            }
         }
     }
 

@@ -9,6 +9,7 @@ namespace App\Domain\Access\Enums;
 enum Permission: string
 {
     case ConsoleAccess = 'console.access';
+    case CandidatureApply = 'candidature.apply';
     case RelaisSubmit = 'relais.submit';
     case RelaisViewOwn = 'relais.view-own';
     case RelaisViewPending = 'relais.view-pending';

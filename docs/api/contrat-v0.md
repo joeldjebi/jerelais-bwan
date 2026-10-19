@@ -32,7 +32,9 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | POST ✅ | `/auth/login` · `/auth/logout` | Connexion mot de passe, révocation du jeton | 1 | MOB-01 |
 | PUT ✅ | `/devices/current` | Jeton FCM et version de l'application de l'appareil courant | 1 | MOB-21 |
 | GET ✅ | `/communes` · `/categories` · `/settings` | Référentiels | 1 | MOB-13, MOB-14 |
-| GET/PUT | `/candidature` · `/candidature/steps/{step}` | Dossier en étapes | 2 | MOB-02, MOB-06 |
+| GET ✅ / PUT ✅ | `/candidature` · `/candidature/steps/{identite\|territoire\|profil}` | Dossier en étapes, sauvegarde automatique (champs facultatifs, 409 si dossier verrouillé) | 2 | MOB-02, MOB-06 |
+| POST ✅ | `/candidature/submit` | Dépôt (422 avec la liste des éléments manquants) | 2 | MOB-06 |
+| GET ✅ | `/candidature/options` · `/communes/{uuid}/localites` | Listes du formulaire, quartiers d'une commune | 2 | MOB-02 |
 | POST | `/candidature/documents` | Pièce d'identité, selfie | 2 | MOB-03 |
 | POST | `/consents` · `/quiz/attempts` | Charte, quiz | 2 | MOB-04, MOB-05 |
 | POST | `/relais` | Créer un relais (`client_uuid`) | 3 | MOB-10 à MOB-15 |

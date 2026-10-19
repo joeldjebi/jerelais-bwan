@@ -22,7 +22,7 @@
                 <a href="#faq" class="transition-opacity duration-300 hover:opacity-100">{{ __('Questions') }}</a>
             </div>
 
-            <a href="#devenir-relais" class="press rounded-full bg-onyx px-3.5 py-1.5 text-[0.75rem] font-medium text-white transition-colors duration-500 hover:bg-black in-data-nav-dark:bg-white in-data-nav-dark:text-onyx">{{ __('Rejoindre') }}</a>
+            <a href="{{ route('relais.join') }}" class="press rounded-full bg-onyx px-3.5 py-1.5 text-[0.75rem] font-medium text-white transition-colors duration-500 hover:bg-black in-data-nav-dark:bg-white in-data-nav-dark:text-onyx">{{ __('Rejoindre') }}</a>
         </nav>
     </header>
 
@@ -45,7 +45,7 @@
                 <div>
                     <p class="font-semibold text-onyx">{{ __('Rejoindre') }}</p>
                     <ul class="mt-3 space-y-2">
-                        <li><a href="#devenir-relais" class="hover:text-onyx hover:underline">{{ __('Devenir Relais') }}</a></li>
+                        <li><a href="{{ route('relais.join') }}" class="hover:text-onyx hover:underline">{{ __('Devenir Relais') }}</a></li>
                         <li><span>{{ __('Charte du Relais') }}</span></li>
                     </ul>
                 </div>

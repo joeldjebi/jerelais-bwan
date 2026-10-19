@@ -14,7 +14,7 @@
                 {{ __('Ce que vous voyez près de chez vous peut passer à l’antenne.') }}
             </p>
             <div class="mt-7 flex flex-wrap items-center justify-center gap-6" data-hero-fade>
-                <a href="#devenir-relais" class="press rounded-full bg-relais-500 px-6 py-3 text-[1.0625rem] font-medium text-white transition-colors duration-300 hover:bg-relais-600">{{ __('Devenir Relais') }}</a>
+                <a href="{{ route('relais.join') }}" class="press rounded-full bg-relais-500 px-6 py-3 text-[1.0625rem] font-medium text-white transition-colors duration-300 hover:bg-relais-600">{{ __('Devenir Relais') }}</a>
                 <a href="#principe" class="group inline-flex items-center gap-1 text-[1.0625rem] text-relais-600 hover:underline">
                     {{ __('Voir comment ça marche') }}
                     <x-ui.icon name="arrow-right" class="size-4 transition-transform duration-500 ease-out-expo group-hover:translate-x-0.5" />
@@ -349,6 +349,7 @@
         <div class="mx-auto w-full max-w-[1024px] px-5" data-anim>
             <h2 class="text-[clamp(2.75rem,6vw,4.5rem)] leading-[1.02] font-semibold tracking-[-0.04em]">{{ __('Devenir Relais.') }}</h2>
             <p class="mt-4 text-xl text-graphite">{{ __('Cinq étapes, depuis votre téléphone.') }}</p>
+            <x-ui.button :href="route('relais.join')" size="lg" icon-trailing="arrow-right" class="mt-8">{{ __('Déposer ma candidature') }}</x-ui.button>
         </div>
         <div class="mt-14 overflow-x-auto md:overflow-visible [&::-webkit-scrollbar]:hidden">
             <ol class="flex w-max snap-x snap-mandatory gap-5 pr-5 pl-[max(1.25rem,calc((100vw-1024px)/2+1.25rem))]" data-hscroll-track>

@@ -1,0 +1,368 @@
+@php
+    use App\Domain\Candidature\Enums\CandidatureStatus;
+    use App\Domain\Candidature\Enums\Gender;
+    use App\Domain\Candidature\Enums\Occupation;
+    use App\Domain\Candidature\Support\StepRules;
+
+    $candidature = $this->candidature;
+    $editable = $candidature->status->isEditable();
+    $keys = $this->stepKeys();
+    $index = (int) array_search($step, $keys, true);
+    $isRecap = $step === \App\Livewire\Relais\Dossier::RECAP;
+
+    $meta = [
+        'identite' => ['users', __('Qui êtes-vous ?'), __('Ces informations restent confidentielles : seuls votre coordonnateur et l’administration y ont accès.')],
+        'territoire' => ['map-pin', __('Où êtes-vous ?'), __('Votre candidature est examinée par le coordonnateur de cette commune.')],
+        'profil' => ['sparkles', __('Ce qui vous anime'), __('Aidez votre coordonnateur à mieux vous connaître.')],
+        'recapitulatif' => ['check', __('Vérifiez et déposez'), __('Relisez votre dossier. Une fois déposé, il ne sera plus modifiable pendant l’examen.')],
+    ];
+    $stepLabels = [...collect($this->checklist)->map(fn ($item) => $item['label'])->all(), 'recapitulatif' => __('Dépôt')];
+
+    $field = 'block h-12 w-full rounded-xl border-0 bg-mist px-4 text-[0.9375rem] text-onyx ring-1 ring-transparent transition-[box-shadow,background-color] duration-300 placeholder:text-graphite/60 focus:bg-white focus:ring-2 focus:ring-relais-500/50 focus:outline-none aria-invalid:ring-2 aria-invalid:ring-status-rejected/40';
+    $label = 'block text-[0.8125rem] font-medium text-onyx';
+    $chip = 'press inline-flex h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-[0.875rem] font-medium ring-1 transition-[background-color,color,box-shadow] duration-300 select-none';
+@endphp
+
+<div class="mx-auto max-w-[1080px]">
+    @if (! $editable)
+        {{-- Suivi de la candidature (MOB-06) --}}
+        @php
+            $status = $candidature->status;
+            $timeline = [
+                [__('Reçue'), $candidature->submitted_at?->translatedFormat('j F Y à H:i'), true],
+                [__('En cours d’examen'), $status === CandidatureStatus::OnHold ? __('Mise en attente par votre coordonnateur') : __('Votre coordonnateur étudie votre dossier'), $status !== CandidatureStatus::Submitted],
+                [__('Décision'), $status->isFinal() ? $status->label() : __('Vous serez prévenu·e par SMS'), $status->isFinal()],
+            ];
+        @endphp
+        <div class="mx-auto max-w-xl text-center">
+            <div class="mx-auto grid size-24 place-items-center" data-done-badge>
+                <svg viewBox="0 0 96 96" class="size-24" aria-hidden="true">
+                    <circle cx="48" cy="48" r="44" fill="none" stroke="currentColor" stroke-width="4" class="text-black/[0.06]" />
+                    <circle cx="48" cy="48" r="44" fill="none" stroke-width="4" stroke-linecap="round" transform="rotate(-90 48 48)" data-done-ring
+                        @class(['stroke-tile-green' => $status !== CandidatureStatus::Rejected, 'stroke-status-rejected' => $status === CandidatureStatus::Rejected]) />
+                    @if ($status === CandidatureStatus::Rejected)
+                        <path d="M36 36l24 24M60 36L36 60" fill="none" stroke-width="5" stroke-linecap="round" class="stroke-status-rejected" data-done-check />
+                    @else
+                        <path d="M33 49.5l10 10L64 38" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" class="stroke-tile-green" data-done-check />
+                    @endif
+                </svg>
+            </div>
+
+            <h1 class="mt-7 text-[clamp(2rem,4.5vw,2.75rem)] leading-tight font-semibold tracking-[-0.035em]" data-enter>
+                @switch($status)
+                    @case(CandidatureStatus::Accepted) {{ __('Bienvenue parmi les Relais.') }} @break
+                    @case(CandidatureStatus::Rejected) {{ __('Votre candidature n’a pas été retenue.') }} @break
+                    @default {{ __('Candidature déposée.') }}
+                @endswitch
+            </h1>
+            <p class="mt-3 text-lg leading-relaxed text-graphite" data-enter>
+                @switch($status)
+                    @case(CandidatureStatus::Accepted) {{ __('Votre badge de Relais vous attend dans l’application.') }} @break
+                    @case(CandidatureStatus::Rejected) {{ __('Vous trouverez ci-dessous le motif indiqué par votre coordonnateur.') }} @break
+                    @default {{ __('Le coordonnateur de :commune va examiner votre dossier. Il peut vous appeler pour faire connaissance.', ['commune' => $candidature->commune?->name]) }}
+                @endswitch
+            </p>
+        </div>
+
+        <div class="mx-auto mt-12 max-w-xl rounded-[1.75rem] bg-white p-7 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_24px_48px_-28px_rgb(0_0_0/0.18)] sm:p-8" data-enter>
+            <p class="text-[0.8125rem] font-medium text-graphite">{{ __('Suivi') }}</p>
+            <ol class="mt-5">
+                @foreach ($timeline as $position => [$title, $text, $done])
+                    <li class="relative flex gap-4 pb-7 last:pb-0">
+                        @unless ($loop->last)
+                            <span @class(['absolute top-8 bottom-1 left-[0.9375rem] w-0.5 rounded-full', 'bg-tile-green' => $timeline[$position + 1][2], 'bg-black/[0.08]' => ! $timeline[$position + 1][2]])></span>
+                        @endunless
+                        <span @class([
+                            'relative grid size-8 shrink-0 place-items-center rounded-full',
+                            'bg-tile-green text-white' => $done,
+                            'bg-mist text-graphite ring-1 ring-black/[0.06]' => ! $done,
+                        ])>
+                            @if ($done)
+                                <x-ui.icon name="check" class="size-4" stroke="3" />
+                            @else
+                                <span class="size-2 rounded-full bg-current"></span>
+                            @endif
+                        </span>
+                        <div class="pt-1">
+                            <p class="text-[1rem] font-semibold">{{ $title }}</p>
+                            <p class="mt-0.5 text-[0.875rem] text-graphite">{{ $text }}</p>
+                        </div>
+                    </li>
+                @endforeach
+            </ol>
+
+            @if ($status === CandidatureStatus::Rejected && ($candidature->rejectionReason || $candidature->decision_comment))
+                <div class="mt-7 rounded-2xl bg-mist p-5">
+                    <p class="text-[0.9375rem] font-semibold">{{ $candidature->rejectionReason?->label }}</p>
+                    @if ($candidature->decision_comment)
+                        <p class="mt-1 text-[0.9375rem] leading-relaxed text-graphite">{{ $candidature->decision_comment }}</p>
+                    @endif
+                </div>
+            @endif
+        </div>
+    @else
+        <div class="grid gap-10 lg:grid-cols-[15rem_1fr] lg:gap-14">
+            {{-- Étapes --}}
+            <aside class="lg:sticky lg:top-24 lg:self-start">
+                <h1 class="text-[1.75rem] leading-tight font-semibold tracking-[-0.03em]" data-enter>{{ __('Ma candidature') }}</h1>
+
+                @if ($candidature->status === CandidatureStatus::ComplementRequested)
+                    <div class="mt-5 rounded-2xl bg-tile-orange/10 p-4 text-[0.875rem] leading-relaxed text-onyx" data-enter>
+                        <p class="font-semibold text-relais-700">{{ __('Complément demandé') }}</p>
+                        <p class="mt-1">{{ $candidature->decision_comment }}</p>
+                    </div>
+                @endif
+
+                {{-- Mobile : barre de progression --}}
+                <div class="mt-5 lg:hidden" data-enter>
+                    <div class="flex items-center justify-between text-[0.8125rem] text-graphite">
+                        <span>{{ __('Étape :current sur :total', ['current' => $index + 1, 'total' => count($keys)]) }}</span>
+                        <span class="font-medium text-onyx">{{ $stepLabels[$step] }}</span>
+                    </div>
+                    <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-black/[0.07]">
+                        <div class="h-full rounded-full bg-relais-500 transition-[width] duration-700 ease-out-expo" style="width: {{ round(($index + 1) / count($keys) * 100) }}%"></div>
+                    </div>
+                </div>
+
+                <nav class="mt-7 hidden lg:block" aria-label="{{ __('Étapes de la candidature') }}" data-enter>
+                    <ol class="space-y-1">
+                        @foreach ($keys as $position => $key)
+                            @php
+                                $complete = $this->checklist[$key]['complete'] ?? false;
+                                $current = $key === $step;
+                            @endphp
+                            <li>
+                                <button type="button" wire:click="goTo('{{ $key }}')" @class([
+                                    'group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[0.9375rem] transition-colors duration-300',
+                                    'bg-white font-semibold shadow-[0_1px_2px_rgb(0_0_0/0.05)]' => $current,
+                                    'text-graphite hover:bg-black/[0.04] hover:text-onyx' => ! $current,
+                                ]) @if ($current) aria-current="step" @endif>
+                                    <span @class([
+                                        'grid size-7 shrink-0 place-items-center rounded-full text-[0.75rem] font-semibold tabular-nums transition-colors duration-300',
+                                        'bg-tile-green text-white' => $complete,
+                                        'bg-relais-500 text-white' => ! $complete && $current,
+                                        'bg-black/[0.06] text-graphite' => ! $complete && ! $current,
+                                    ])>
+                                        @if ($complete)
+                                            <x-ui.icon name="check" class="size-3.5" stroke="3" />
+                                        @else
+                                            {{ $position + 1 }}
+                                        @endif
+                                    </span>
+                                    {{ $stepLabels[$key] }}
+                                </button>
+                            </li>
+                        @endforeach
+                    </ol>
+                </nav>
+
+                <p class="mt-6 flex items-center gap-2 text-[0.8125rem] text-graphite" aria-live="polite" data-enter>
+                    <span wire:loading.delay wire:target="identite,territoire,profil" class="inline-flex items-center gap-2">
+                        <span class="size-3.5 animate-spin rounded-full border-2 border-black/15 border-t-relais-500"></span>{{ __('Enregistrement…') }}
+                    </span>
+                    <span wire:loading.remove wire:target="identite,territoire,profil" class="inline-flex items-center gap-2">
+                        <x-ui.icon name="cloud-check" class="size-4 text-tile-green" />
+                        {{ $savedAt ? __('Enregistré à :time', ['time' => $savedAt]) : __('Enregistrement automatique') }}
+                    </span>
+                </p>
+            </aside>
+
+            {{-- Étape courante --}}
+            <section class="rounded-[1.75rem] bg-white p-7 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_24px_48px_-28px_rgb(0_0_0/0.18)] sm:p-10" data-step-panel wire:key="panel-{{ $step }}" data-enter>
+                <header data-field>
+                    <span class="grid size-12 place-items-center rounded-2xl bg-relais-500 text-white shadow-[0_10px_24px_-10px_rgb(242_140_40/0.8)]">
+                        <x-ui.icon :name="$meta[$step][0]" class="size-6" />
+                    </span>
+                    <h2 class="mt-5 text-[clamp(1.75rem,3.5vw,2.25rem)] leading-tight font-semibold tracking-[-0.035em]">{{ $meta[$step][1] }}</h2>
+                    <p class="mt-2 max-w-xl text-[0.9375rem] leading-relaxed text-graphite">{{ $meta[$step][2] }}</p>
+                </header>
+
+                <div class="mt-9 space-y-6">
+                    @switch($step)
+                        @case('identite')
+                            <div class="grid gap-6 sm:grid-cols-2">
+                                <div data-field>
+                                    <label for="last_name" class="{{ $label }}">{{ __('Nom') }}</label>
+                                    <input id="last_name" wire:model.live.debounce.700ms="identite.last_name" autocomplete="family-name" class="{{ $field }} mt-1.5" @error('identite.last_name') aria-invalid="true" @enderror>
+                                    @error('identite.last_name') <p class="mt-1.5 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                                </div>
+                                <div data-field>
+                                    <label for="first_names" class="{{ $label }}">{{ __('Prénoms') }}</label>
+                                    <input id="first_names" wire:model.live.debounce.700ms="identite.first_names" autocomplete="given-name" class="{{ $field }} mt-1.5" @error('identite.first_names') aria-invalid="true" @enderror>
+                                    @error('identite.first_names') <p class="mt-1.5 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+                            <div class="grid gap-6 sm:grid-cols-2">
+                                <div data-field>
+                                    <label for="birth_date" class="{{ $label }}">{{ __('Date de naissance') }}</label>
+                                    <input id="birth_date" type="date" wire:model.live="identite.birth_date" max="{{ now()->toDateString() }}" autocomplete="bday" class="{{ $field }} mt-1.5" @error('identite.birth_date') aria-invalid="true" @enderror>
+                                    @error('identite.birth_date') <p class="mt-1.5 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                                    @if ($candidature->is_minor)
+                                        <p class="mt-1.5 text-xs text-graphite">{{ __('Vous êtes mineur·e : une autorisation parentale signée sera demandée avec vos pièces.') }}</p>
+                                    @endif
+                                </div>
+                                <div data-field>
+                                    <label for="email" class="{{ $label }}">{{ __('Adresse e-mail') }} <span class="font-normal text-graphite">{{ __('(facultatif)') }}</span></label>
+                                    <input id="email" type="email" wire:model.blur="identite.email" autocomplete="email" class="{{ $field }} mt-1.5" @error('identite.email') aria-invalid="true" @enderror>
+                                    @error('identite.email') <p class="mt-1.5 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+                            <fieldset data-field>
+                                <legend class="{{ $label }}">{{ __('Genre') }}</legend>
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    @foreach (Gender::cases() as $gender)
+                                        <label @class([$chip, 'bg-onyx text-white ring-onyx' => $identite['gender'] === $gender->value, 'bg-white text-onyx ring-black/10 hover:ring-black/25' => $identite['gender'] !== $gender->value])>
+                                            <input type="radio" wire:model.live="identite.gender" value="{{ $gender->value }}" class="sr-only">
+                                            {{ $gender->label() }}
+                                        </label>
+                                    @endforeach
+                                </div>
+                                @error('identite.gender') <p class="mt-1.5 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                            </fieldset>
+                            @break
+
+                        @case('territoire')
+                            <div data-field>
+                                <label for="commune" class="{{ $label }}">{{ __('Commune') }}</label>
+                                <select id="commune" wire:model.live="territoire.commune" class="{{ $field }} mt-1.5" @error('territoire.commune') aria-invalid="true" @enderror>
+                                    <option value="">{{ __('Choisissez votre commune') }}</option>
+                                    @foreach ($this->communes->groupBy(fn ($commune) => $commune->region?->name ?? __('Autres')) as $region => $communes)
+                                        <optgroup label="{{ $region }}">
+                                            @foreach ($communes as $commune)
+                                                <option value="{{ $commune->uuid }}">{{ $commune->name }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                                @error('territoire.commune') <p class="mt-1.5 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                            </div>
+                            <div data-field>
+                                <label for="localite" class="{{ $label }}">{{ __('Quartier ou village') }} <span class="font-normal text-graphite">{{ __('(facultatif)') }}</span></label>
+                                <select id="localite" wire:model.live="territoire.localite" @disabled($territoire['commune'] === '' || $this->localites->isEmpty()) class="{{ $field }} mt-1.5 disabled:opacity-50">
+                                    <option value="">{{ $territoire['commune'] === '' ? __('Choisissez d’abord la commune') : ($this->localites->isEmpty() ? __('Aucun quartier enregistré pour cette commune') : __('Choisissez votre quartier')) }}</option>
+                                    @foreach ($this->localites as $localite)
+                                        <option value="{{ $localite->uuid }}">{{ $localite->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('territoire.localite') <p class="mt-1.5 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                            </div>
+                            <div data-field>
+                                <label for="lieu_type" class="{{ $label }}">{{ __('Lieu que vous fréquentez') }} <span class="font-normal text-graphite">{{ __('(facultatif)') }}</span></label>
+                                <select id="lieu_type" wire:model.live="territoire.lieu_type" class="{{ $field }} mt-1.5">
+                                    <option value="">{{ __('École, université, marché…') }}</option>
+                                    @foreach ($this->lieuTypes as $lieuType)
+                                        <option value="{{ $lieuType->uuid }}">{{ $lieuType->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @break
+
+                        @case('profil')
+                            <div data-field>
+                                <label for="occupation" class="{{ $label }}">{{ __('Profession ou statut') }}</label>
+                                <select id="occupation" wire:model.live="profil.occupation" class="{{ $field }} mt-1.5" @error('profil.occupation') aria-invalid="true" @enderror>
+                                    <option value="">{{ __('Choisissez') }}</option>
+                                    @foreach (Occupation::cases() as $occupation)
+                                        <option value="{{ $occupation->value }}">{{ $occupation->label() }}</option>
+                                    @endforeach
+                                </select>
+                                @error('profil.occupation') <p class="mt-1.5 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                            </div>
+                            <fieldset data-field>
+                                <legend class="{{ $label }}">{{ __('Langues parlées') }}</legend>
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    @foreach (StepRules::languages() as $value => $name)
+                                        @php $on = in_array($value, $profil['languages'], true); @endphp
+                                        <label @class([$chip, 'bg-relais-500 text-white ring-relais-500' => $on, 'bg-white text-onyx ring-black/10 hover:ring-black/25' => ! $on])>
+                                            <input type="checkbox" wire:model.live="profil.languages" value="{{ $value }}" class="sr-only">
+                                            @if ($on)<x-ui.icon name="check" class="size-3.5" stroke="3" />@endif
+                                            {{ $name }}
+                                        </label>
+                                    @endforeach
+                                </div>
+                                @error('profil.languages') <p class="mt-1.5 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                            </fieldset>
+                            @if ($this->categories->isNotEmpty())
+                                <fieldset data-field>
+                                    <legend class="{{ $label }}">{{ __('Centres d’intérêt') }} <span class="font-normal text-graphite">{{ __('(facultatif)') }}</span></legend>
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        @foreach ($this->categories as $category)
+                                            @php $on = in_array($category->slug, $profil['interests'], true); @endphp
+                                            <label @class([$chip, 'bg-onyx text-white ring-onyx' => $on, 'bg-white text-onyx ring-black/10 hover:ring-black/25' => ! $on])>
+                                                <input type="checkbox" wire:model.live="profil.interests" value="{{ $category->slug }}" class="sr-only">
+                                                {{ $category->name }}
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </fieldset>
+                            @endif
+                            <div data-field x-data="{ count: @js(mb_strlen($profil['motivation'])) }">
+                                <label for="motivation" class="{{ $label }}">{{ __('Pourquoi voulez-vous devenir Relais ?') }}</label>
+                                <textarea id="motivation" rows="5" maxlength="1500" wire:model.live.debounce.1000ms="profil.motivation" x-on:input="count = $el.value.length"
+                                    class="{{ $field }} mt-1.5 h-auto py-3 leading-relaxed" placeholder="{{ __('Ce que vous voyez autour de vous, ce que vous aimeriez montrer…') }}" @error('profil.motivation') aria-invalid="true" @enderror></textarea>
+                                <div class="mt-1.5 flex justify-between text-xs">
+                                    <span class="font-medium text-status-rejected">@error('profil.motivation'){{ $message }}@enderror</span>
+                                    <span class="text-graphite tabular-nums" :class="count < 30 && 'text-relais-600'"><span x-text="count"></span> / 1500</span>
+                                </div>
+                            </div>
+                            @break
+
+                        @default
+                            <ul class="divide-y divide-black/[0.06] overflow-hidden rounded-2xl bg-mist" data-field>
+                                @foreach ($this->checklist as $key => $item)
+                                    <li>
+                                        <button type="button" wire:click="goTo('{{ $key }}')" class="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors duration-200 hover:bg-black/[0.025]">
+                                            <span @class(['grid size-8 shrink-0 place-items-center rounded-full', 'bg-tile-green text-white' => $item['complete'], 'bg-white text-graphite ring-1 ring-black/10' => ! $item['complete']])>
+                                                <x-ui.icon :name="$item['complete'] ? 'check' : 'pencil'" class="size-4" :stroke="$item['complete'] ? '3' : '2'" />
+                                            </span>
+                                            <span class="flex-1">
+                                                <span class="block text-[0.9375rem] font-semibold">{{ $item['label'] }}</span>
+                                                <span class="block text-[0.8125rem] text-graphite">
+                                                    @switch($key)
+                                                        @case('identite') {{ $candidature->fullName() ?: __('À compléter') }}@if ($candidature->birth_date) · {{ $candidature->birth_date->translatedFormat('j F Y') }}@endif @break
+                                                        @case('territoire') {{ collect([$candidature->commune?->name, $candidature->localite?->name])->filter()->join(' · ') ?: __('À compléter') }} @break
+                                                        @case('profil') {{ $candidature->occupation?->label() ?? __('À compléter') }} @break
+                                                    @endswitch
+                                                </span>
+                                            </span>
+                                            <span class="text-[0.8125rem] font-medium text-relais-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100">{{ __('Modifier') }}</span>
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+
+                            @if ($missing !== [])
+                                <div class="rounded-2xl bg-status-rejected/[0.07] p-5" role="alert" data-field>
+                                    <p class="text-[0.9375rem] font-semibold text-status-rejected">{{ __('Votre dossier n’est pas encore complet.') }}</p>
+                                    <ul class="mt-2 list-disc space-y-1 pl-5 text-[0.875rem] text-onyx">
+                                        @foreach ($missing as $message)
+                                            <li>{{ $message }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+
+                            <p class="text-[0.8125rem] leading-relaxed text-graphite" data-field>{{ __('En déposant votre dossier, vous certifiez l’exactitude des informations fournies. Vous pourrez suivre son examen depuis cette page et dans l’application.') }}</p>
+                    @endswitch
+                </div>
+
+                <footer class="mt-10 flex items-center justify-between gap-3 border-t border-black/[0.06] pt-6">
+                    @if ($index > 0)
+                        <x-ui.button variant="ghost" icon="arrow-left" wire:click="previous">{{ __('Précédent') }}</x-ui.button>
+                    @else
+                        <span></span>
+                    @endif
+
+                    @if ($isRecap)
+                        <x-ui.button size="lg" wire:click="submit" wire:loading.attr="disabled" wire:target="submit" icon-trailing="arrow-right">
+                            <span wire:loading.remove wire:target="submit">{{ __('Déposer ma candidature') }}</span>
+                            <span wire:loading wire:target="submit">{{ __('Dépôt…') }}</span>
+                        </x-ui.button>
+                    @else
+                        <x-ui.button size="lg" wire:click="next" icon-trailing="arrow-right">{{ __('Continuer') }}</x-ui.button>
+                    @endif
+                </footer>
+            </section>
+        </div>
+    @endif
+</div>

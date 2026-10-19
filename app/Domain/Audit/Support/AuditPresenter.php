@@ -33,6 +33,8 @@ class AuditPresenter
         'settings.updated' => ['Paramètre modifié', 'layers', 'accent'],
         'territoire.commune.opened' => ['Commune ouverte aux Relais', 'map-pin', 'success'],
         'territoire.commune.closed' => ['Commune fermée aux Relais', 'map-pin', 'warning'],
+        'candidature.submitted' => ['Candidature déposée', 'inbox', 'accent'],
+        'candidature.resubmitted' => ['Candidature complétée et redéposée', 'inbox', 'accent'],
     ];
 
     public function label(AuditLog $entry): string

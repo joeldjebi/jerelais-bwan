@@ -8,6 +8,3 @@ parameters:
         - database
         - routes
     tmpDir: storage/framework/cache/phpstan
-    ignoreErrors:
-        # Traits du socle utilisés par les modules des étapes suivantes.
-        - identifier: trait.unused
