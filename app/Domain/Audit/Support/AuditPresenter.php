@@ -71,6 +71,7 @@ class AuditPresenter
         'relais.profile_transferred' => ['Relais transféré de commune', 'map-pin', 'accent'],
         'relais.showcased' => ['Relais publié sur la vitrine', 'sparkles', 'success'],
         'relais.showcase_withdrawn' => ['Relais retiré de la vitrine', 'x', 'neutral'],
+        'reports.exported' => ['Rapport exporté', 'chart', 'neutral'],
         'relais.received' => ['Relais reçu', 'inbox', 'accent'],
         'relais.created' => ['Nouveau Relais', 'signal', 'success'],
         'legal.accepted' => ['Charte et conditions acceptées', 'flag', 'success'],

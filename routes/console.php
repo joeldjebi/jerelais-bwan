@@ -1,14 +1,23 @@
 <?php
 
+use App\Domain\Access\Enums\Role;
 use App\Domain\AppelRelais\Actions\PublishAppel;
 use App\Domain\AppelRelais\Models\AppelRelais;
 use App\Domain\Contribution\Actions\EscalateOverdueRelais;
 use App\Domain\Contribution\Actions\ReleaseExpiredLocks;
 use App\Domain\Media\Actions\PurgeAbandonedUploads;
+use App\Domain\Reporting\Exports\ReportExporter;
+use App\Domain\Reporting\Mail\PeriodicReport;
+use App\Domain\Reporting\Support\ReportBuilder;
 use App\Models\User;
+use Aws\S3\Exception\S3Exception;
+use Carbon\CarbonImmutable;
+use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Storage;
 use PragmaRX\Google2FA\Google2FA;
 
 Artisan::command('inspire', function () {
@@ -71,14 +80,14 @@ Schedule::command('medias:purge-abandoned')->hourly()->withoutOverlapping();
  * Ajoute une règle CORS pour les origines données, sans retirer les règles existantes du bucket.
  */
 Artisan::command('medias:configure-cors {origins* : ex. http://localhost:8000 https://jerelais.reflet.tv}', function (array $origins) {
-    /** @var Illuminate\Filesystem\AwsS3V3Adapter $disk */
-    $disk = Illuminate\Support\Facades\Storage::disk('medias');
+    /** @var AwsS3V3Adapter $disk */
+    $disk = Storage::disk('medias');
     $client = $disk->getClient();
     $bucket = (string) config('filesystems.disks.medias.bucket');
 
     try {
         $rules = $client->getBucketCors(['Bucket' => $bucket])['CORSRules'] ?? [];
-    } catch (Aws\S3\Exception\S3Exception) {
+    } catch (S3Exception) {
         $rules = [];
     }
 
@@ -95,3 +104,31 @@ Artisan::command('medias:configure-cors {origins* : ex. http://localhost:8000 ht
     $client->putBucketCors(['Bucket' => $bucket, 'CORSConfiguration' => ['CORSRules' => $rules]]);
     $this->components->info('Règle CORS « jerelais-upload » enregistrée pour : '.implode(', ', $origins));
 })->purpose('Autorise l’envoi direct des médias depuis le navigateur vers Wasabi');
+
+/*
+ * Rapports périodiques (§13) : la veille, la semaine passée ou le mois passé, pour tout le réseau.
+ */
+Artisan::command('reports:send {period=daily : daily, weekly ou monthly}', function (string $period, ReportBuilder $builder, ReportExporter $exporter) {
+    $now = CarbonImmutable::now('Africa/Abidjan');
+    [$from, $to, $label] = match ($period) {
+        'weekly' => [$now->subWeek()->startOfWeek(), $now->subWeek()->endOfWeek(), 'hebdomadaire'],
+        'monthly' => [$now->subMonthNoOverflow()->startOfMonth(), $now->subMonthNoOverflow()->endOfMonth(), 'mensuel'],
+        default => [$now->subDay()->startOfDay(), $now->subDay()->endOfDay(), 'quotidien'],
+    };
+
+    $report = $builder->build($from, $to);
+    $xlsx = $exporter->xlsx($report);
+    $recipients = User::query()->role([Role::Admin->value, Role::RedacteurEnChef->value])
+        ->where('status', 'active')->whereNotNull('email')->pluck('email')->all();
+
+    if ($recipients !== []) {
+        Mail::to($recipients)->send(new PeriodicReport($label, $exporter->period($report), $exporter->pdf($report, __('Réseau national')), $xlsx));
+    }
+
+    @unlink($xlsx);
+    $this->components->info('Rapport '.$label.' envoyé à '.count($recipients).' destinataire(s).');
+})->purpose('Envoie le rapport de pilotage périodique à l’administration et à la rédaction en chef');
+
+Schedule::command('reports:send daily')->dailyAt('07:00')->timezone('Africa/Abidjan');
+Schedule::command('reports:send weekly')->weeklyOn(1, '07:15')->timezone('Africa/Abidjan');
+Schedule::command('reports:send monthly')->monthlyOn(1, '07:30')->timezone('Africa/Abidjan');
