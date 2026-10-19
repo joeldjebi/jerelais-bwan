@@ -27,6 +27,13 @@ class Navigation
                 ],
             ],
             [
+                'label' => __('Rédaction'),
+                'items' => [
+                    ['label' => __('Exploitation'), 'route' => 'console.editorial', 'icon' => 'sparkles', 'tint' => 'purple', 'keywords' => 'rédaction sélection arbitrage diffusé émission', 'permission' => Permission::RelaisArbitrate],
+                    ['label' => __('Collections'), 'route' => 'console.collections', 'icon' => 'layers', 'tint' => 'teal', 'keywords' => 'collections dossiers sujets événements', 'permission' => Permission::RelaisArbitrate],
+                ],
+            ],
+            [
                 'label' => __('Réseau'),
                 'items' => [
                     ['label' => __('Candidatures'), 'route' => 'console.candidatures', 'icon' => 'inbox', 'tint' => 'pink', 'keywords' => 'recrutement dossiers candidats relais décision', 'permission' => Permission::CandidaturesValidate],

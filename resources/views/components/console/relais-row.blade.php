@@ -11,8 +11,8 @@
     $locked = auth()->user() !== null && $relais->isLockedFor(auth()->user());
 @endphp
 
-<li wire:key="relais-{{ $relais->uuid }}">
-    <a href="{{ route('console.validation.show', $relais) }}" wire:navigate class="group flex items-center gap-3.5 px-4 py-3 transition-colors duration-200 hover:bg-black/[0.02] dark:hover:bg-white/[0.03]">
+<li wire:key="relais-{{ $relais->uuid }}" class="flex items-center">
+    <a href="{{ route('console.validation.show', $relais) }}" wire:navigate class="group flex min-w-0 flex-1 items-center gap-3.5 px-4 py-3 transition-colors duration-200 hover:bg-black/[0.02] dark:hover:bg-white/[0.03]">
         <span class="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-[0.8rem] bg-black/[0.05] dark:bg-white/[0.08]">
             @if ($thumb)
                 <img src="{{ route('console.medias.show', [$media, 'thumbnail']) }}" alt="" class="size-full object-cover" loading="lazy">
@@ -46,4 +46,5 @@
         @endif
         <svg class="size-4 text-mute/60 transition-transform duration-500 ease-spring group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
     </a>
+    {{ $slot }}
 </li>

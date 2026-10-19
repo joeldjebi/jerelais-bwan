@@ -2,6 +2,7 @@
 
 use App\Domain\Access\Enums\Permission;
 use App\Http\Controllers\Console\CandidatureDocumentController;
+use App\Http\Controllers\Console\ExportController;
 use App\Http\Controllers\Console\MediaController as ConsoleMediaController;
 use App\Http\Controllers\Console\SecurityController;
 use App\Http\Controllers\Public\BadgeVerificationController;
@@ -13,8 +14,11 @@ use App\Livewire\Console\Account\Index as AccountPage;
 use App\Livewire\Console\Audit\Index as AuditPage;
 use App\Livewire\Console\Candidatures\Index as CandidaturesPage;
 use App\Livewire\Console\Candidatures\Show as CandidaturePage;
+use App\Livewire\Console\Collections\Index as CollectionsPage;
+use App\Livewire\Console\Collections\Show as CollectionPage;
 use App\Livewire\Console\Communes\Index as CommunesPage;
 use App\Livewire\Console\Dashboard;
+use App\Livewire\Console\Editorial\Index as EditorialPage;
 use App\Livewire\Console\Flux\Index as FluxPage;
 use App\Livewire\Console\Legal\Index as LegalPage;
 use App\Livewire\Console\Map\Index as MapPage;
@@ -66,6 +70,12 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::livewire('validation', ValidationPage::class)->middleware('permission:'.Permission::RelaisViewPending->value)->name('validation');
         Route::livewire('validation/{relais}', ValidationShowPage::class)->middleware('permission:'.Permission::RelaisViewPending->value)->name('validation.show');
         Route::get('medias/{media}/{variant?}', ConsoleMediaController::class)->whereIn('variant', ['thumbnail'])->name('medias.show');
+        Route::livewire('redaction', EditorialPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('editorial');
+        Route::livewire('collections', CollectionsPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('collections');
+        Route::livewire('collections/{collection}', CollectionPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('collections.show');
+        Route::post('relais/{relais}/export', [ExportController::class, 'relais'])->name('export.relais');
+        Route::post('collections/{collection}/export', [ExportController::class, 'collection'])->name('export.collection');
+        Route::post('medias/{media}/original', [ExportController::class, 'original'])->name('export.original');
         Route::livewire('textes', LegalPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('legal');
         Route::livewire('journal', AuditPage::class)->middleware('permission:'.Permission::AuditView->value)->name('audit');
     });

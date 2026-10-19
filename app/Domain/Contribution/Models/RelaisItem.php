@@ -7,6 +7,7 @@ use App\Domain\Contribution\Enums\CreditMode;
 use App\Domain\Contribution\Enums\PeopleConsent;
 use App\Domain\Contribution\Enums\Urgency;
 use App\Domain\Contribution\States\RelaisState;
+use App\Domain\Editorial\Models\RelaisCollection;
 use App\Domain\Media\Models\Media;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Territoire\Models\Commune;
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\ModelStates\HasStates;
 
@@ -63,6 +65,15 @@ use Spatie\ModelStates\HasStates;
  * @property int|null $rejection_reason_id
  * @property string|null $decision_comment
  * @property string|null $internal_note
+ * @property int|null $selected_by
+ * @property CarbonImmutable|null $selected_at
+ * @property int|null $assigned_to
+ * @property string|null $programme
+ * @property CarbonImmutable|null $broadcast_at
+ * @property string|null $broadcast_programme
+ * @property string|null $broadcast_url
+ * @property-read User|null $assignee
+ * @property-read Collection<int, RelaisCollection> $collections
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read User $user
@@ -112,6 +123,8 @@ class RelaisItem extends Model
             'escalation_level' => 'integer',
             'escalated_at' => 'immutable_datetime',
             'locked_until' => 'immutable_datetime',
+            'selected_at' => 'immutable_datetime',
+            'broadcast_at' => 'immutable_datetime',
         ];
     }
 
@@ -169,6 +182,32 @@ class RelaisItem extends Model
     public function statusHistory(): HasMany
     {
         return $this->hasMany(RelaisStatusChange::class)->orderBy('id');
+    }
+
+    /**
+     * Journaliste affecté par la rédaction (ADM-10).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    /**
+     * @return BelongsToMany<RelaisCollection, $this>
+     */
+    public function collections(): BelongsToMany
+    {
+        return $this->belongsToMany(RelaisCollection::class, 'collection_relais_item', 'relais_item_id', 'collection_id');
+    }
+
+    /**
+     * Relais exploitable par la rédaction : validé, sélectionné, diffusé (export autorisé sans dérogation, ADM-12).
+     */
+    public function isExploitable(): bool
+    {
+        return in_array($this->state->getValue(), ['validated', 'selected', 'broadcast', 'archived'], true);
     }
 
     /**
