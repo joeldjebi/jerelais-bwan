@@ -5,6 +5,7 @@ namespace App\Domain\Media\Actions;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\ComplementRequested;
 use App\Domain\Contribution\States\Uploading;
+use App\Domain\Contribution\Support\RelaisSender;
 use App\Domain\Media\Enums\MediaKind;
 use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Exceptions\MediaRefused;
@@ -31,6 +32,8 @@ class InitiateMediaUpload
      */
     public function handle(RelaisItem $relais, array $data): Media
     {
+        RelaisSender::ensureCanSend($relais->user);
+
         $existing = $relais->medias()->where('client_uuid', $data['client_uuid'])->first();
 
         if ($existing !== null) {

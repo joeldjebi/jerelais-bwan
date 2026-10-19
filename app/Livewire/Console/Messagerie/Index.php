@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Console\Messagerie;
 
+use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Support\CommuneAccess;
 use App\Domain\Messagerie\Actions\SendMessage;
 use App\Domain\Messagerie\Models\Conversation;
@@ -39,6 +40,8 @@ class Index extends Component
 
     public function select(string $uuid, SendMessage $send): void
     {
+        $this->authorizeAccess();
+
         $this->selected = $uuid;
         $this->body = '';
 
@@ -49,6 +52,8 @@ class Index extends Component
 
     public function reply(SendMessage $send): void
     {
+        $this->authorizeAccess();
+
         $conversation = $this->current;
         abort_if($conversation === null, 404);
         $this->validate(['body' => ['required', 'string', 'max:2000']], attributes: ['body' => __('message')]);
@@ -60,6 +65,8 @@ class Index extends Component
 
     public function sendBroadcast(SendMessage $send): void
     {
+        $this->authorizeAccess();
+
         $this->validate(['broadcastCommune' => ['required', 'uuid'], 'broadcastBody' => ['required', 'string', 'max:2000']], attributes: ['broadcastCommune' => __('commune'), 'broadcastBody' => __('message')]);
         $commune = $this->communes->firstWhere('uuid', $this->broadcastCommune);
         abort_if($commune === null, 403);
@@ -121,5 +128,13 @@ class Index extends Component
         abort_unless($user instanceof User, 403);
 
         return $user;
+    }
+
+    /**
+     * Revérifié à chaque action : un droit retiré prend effet même sur un onglet resté ouvert.
+     */
+    private function authorizeAccess(): void
+    {
+        abort_unless(Auth::user()?->can(Permission::RelaisValidate->value) === true, 403);
     }
 }

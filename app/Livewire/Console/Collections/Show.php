@@ -2,11 +2,13 @@
 
 namespace App\Livewire\Console\Collections;
 
+use App\Domain\Access\Enums\Permission;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Editorial\Models\RelaisCollection;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -23,6 +25,8 @@ class Show extends Component
 
     public function remove(string $uuid, AuditLogger $audit): void
     {
+        $this->authorizeAccess();
+
         $relais = RelaisItem::query()->where('uuid', $uuid)->first();
 
         if ($relais !== null) {
@@ -47,5 +51,13 @@ class Show extends Component
     public function render(): View
     {
         return view('livewire.console.collections.show')->title($this->collection->name);
+    }
+
+    /**
+     * Revérifié à chaque action : un droit retiré prend effet même sur un onglet resté ouvert.
+     */
+    private function authorizeAccess(): void
+    {
+        abort_unless(Auth::user()?->can(Permission::RelaisArbitrate->value) === true, 403);
     }
 }

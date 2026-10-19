@@ -7,6 +7,7 @@ use App\Domain\Contribution\Models\Category;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\Received;
 use App\Domain\Contribution\States\Uploading;
+use App\Domain\Relais\Enums\RelaisStatus;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Territoire\Models\Commune;
 use App\Models\User;
@@ -178,6 +179,17 @@ it('refuse l’envoi à un Relais suspendu ou à un candidat', function () {
 
     Sanctum::actingAs(User::factory()->withRole(Role::Candidat)->create());
     createRelais()->assertForbidden();
+});
+
+it('bloque un brouillon existant quand le Relais est suspendu entre-temps (revue sécurité)', function () {
+    fakeMultipart();
+    $uuid = createRelais()->assertCreated()->json('data.uuid');
+    $this->profile->forceFill(['status' => RelaisStatus::Suspended, 'suspended_at' => now()])->save();
+
+    $this->postJson(route('api.v1.relais.medias.store', $uuid), ['client_uuid' => (string) Str::uuid(), 'kind' => 'photo', 'mime' => 'image/jpeg', 'size' => 1000])->assertForbidden();
+    $this->postJson(route('api.v1.relais.submit', $uuid))->assertForbidden();
+
+    expect(RelaisItem::withoutCommuneRestriction()->where('uuid', $uuid)->value('submitted_at'))->toBeNull();
 });
 
 it('valide les coordonnées et la date de capture', function () {

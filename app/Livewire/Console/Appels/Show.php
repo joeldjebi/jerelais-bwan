@@ -3,8 +3,10 @@
 namespace App\Livewire\Console\Appels;
 
 use App\Domain\Access\Enums\Permission;
+use App\Domain\Access\Support\CommuneAccess;
 use App\Domain\AppelRelais\Actions\PublishAppel;
 use App\Domain\AppelRelais\Enums\AppelStatus;
+use App\Domain\AppelRelais\Enums\AppelTarget;
 use App\Domain\AppelRelais\Models\AppelRelais;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Models\User;
@@ -25,6 +27,11 @@ class Show extends Component
     #[Locked]
     public AppelRelais $appel;
 
+    public function mount(): void
+    {
+        abort_unless($this->isInScope(), 404);
+    }
+
     public function approve(PublishAppel $publish): void
     {
         abort_unless($this->user()->hasPermissionTo(Permission::SettingsManage->value), 403);
@@ -35,7 +42,7 @@ class Show extends Component
 
     public function close(PublishAppel $publish): void
     {
-        abort_unless($this->appel->created_by === $this->user()->id || $this->user()->hasPermissionTo(Permission::AppelsCreate->value), 403);
+        abort_unless($this->appel->created_by === $this->user()->id || ($this->user()->hasPermissionTo(Permission::AppelsCreate->value) && app(CommuneAccess::class)->communeIdsFor($this->user()) === null), 403);
         $publish->close($this->appel, $this->user());
         $this->appel->refresh();
         $this->dispatch('toast', message: __('Appel clos.'));
@@ -69,5 +76,18 @@ class Show extends Component
         abort_unless($user instanceof User, 403);
 
         return $user;
+    }
+
+    /**
+     * Même périmètre que la liste : appels nationaux, appels créés par l'utilisateur ou visant ses communes.
+     */
+    private function isInScope(): bool
+    {
+        $ids = app(CommuneAccess::class)->communeIdsFor($this->user());
+
+        return $ids === null
+            || $this->appel->created_by === $this->user()->id
+            || $this->appel->target === AppelTarget::National
+            || $this->appel->communes()->whereIn('communes.id', $ids)->exists();
     }
 }

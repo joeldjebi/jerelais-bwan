@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\OtpController;
 use App\Http\Controllers\Api\V1\Auth\PasswordLoginController;
 use App\Http\Controllers\Api\V1\Candidature\CandidatureController;
+use App\Http\Controllers\Api\V1\DiffusionController;
 use App\Http\Controllers\Api\V1\Formation\FormationController;
 use App\Http\Controllers\Api\V1\Legal\LegalController;
 use App\Http\Controllers\Api\V1\MeController;
@@ -34,12 +35,14 @@ Route::name('api.v1.')->group(function () {
     Route::get('communes/{commune}/localites', [CandidatureController::class, 'localites'])->name('communes.localites');
     Route::get('legal', [LegalController::class, 'index'])->name('legal.index');
     Route::get('formation', [FormationController::class, 'modules'])->name('formation.index');
+    Route::get('diffusions', DiffusionController::class)->name('diffusions.index');
     Route::get('candidature/options', [CandidatureController::class, 'options'])->name('candidature.options');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('auth/logout', LogoutController::class)->name('auth.logout');
         Route::get('me', [MeController::class, 'show'])->name('me.show');
         Route::put('me/password', [MeController::class, 'updatePassword'])->name('me.password');
+        Route::get('me/stats', [MeController::class, 'stats'])->name('me.stats');
         Route::get('me/badge', [MeController::class, 'badge'])->name('me.badge');
         Route::get('me/export', [MeController::class, 'export'])->middleware('throttle:5,60')->name('me.export');
         Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');

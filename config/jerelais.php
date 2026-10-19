@@ -121,6 +121,8 @@ return [
         'candidature.minimum_age' => 18,
         'candidature.minors_allowed' => false,
         'appels.local_requires_approval' => false,
+        'levels.silver_validated' => 10,
+        'levels.gold_validated' => 30,
         'alerts.surge_threshold' => 5,
         'alerts.surge_window_minutes' => 30,
         'retention.rejected_candidatures_days' => null,
@@ -137,6 +139,8 @@ return [
         'media.max_file_size_mb',
         'candidature.minimum_age',
         'candidature.minors_allowed',
+        'levels.silver_validated',
+        'levels.gold_validated',
     ],
 
 ];

@@ -23,4 +23,12 @@ class AuthenticationRefused extends RuntimeException
     {
         return new self('Ce compte est suspendu. Contactez votre coordonnateur.');
     }
+
+    /**
+     * Les comptes de l'équipe passent par la console et sa double authentification, jamais par l'API.
+     */
+    public static function staffUseConsole(): self
+    {
+        return new self(__('auth.staff_use_console'));
+    }
 }

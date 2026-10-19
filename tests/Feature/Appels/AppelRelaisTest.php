@@ -157,3 +157,12 @@ it('clôt automatiquement les appels échus', function () {
 it('réserve la création d’appels aux rôles habilités [Annexe A]', function () {
     $this->actingAs(User::factory()->withTwoFactor()->withRole(Role::LectureSeule)->create())->get(route('console.appels'))->assertForbidden();
 });
+
+it('n’ouvre pas à un coordonnateur la fiche d’un appel local d’une autre commune (revue sécurité)', function () {
+    $other = User::factory()->withTwoFactor()->coordonnateurOf($this->bouake)->create();
+    $appel = launch($other, ['target' => 'communes', 'communes' => [$this->bouake->uuid]]);
+    $coordo = User::factory()->withTwoFactor()->coordonnateurOf($this->yopougon)->create();
+
+    $this->actingAs($coordo)->get(route('console.appels.show', $appel))->assertNotFound();
+    $this->actingAs($other)->get(route('console.appels.show', $appel))->assertOk();
+});

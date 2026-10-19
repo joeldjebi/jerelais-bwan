@@ -7,6 +7,7 @@ return [
     'too_large' => 'Ce fichier dépasse la taille maximale de :max Mo.',
     'too_many' => 'Un relais contient au plus :max médias.',
     'parts_incomplete' => 'L’envoi n’est pas terminé : :count morceaux sont attendus.',
+    'size_mismatch' => 'La taille du fichier reçu ne correspond pas à celle annoncée : recommencez l’envoi.',
     'parts_invalid' => 'Certains morceaux sont invalides : renvoyez-les.',
     'none' => 'Ajoutez au moins une photo, une vidéo ou un enregistrement.',
     'still_uploading' => 'L’envoi d’un média n’est pas terminé.',

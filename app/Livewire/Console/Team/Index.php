@@ -4,6 +4,7 @@ namespace App\Livewire\Console\Team;
 
 use App\Domain\Access\Actions\ChangeUserStatus;
 use App\Domain\Access\Actions\CreateStaffMember;
+use App\Domain\Access\Enums\CommuneAssignment;
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Auth\Enums\UserStatus;
@@ -52,6 +53,8 @@ class Index extends Component
 
     public string $communeSearch = '';
 
+    public string $assignment = 'titulaire';
+
     #[Locked]
     public ?string $pendingMember = null;
 
@@ -71,7 +74,7 @@ class Index extends Component
 
     public function openCreate(): void
     {
-        $this->reset('name', 'email', 'newRole', 'communeUuids', 'regionUuids', 'communeSearch');
+        $this->reset('name', 'email', 'newRole', 'communeUuids', 'regionUuids', 'communeSearch', 'assignment');
         $this->resetValidation();
         $this->creating = true;
     }
@@ -88,6 +91,7 @@ class Index extends Component
             'communeUuids.*' => ['string', Rule::exists('communes', 'uuid')],
             'regionUuids' => [Rule::requiredIf($this->newRole === Role::Superviseur->value), 'array'],
             'regionUuids.*' => ['string', Rule::exists('regions', 'uuid')],
+            'assignment' => ['required', Rule::enum(CommuneAssignment::class)],
         ], attributes: [
             'name' => __('nom'),
             'newRole' => __('rôle'),
@@ -105,6 +109,7 @@ class Index extends Component
             $actor,
             array_values(Commune::query()->whereIn('uuid', $this->communeUuids)->pluck('id')->map(fn ($id): int => (int) $id)->all()),
             array_values(Region::query()->whereIn('uuid', $this->regionUuids)->pluck('id')->map(fn ($id): int => (int) $id)->all()),
+            CommuneAssignment::from($validated['assignment']),
         );
 
         $this->creating = false;

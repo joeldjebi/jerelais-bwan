@@ -6,6 +6,8 @@ use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Auth\Contracts\SmsGateway;
+use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Messagerie\Models\Conversation;
 use App\Domain\Relais\Enums\RelaisStatus;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Relais\Notifications\RelaisStatusChangedByCoordinator;
@@ -54,6 +56,11 @@ class ChangeRelaisStatus
                 'from' => $from->value,
                 'reason' => $reason,
             ], actor: $actor, communeId: $profile->commune_id);
+
+            // Une radiation coupe immédiatement les sessions de l'application.
+            if ($status === RelaisStatus::StruckOff) {
+                $profile->user->tokens()->delete();
+            }
         });
 
         if (! $actor->hasPermissionTo(Permission::SettingsManage->value)) {
@@ -76,8 +83,15 @@ class ChangeRelaisStatus
     {
         $from = $profile->commune_id;
 
-        $profile->forceFill(['commune_id' => $commune->id, 'localite_id' => null])->save();
-        $this->audit->record('relais.profile_transferred', $profile, ['from' => $from, 'to' => $commune->id, 'reason' => trim($reason)], actor: $admin, communeId: $commune->id);
+        DB::transaction(function () use ($profile, $commune, $admin, $reason, $from): void {
+            $profile->forceFill(['commune_id' => $commune->id, 'localite_id' => null])->save();
+
+            // Le dossier de candidature et la conversation générale suivent le Relais : l'ancien coordonnateur n'y a plus accès.
+            Candidature::withoutCommuneRestriction()->whereKey($profile->candidature_id)->update(['commune_id' => $commune->id]);
+            Conversation::withoutCommuneRestriction()->where('relais_profile_id', $profile->id)->whereNull('relais_item_id')->update(['commune_id' => $commune->id]);
+
+            $this->audit->record('relais.profile_transferred', $profile, ['from' => $from, 'to' => $commune->id, 'reason' => trim($reason)], actor: $admin, communeId: $commune->id);
+        });
 
         return $profile;
     }

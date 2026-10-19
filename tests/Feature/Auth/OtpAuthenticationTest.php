@@ -5,9 +5,11 @@ use App\Domain\Audit\Models\AuditLog;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Models\Device;
 use App\Domain\Auth\Models\OtpCode;
+use App\Livewire\Relais\Rejoindre;
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
+use Livewire\Livewire;
 
 beforeEach(function () {
     $this->sms = fakeSms();
@@ -162,4 +164,12 @@ it('trace les demandes et connexions dans l’audit sans jamais y écrire le cod
     expect($actions)->toContain('auth.otp.requested', 'auth.account.created', 'auth.login')
         ->and($serialized)->not->toContain($code)
         ->and($serialized)->not->toContain('0707070707');
+});
+
+it('partage le quota d’envoi par numéro entre le site et l’application (revue sécurité)', function () {
+    foreach (range(1, 3) as $attempt) {
+        Livewire::test(Rejoindre::class)->set('phone', '0707070707')->call('sendCode')->assertHasNoErrors();
+    }
+
+    $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '0707070707'])->assertTooManyRequests();
 });

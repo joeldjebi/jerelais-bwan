@@ -108,3 +108,13 @@ it('refuse les routes protégées sans jeton', function (string $method, string 
     ['PUT', 'api.v1.me.password'],
     ['PUT', 'api.v1.devices.current'],
 ]);
+
+it('refuse un jeton d’application à un compte de l’équipe, qui passe par la console et sa double authentification (revue sécurité)', function () {
+    $staff = User::factory()->withTwoFactor()->withRole(Role::Coordonnateur)->create(['password' => 'mot-de-passe-console']);
+    $staff->setPhoneNumber(PhoneNumber::parse('0505050505'))->save();
+
+    $this->postJson(route('api.v1.auth.login'), ['phone' => '0505050505', 'password' => 'mot-de-passe-console', ...deviceFields()])
+        ->assertUnprocessable();
+
+    expect($staff->tokens()->count())->toBe(0);
+});

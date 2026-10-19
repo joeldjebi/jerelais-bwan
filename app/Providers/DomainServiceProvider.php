@@ -89,20 +89,10 @@ class DomainServiceProvider extends ServiceProvider
     {
         $tooMany = fn () => response()->json(['message' => __('auth.throttle_generic')], 429);
 
-        // Envoi de codes SMS : par numéro et par adresse IP (protège le crédit SMS et les comptes).
-        RateLimiter::for('otp-request', function (Request $request) use ($tooMany): array {
-            $window = (int) config('jerelais.otp.requests_window_minutes');
-            $phone = PhoneNumber::tryParse($request->string('phone')->toString());
-
-            return [
-                Limit::perMinutes($window, (int) config('jerelais.otp.requests_per_phone'))
-                    ->by('otp-phone:'.($phone?->hash() ?? hash('sha256', $request->string('phone')->toString())))
-                    ->response($tooMany),
-                Limit::perMinutes($window, (int) config('jerelais.otp.requests_per_ip'))
-                    ->by('otp-ip:'.$request->ip())
-                    ->response($tooMany),
-            ];
-        });
+        // Envoi de codes SMS par adresse IP ; la limite par numéro, commune au site et à l'application, est dans RequestOtp.
+        RateLimiter::for('otp-request', fn (Request $request): Limit => Limit::perMinutes((int) config('jerelais.otp.requests_window_minutes'), (int) config('jerelais.otp.requests_per_ip'))
+            ->by('otp-ip:'.$request->ip())
+            ->response($tooMany));
 
         RateLimiter::for('otp-verify', fn (Request $request) => Limit::perMinute(10)->by('otp-verify:'.$request->ip())->response($tooMany));
 

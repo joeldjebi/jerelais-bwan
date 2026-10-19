@@ -7,6 +7,7 @@ use App\Domain\Auth\Models\Device;
 use App\Domain\Privacy\Actions\ExportPersonalData;
 use App\Domain\Privacy\Actions\PseudonymizeUser;
 use App\Domain\Relais\Models\RelaisProfile;
+use App\Domain\Relais\Support\RelaisActivity;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\UpdateCurrentDeviceRequest;
 use App\Http\Requests\Api\V1\UpdatePasswordRequest;
@@ -45,6 +46,17 @@ class MeController extends Controller
         abort_if($profile === null, 404);
 
         return new BadgeResource($profile);
+    }
+
+    /**
+     * Mon tableau de bord (MOB-24) : relais envoyés, validés, diffusés, taux de validation, niveau et badges.
+     */
+    public function stats(Request $request, RelaisActivity $activity): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return response()->json(['data' => $activity->for($user)]);
     }
 
     /**

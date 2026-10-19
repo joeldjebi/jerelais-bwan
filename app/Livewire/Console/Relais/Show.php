@@ -91,7 +91,8 @@ class Show extends Component
     #[Computed]
     public function history(): Collection
     {
-        return RelaisItem::withoutCommuneRestriction()
+        // Périmètre communal conservé : un coordonnateur ne voit pas les relais de « son » Relais routés vers une autre commune.
+        return RelaisItem::query()
             ->where('relais_profile_id', $this->profile->id)
             ->whereNotNull('submitted_at')
             ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'lockedBy:id,name', 'medias' => fn ($query) => $query->with('variants')])

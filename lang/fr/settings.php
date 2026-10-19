@@ -5,6 +5,7 @@ return [
         'media' => ['Médias', 'Durées et tailles maximales acceptées à l’envoi (MOB-11, §10).'],
         'validation' => ['Validation', 'Délais cibles de traitement et verrouillage des relais (COO-17, §8.2).'],
         'appels' => ['Appels à relais', 'Appels locaux lancés par les coordonnateurs (COO-21).'],
+        'levels' => ['Niveaux des Relais', 'Nombre de relais validés pour atteindre chaque niveau (Bronze dès le premier relais validé, MOB-24).'],
         'alerts' => ['Alertes', 'Afflux inhabituel de relais sur une même commune, signe d’un événement (ADM-03).'],
         'candidature' => ['Candidatures', 'Conditions d’admission des Relais (MOB-05, §9.3).'],
         'retention' => ['Conservation des données', 'Durées avant purge automatique (§9.4). Vide : aucune purge.'],
@@ -24,6 +25,10 @@ return [
         ],
         'appels' => [
             'local_requires_approval' => 'Soumettre les appels locaux à l’accord de l’administrateur',
+        ],
+        'levels' => [
+            'silver_validated' => 'Niveau Argent',
+            'gold_validated' => 'Niveau Or',
         ],
         'alerts' => [
             'surge_threshold' => 'Seuil d’afflux',
@@ -55,6 +60,10 @@ return [
             'sla_normal_minutes' => 'min',
             'lock_minutes' => 'min',
         ],
+        'levels' => [
+            'silver_validated' => 'relais',
+            'gold_validated' => 'relais',
+        ],
         'alerts' => [
             'surge_threshold' => 'relais',
             'surge_window_minutes' => 'min',
@@ -70,5 +79,12 @@ return [
             'validated_not_broadcast_days' => 'jours',
             'broadcast_relais_days' => 'jours',
         ],
+    ],
+
+    'reference_lists' => [
+        'localites' => 'Localités',
+        'lieux' => 'Types de lieux',
+        'categories' => 'Catégories',
+        'motifs' => 'Motifs de rejet',
     ],
 ];

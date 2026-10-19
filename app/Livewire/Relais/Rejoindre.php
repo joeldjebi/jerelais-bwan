@@ -10,6 +10,7 @@ use App\Domain\Auth\Exceptions\AuthenticationRefused;
 use App\Domain\Contribution\Support\RelaisSender;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
@@ -61,7 +62,13 @@ class Rejoindre extends Component
             return;
         }
 
-        $requestOtp->handle($phone, request()->ip());
+        try {
+            $requestOtp->handle($phone, request()->ip());
+        } catch (ThrottleRequestsException) {
+            $this->addError('phone', __('auth.otp_throttled'));
+
+            return;
+        }
 
         $this->phone = $phone->e164;
         $this->maskedPhone = $phone->masked();
@@ -130,13 +137,12 @@ class Rejoindre extends Component
     }
 
     /**
-     * Applique les mêmes quotas d'envoi que l'API (par numéro et par adresse IP).
+     * Quota d'envoi par adresse IP (le quota par numéro est commun avec l'API, dans RequestOtp).
      */
     private function hitLimits(PhoneNumber $phone): bool
     {
         $window = (int) config('jerelais.otp.requests_window_minutes') * 60;
         $limits = [
-            'web-otp-phone:'.$phone->hash() => (int) config('jerelais.otp.requests_per_phone'),
             'web-otp-ip:'.request()->ip() => (int) config('jerelais.otp.requests_per_ip'),
         ];
 

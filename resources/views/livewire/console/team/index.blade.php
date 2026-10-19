@@ -45,7 +45,7 @@
                 @foreach ($this->members as $member)
                     @php
                         $memberRole = $member->roles->first()?->name;
-                        $scope = $member->communes->isNotEmpty() ? $member->communes->pluck('name')->join(', ') : ($member->regions->isNotEmpty() ? $member->regions->pluck('name')->join(', ') : __('National'));
+                        $scope = $member->communes->isNotEmpty() ? $member->communes->map(fn ($commune) => $commune->name.($commune->pivot?->assignment === 'suppleant' ? ' ('.__('suppléant').')' : ''))->join(', ') : ($member->regions->isNotEmpty() ? $member->regions->pluck('name')->join(', ') : __('National'));
                         $suspended = ! $member->status->canSignIn();
                         $initials = Str::of($member->name ?? $member->email)->explode(' ')->map(fn ($part) => Str::upper(Str::substr($part, 0, 1)))->take(2)->implode('');
                     @endphp
@@ -127,8 +127,9 @@
             @error('newRole') <p class="px-4 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
 
             @if ($newRole === Role::Coordonnateur->value)
-                <x-console.group :title="__('Communes coordonnées')" :footer="__('Le coordonnateur ne verra que les données de ces communes.')">
-                    <div class="border-b border-line p-3">
+                <x-console.group :title="__('Communes coordonnées')" :footer="__('Le coordonnateur ne verra que les données de ces communes. Le suppléant reçoit les relais en retard de validation (COO-17).')">
+                    <div class="flex flex-wrap items-center gap-3 border-b border-line p-3">
+                        <x-console.segmented property="assignment" :current="$assignment" :options="['titulaire' => __('Titulaire'), 'suppleant' => __('Suppléant')]" />
                         <x-console.search wire:model.live.debounce.200ms="communeSearch" :placeholder="__('Filtrer les communes')" />
                     </div>
                     <ul class="max-h-60 overflow-y-auto">
