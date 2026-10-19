@@ -21,6 +21,8 @@ class Navigation
                 'label' => __('Pilotage'),
                 'items' => [
                     ['label' => __('Accueil'), 'route' => 'console.home', 'icon' => 'home', 'tint' => 'orange', 'keywords' => 'tableau de bord accueil', 'permission' => Permission::ConsoleAccess],
+                    ['label' => __('Flux des relais'), 'route' => 'console.flux', 'icon' => 'signal', 'tint' => 'brand', 'keywords' => 'flux temps réel recherche filtres', 'permission' => Permission::RelaisViewPending],
+                    ['label' => __('Carte'), 'route' => 'console.map', 'icon' => 'map-pin', 'tint' => 'teal', 'keywords' => 'carte géographie communes quartiers', 'permission' => Permission::RelaisViewPending],
                     ['label' => __('Validation des relais'), 'route' => 'console.validation', 'icon' => 'bolt', 'tint' => 'blue', 'keywords' => 'relais file vérification urgents médias', 'permission' => Permission::RelaisViewPending],
                 ],
             ],
