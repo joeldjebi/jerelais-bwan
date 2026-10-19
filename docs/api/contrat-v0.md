@@ -52,7 +52,7 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | GET ✅ / PUT ✅ | `/me` · `/me/password` | Profil, définition du mot de passe | 1 | MOB-01 |
 | GET ✅ | `/me/badge` | Badge : numéro, prénom + initiale, commune, statut, photo (lien signé 15 min), `qr_payload` à encoder en QR ; 404 avant acceptation | 2 | MOB-07 |
 | GET | `/me/stats` | Statistiques | 4 | MOB-24 |
-| GET/DELETE | `/me/export` · `/me` | Droits des personnes | 5 | §9.4 |
+| GET ✅ / DELETE ✅ | `/me/export` · `/me` | Droits des personnes : export JSON de mes données ; suppression du compte (`confirm` = `SUPPRIMER`, pseudonymisation) | 5 | §9.4 |
 | GET | `/coordination/queue` | File du coordonnateur (mode mobile) | 3 | §4.5 |
 | POST | `/relais/{uuid}/lock` · `/relais/{uuid}/decision` | Verrou, décision | 3 | COO-14 |
 

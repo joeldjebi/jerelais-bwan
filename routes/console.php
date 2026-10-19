@@ -6,6 +6,7 @@ use App\Domain\AppelRelais\Models\AppelRelais;
 use App\Domain\Contribution\Actions\EscalateOverdueRelais;
 use App\Domain\Contribution\Actions\ReleaseExpiredLocks;
 use App\Domain\Media\Actions\PurgeAbandonedUploads;
+use App\Domain\Privacy\Actions\PurgeExpiredData;
 use App\Domain\Reporting\Exports\ReportExporter;
 use App\Domain\Reporting\Mail\PeriodicReport;
 use App\Domain\Reporting\Support\ReportBuilder;
@@ -132,3 +133,14 @@ Artisan::command('reports:send {period=daily : daily, weekly ou monthly}', funct
 Schedule::command('reports:send daily')->dailyAt('07:00')->timezone('Africa/Abidjan');
 Schedule::command('reports:send weekly')->weeklyOn(1, '07:15')->timezone('Africa/Abidjan');
 Schedule::command('reports:send monthly')->monthlyOn(1, '07:30')->timezone('Africa/Abidjan');
+
+/*
+ * Durées de conservation (§9.4) : purge nocturne des données expirées.
+ */
+Artisan::command('data:purge', function (PurgeExpiredData $purge) {
+    foreach ($purge->handle() as $kind => $count) {
+        $this->line(str_pad($kind, 26).$count);
+    }
+})->purpose('Applique les durées de conservation des données personnelles et des médias');
+
+Schedule::command('data:purge')->dailyAt('03:00')->timezone('Africa/Abidjan')->withoutOverlapping();

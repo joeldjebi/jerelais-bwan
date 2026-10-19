@@ -16,6 +16,7 @@
             @if ($user)
                 <div class="flex items-center gap-4 text-[0.8125rem]">
                     <span class="hidden text-graphite sm:inline">{{ $user->phoneNumber()?->masked() }}</span>
+                    <a href="{{ route('relais.data') }}" wire:navigate class="text-graphite transition-colors hover:text-onyx">{{ __('Mes données') }}</a>
                     <form method="POST" action="{{ route('relais.logout') }}">
                         @csrf
                         <button type="submit" class="press rounded-full bg-black/[0.05] px-3.5 py-1.5 font-medium transition-colors duration-300 hover:bg-black/[0.09]">{{ __('Se déconnecter') }}</button>

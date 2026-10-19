@@ -6,7 +6,7 @@
     $verification = app(RelaisVerification::class);
     $map = $verification->map($r);
     $warnings = $verification->warnings($r);
-    $medias = $r->medias->where('status', MediaStatus::Ready)->values();
+    $medias = $r->medias->where('status', MediaStatus::Ready)->whereNull('purged_at')->values();
     $pendingMedias = $r->medias->whereIn('status', [MediaStatus::Pending, MediaStatus::Uploaded, MediaStatus::Processing])->count();
     $rejectedMedias = $r->medias->where('status', MediaStatus::Rejected);
     $stats = $this->stats;
@@ -78,7 +78,7 @@
                     setSpeed(value) { this.speed = value; const el = this.$refs['m' + this.current]; if (el) el.playbackRate = value } }">
                 @if ($medias->isEmpty())
                     <div class="grid aspect-video place-items-center text-[0.9375rem] text-white/60">
-                        {{ $pendingMedias > 0 ? __('Médias en cours de contrôle…') : __('Aucun média lisible') }}
+                        {{ $pendingMedias > 0 ? __('Médias en cours de contrôle…') : ($r->medias->whereNotNull('purged_at')->isNotEmpty() ? __('Médias supprimés à l’échéance de la durée de conservation') : __('Aucun média lisible')) }}
                     </div>
                 @else
                     <div class="relative grid aspect-video place-items-center bg-black">
