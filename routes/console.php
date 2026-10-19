@@ -1,14 +1,24 @@
 <?php
 
+use App\Domain\Access\Enums\Role;
 use App\Domain\AppelRelais\Actions\PublishAppel;
 use App\Domain\AppelRelais\Models\AppelRelais;
 use App\Domain\Contribution\Actions\EscalateOverdueRelais;
 use App\Domain\Contribution\Actions\ReleaseExpiredLocks;
 use App\Domain\Media\Actions\PurgeAbandonedUploads;
+use App\Domain\Privacy\Actions\PurgeExpiredData;
+use App\Domain\Reporting\Exports\ReportExporter;
+use App\Domain\Reporting\Mail\PeriodicReport;
+use App\Domain\Reporting\Support\ReportBuilder;
 use App\Models\User;
+use Aws\S3\Exception\S3Exception;
+use Carbon\CarbonImmutable;
+use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Storage;
 use PragmaRX\Google2FA\Google2FA;
 
 Artisan::command('inspire', function () {
@@ -65,3 +75,107 @@ Schedule::command('appels:close-expired')->everyFiveMinutes()->withoutOverlappin
 Schedule::command('relais:release-locks')->everyMinute()->withoutOverlapping();
 Schedule::command('relais:escalate')->everyMinute()->withoutOverlapping();
 Schedule::command('medias:purge-abandoned')->hourly()->withoutOverlapping();
+
+/*
+ * Autorise le navigateur à déposer les morceaux de médias directement sur Wasabi (WEB-04).
+ * Ajoute une règle CORS pour les origines données, sans retirer les règles existantes du bucket.
+ */
+Artisan::command('medias:configure-cors {origins* : ex. http://localhost:8000 https://jerelais.reflet.tv}', function (array $origins) {
+    /** @var AwsS3V3Adapter $disk */
+    $disk = Storage::disk('medias');
+    $client = $disk->getClient();
+    $bucket = (string) config('filesystems.disks.medias.bucket');
+
+    try {
+        $rules = $client->getBucketCors(['Bucket' => $bucket])['CORSRules'] ?? [];
+    } catch (S3Exception) {
+        $rules = [];
+    }
+
+    $rules = array_values(array_filter($rules, fn (array $rule): bool => ($rule['ID'] ?? '') !== 'jerelais-upload'));
+    $rules[] = [
+        'ID' => 'jerelais-upload',
+        'AllowedOrigins' => array_values($origins),
+        'AllowedMethods' => ['PUT', 'GET', 'HEAD'],
+        'AllowedHeaders' => ['*'],
+        'ExposeHeaders' => ['ETag'],
+        'MaxAgeSeconds' => 3000,
+    ];
+
+    $client->putBucketCors(['Bucket' => $bucket, 'CORSConfiguration' => ['CORSRules' => $rules]]);
+    $this->components->info('Règle CORS « jerelais-upload » enregistrée pour : '.implode(', ', $origins));
+})->purpose('Autorise l’envoi direct des médias depuis le navigateur vers Wasabi');
+
+/*
+ * Rapports périodiques (§13) : la veille, la semaine passée ou le mois passé, pour tout le réseau.
+ */
+Artisan::command('reports:send {period=daily : daily, weekly ou monthly}', function (string $period, ReportBuilder $builder, ReportExporter $exporter) {
+    $now = CarbonImmutable::now('Africa/Abidjan');
+    [$from, $to, $label] = match ($period) {
+        'weekly' => [$now->subWeek()->startOfWeek(), $now->subWeek()->endOfWeek(), 'hebdomadaire'],
+        'monthly' => [$now->subMonthNoOverflow()->startOfMonth(), $now->subMonthNoOverflow()->endOfMonth(), 'mensuel'],
+        default => [$now->subDay()->startOfDay(), $now->subDay()->endOfDay(), 'quotidien'],
+    };
+
+    $report = $builder->build($from, $to);
+    $xlsx = $exporter->xlsx($report);
+    $recipients = User::query()->role([Role::Admin->value, Role::RedacteurEnChef->value])
+        ->where('status', 'active')->whereNotNull('email')->pluck('email')->all();
+
+    if ($recipients !== []) {
+        Mail::to($recipients)->send(new PeriodicReport($label, $exporter->period($report), $exporter->pdf($report, __('Réseau national')), $xlsx));
+    }
+
+    @unlink($xlsx);
+    $this->components->info('Rapport '.$label.' envoyé à '.count($recipients).' destinataire(s).');
+})->purpose('Envoie le rapport de pilotage périodique à l’administration et à la rédaction en chef');
+
+Schedule::command('reports:send daily')->dailyAt('07:00')->timezone('Africa/Abidjan');
+Schedule::command('reports:send weekly')->weeklyOn(1, '07:15')->timezone('Africa/Abidjan');
+Schedule::command('reports:send monthly')->monthlyOn(1, '07:30')->timezone('Africa/Abidjan');
+
+/*
+ * Durées de conservation (§9.4) : purge nocturne des données expirées.
+ */
+Artisan::command('data:purge', function (PurgeExpiredData $purge) {
+    foreach ($purge->handle() as $kind => $count) {
+        $this->line(str_pad($kind, 26).$count);
+    }
+})->purpose('Applique les durées de conservation des données personnelles et des médias');
+
+Schedule::command('data:purge')->dailyAt('03:00')->timezone('Africa/Abidjan')->withoutOverlapping();
+
+/*
+ * Vérification avant mise en production (durcissement, §10) : refuse de valider une configuration dangereuse.
+ */
+Artisan::command('jerelais:check-production', function () {
+    $checks = [
+        'APP_ENV = production' => app()->isProduction(),
+        'APP_DEBUG désactivé' => ! config('app.debug'),
+        'APP_URL en HTTPS' => str_starts_with((string) config('app.url'), 'https://'),
+        'Clé d’application définie' => filled(config('app.key')),
+        'Clé HMAC des téléphones distincte de APP_KEY' => filled(config('jerelais.phone.hash_key')) && config('jerelais.phone.hash_key') !== config('app.key'),
+        'Cookies de session sécurisés' => (bool) config('session.secure'),
+        'Session chiffrée' => (bool) config('session.encrypt'),
+        'Passerelle SMS réelle (pas « log »)' => config('jerelais.sms.driver') !== 'log',
+        'Antivirus ClamAV' => config('jerelais.antivirus.driver') === 'clamav',
+        'Code 2FA de démonstration désactivé' => blank(config('jerelais.demo.two_factor_code')),
+        'Stockage Wasabi configuré' => filled(config('filesystems.disks.medias.key')) && filled(config('filesystems.disks.medias.bucket')),
+        'Bucket dédié aux pièces d’identité' => config('filesystems.disks.identity.bucket') !== config('filesystems.disks.medias.bucket'),
+        'File d’attente Redis' => config('queue.default') === 'redis',
+        'Diffusion temps réel Reverb' => config('broadcasting.default') === 'reverb',
+        'Courriel sortant configuré' => ! in_array(config('mail.default'), ['log', 'array'], true),
+        'Sentry configuré' => filled(config('sentry.dsn')),
+    ];
+
+    $failed = 0;
+
+    foreach ($checks as $label => $ok) {
+        $ok ? $this->components->twoColumnDetail($label, '<fg=green>OK</>') : $this->components->twoColumnDetail($label, '<fg=red>À CORRIGER</>');
+        $failed += $ok ? 0 : 1;
+    }
+
+    $failed === 0 ? $this->components->info('Configuration prête pour la production.') : $this->components->error($failed.' point(s) à corriger avant la mise en production.');
+
+    return $failed === 0 ? 0 : 1;
+})->purpose('Vérifie la configuration de production (sécurité, services externes)');

@@ -393,6 +393,32 @@
         </div>
     </section>
 
+    {{-- VU SUR REFLET TV (WEB-05) --}}
+    @php $showcase = \App\Http\Controllers\Public\ShowcaseController::query()->limit(3)->get(); @endphp
+    @if ($showcase->isNotEmpty())
+        <section id="vu-sur-reflet" class="bg-mist px-5 py-28">
+            <div class="mx-auto max-w-[1024px]">
+                <div class="flex flex-wrap items-end justify-between gap-4" data-anim>
+                    <h2 class="text-[clamp(2.25rem,4.5vw,3.5rem)] font-semibold tracking-[-0.035em]">{{ __('Vu sur REFLET TV.') }}</h2>
+                    <a href="{{ route('showcase') }}" class="inline-flex items-center gap-1 text-[1.0625rem] text-relais-600 hover:underline">{{ __('Tout voir') }}<x-ui.icon name="arrow-right" class="size-4" /></a>
+                </div>
+                <div class="mt-10 grid gap-6 sm:grid-cols-3">
+                    @foreach ($showcase as $relais)
+                        <article class="overflow-hidden rounded-[1.75rem] bg-white" data-anim>
+                            <div class="aspect-[4/3] bg-onyx">
+                                @if ($relais->showcase_with_image)<img src="{{ route('showcase.image', $relais) }}" alt="" class="size-full object-cover" loading="lazy">@endif
+                            </div>
+                            <div class="p-5">
+                                <p class="text-[0.8125rem] font-medium text-relais-600">{{ $relais->commune?->name }} · {{ $relais->broadcast_programme }}</p>
+                                <h3 class="mt-1.5 text-[1.125rem] leading-snug font-semibold">{{ $relais->showcase_title }}</h3>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
     {{-- 12. QUESTIONS --}}
     <section id="faq" class="border-t border-black/10 bg-white px-5 py-28">
         <div class="mx-auto max-w-[760px]">

@@ -10,6 +10,6 @@ enum AppelStatus: string
 
     public function label(): string
     {
-        return __("appels.statuses.{$this->value}");
+        return __("appels_relais.statuses.{$this->value}");
     }
 }

@@ -41,6 +41,8 @@ Route::name('api.v1.')->group(function () {
         Route::get('me', [MeController::class, 'show'])->name('me.show');
         Route::put('me/password', [MeController::class, 'updatePassword'])->name('me.password');
         Route::get('me/badge', [MeController::class, 'badge'])->name('me.badge');
+        Route::get('me/export', [MeController::class, 'export'])->middleware('throttle:5,60')->name('me.export');
+        Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
         Route::put('devices/current', [MeController::class, 'updateDevice'])->name('devices.current');
 
         Route::get('consents', [LegalController::class, 'consents'])->name('consents.index');

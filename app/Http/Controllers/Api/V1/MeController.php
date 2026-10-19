@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Auth\Models\Device;
+use App\Domain\Privacy\Actions\ExportPersonalData;
+use App\Domain\Privacy\Actions\PseudonymizeUser;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\UpdateCurrentDeviceRequest;
@@ -12,6 +14,7 @@ use App\Http\Resources\V1\BadgeResource;
 use App\Http\Resources\V1\DeviceResource;
 use App\Http\Resources\V1\UserResource;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -42,6 +45,35 @@ class MeController extends Controller
         abort_if($profile === null, 404);
 
         return new BadgeResource($profile);
+    }
+
+    /**
+     * Mes données personnelles (droit d'accès, §9.4), au format JSON.
+     */
+    public function export(Request $request, ExportPersonalData $export, AuditLogger $audit): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $audit->record('privacy.exported', $user, ['channel' => 'app'], actor: $user);
+
+        return response()->json(['data' => $export->handle($user)]);
+    }
+
+    /**
+     * Supprimer mon compte (§9.4).
+     *
+     * Envoyer `confirm` = « SUPPRIMER ». Le compte est pseudonymisé : identité, pièces, positions et messages sont effacés.
+     */
+    public function destroy(Request $request, PseudonymizeUser $pseudonymize): Response
+    {
+        $request->validate(['confirm' => ['required', 'in:SUPPRIMER']]);
+
+        /** @var User $user */
+        $user = $request->user();
+        abort_if($user->isStaff(), 403);
+        $pseudonymize->handle($user, $user, __('Demande du titulaire du compte'));
+
+        return response()->noContent();
     }
 
     /**

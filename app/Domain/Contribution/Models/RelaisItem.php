@@ -75,6 +75,10 @@ use Spatie\ModelStates\HasStates;
  * @property CarbonImmutable|null $broadcast_at
  * @property string|null $broadcast_programme
  * @property string|null $broadcast_url
+ * @property CarbonImmutable|null $showcased_at
+ * @property string|null $showcase_title
+ * @property string|null $showcase_text
+ * @property bool $showcase_with_image
  * @property-read User|null $assignee
  * @property-read Collection<int, RelaisCollection> $collections
  * @property CarbonImmutable|null $created_at
@@ -128,6 +132,8 @@ class RelaisItem extends Model
             'locked_until' => 'immutable_datetime',
             'selected_at' => 'immutable_datetime',
             'broadcast_at' => 'immutable_datetime',
+            'showcased_at' => 'immutable_datetime',
+            'showcase_with_image' => 'boolean',
         ];
     }
 

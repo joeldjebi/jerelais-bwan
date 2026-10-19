@@ -27,7 +27,7 @@ class InitiateMediaUpload
     ) {}
 
     /**
-     * @param  array{client_uuid: string, kind: string, mime: string, size: int, sha256: string, filename?: string|null, is_imported?: bool, device_captured_at?: string|null}  $data
+     * @param  array{client_uuid: string, kind: string, mime: string, size: int, sha256?: string|null, filename?: string|null, is_imported?: bool, device_captured_at?: string|null}  $data
      */
     public function handle(RelaisItem $relais, array $data): Media
     {
@@ -69,7 +69,7 @@ class InitiateMediaUpload
             'original_name' => isset($data['filename']) ? Str::limit(basename($data['filename']), 190, '') : null,
             'declared_mime' => $data['mime'],
             'size' => $data['size'],
-            'declared_sha256' => strtolower($data['sha256']),
+            'declared_sha256' => isset($data['sha256']) ? strtolower($data['sha256']) : null,
             'disk' => self::DISK,
             'path' => $path,
             'part_size' => (int) config('jerelais.media.part_size_mb') * 1024 * 1024,

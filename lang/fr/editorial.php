@@ -8,6 +8,8 @@ return [
         'not_selected' => 'Ce relais n’est pas sélectionné.',
         'export_blocked' => 'Ce relais n’est pas validé : son export est bloqué.',
         'derogation_reason_required' => 'Une dérogation exige un motif.',
+        'showcase_not_broadcast' => 'Seul un relais diffusé peut être publié sur la vitrine.',
+        'showcase_blur' => 'Ce relais demande un floutage : publiez-le sans image.',
         'derogation_forbidden' => 'Seul un administrateur peut accorder une dérogation.',
     ],
 ];

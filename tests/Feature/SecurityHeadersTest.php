@@ -8,8 +8,11 @@ it('ajoute les en-têtes de sécurité à chaque réponse [§10 Sécurité]', fu
         ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
         ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
 
-    expect($response->headers->get('Content-Security-Policy-Report-Only'))
+    $response->assertHeaderMissing('Content-Security-Policy-Report-Only');
+
+    expect($response->headers->get('Content-Security-Policy'))
         ->toContain("default-src 'self'")
+        ->toMatch("/script-src 'self' 'nonce-[^']+'/")
         ->toContain("frame-ancestors 'none'")
         ->toContain("object-src 'none'");
 });

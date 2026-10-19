@@ -71,6 +71,8 @@ return [
     |--------------------------------------------------------------------------
     */
 
+    'contact_email' => env('JERELAIS_CONTACT_EMAIL', 'contact@jerelais.test'),
+
     'media' => [
         // Taille d'un morceau d'envoi multipart (5 Mo minimum imposé par S3, sauf le dernier).
         'part_size_mb' => 8,

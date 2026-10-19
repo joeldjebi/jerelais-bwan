@@ -28,6 +28,9 @@
 @endphp
 
 <div class="mx-auto max-w-[1080px]">
+    @if ($candidature->status === CandidatureStatus::Accepted && $this->relaisProfile)
+        <div class="mx-auto mb-8 max-w-3xl">@include('livewire.relais.partials.nav', ['active' => 'badge'])</div>
+    @endif
     @if (! $editable)
         {{-- Suivi de la candidature (MOB-06) --}}
         @php

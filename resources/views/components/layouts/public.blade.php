@@ -18,7 +18,7 @@
                 <a href="{{ route('home') }}#principe" class="transition-opacity duration-300 hover:opacity-100">{{ __('Le principe') }}</a>
                 <a href="{{ route('home') }}#terrain" class="transition-opacity duration-300 hover:opacity-100">{{ __('Sur le terrain') }}</a>
                 <a href="{{ route('home') }}#devenir-relais" class="transition-opacity duration-300 hover:opacity-100">{{ __('Devenir Relais') }}</a>
-                <a href="{{ route('home') }}#confiance" class="transition-opacity duration-300 hover:opacity-100">{{ __('Confiance') }}</a>
+                <a href="{{ route('showcase') }}" class="transition-opacity duration-300 hover:opacity-100">{{ __('Vu sur REFLET TV') }}</a>
                 <a href="{{ route('home') }}#faq" class="transition-opacity duration-300 hover:opacity-100">{{ __('Questions') }}</a>
             </div>
 
@@ -40,6 +40,9 @@
                         <li><a href="{{ route('home') }}#principe" class="hover:text-onyx hover:underline">{{ __('Le principe') }}</a></li>
                         <li><a href="{{ route('home') }}#terrain" class="hover:text-onyx hover:underline">{{ __('Sur le terrain') }}</a></li>
                         <li><a href="{{ route('home') }}#faq" class="hover:text-onyx hover:underline">{{ __('Questions fréquentes') }}</a></li>
+                        <li><a href="{{ route('showcase') }}" class="hover:text-onyx hover:underline">{{ __('Vu sur REFLET TV') }}</a></li>
+                        <li><a href="{{ route('network') }}" class="hover:text-onyx hover:underline">{{ __('Le réseau') }}</a></li>
+                        <li><a href="{{ route('contact') }}" class="hover:text-onyx hover:underline">{{ __('Contact') }}</a></li>
                     </ul>
                 </div>
                 <div>
@@ -54,7 +57,8 @@
                     <ul class="mt-3 space-y-2">
                         <li><a href="{{ route('legal.show', 'conditions') }}" class="hover:text-onyx hover:underline">{{ __('Conditions d’utilisation') }}</a></li>
                         <li><a href="{{ route('legal.show', 'confidentialite') }}" class="hover:text-onyx hover:underline">{{ __('Politique de confidentialité') }}</a></li>
-                        <li><span>{{ __('Mentions légales') }}</span></li>
+                        <li><a href="{{ route('legal-notice') }}" class="hover:text-onyx hover:underline">{{ __('Mentions légales') }}</a></li>
+                        <li><a href="{{ route('cookies') }}" class="hover:text-onyx hover:underline">{{ __('Cookies') }}</a></li>
                     </ul>
                 </div>
             </div>

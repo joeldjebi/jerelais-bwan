@@ -28,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $declared_mime
  * @property string|null $mime
  * @property int $size
- * @property string $declared_sha256
+ * @property string|null $declared_sha256
  * @property string|null $sha256
  * @property string|null $phash
  * @property string $disk
@@ -45,6 +45,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $rejection
  * @property CarbonImmutable|null $uploaded_at
  * @property CarbonImmutable|null $processed_at
+ * @property CarbonImmutable|null $purged_at
  * @property-read RelaisItem $relaisItem
  * @property-read Collection<int, MediaVariant> $variants
  */
@@ -76,6 +77,7 @@ class Media extends Model
             'metadata' => 'array',
             'uploaded_at' => 'immutable_datetime',
             'processed_at' => 'immutable_datetime',
+            'purged_at' => 'immutable_datetime',
         ];
     }
 

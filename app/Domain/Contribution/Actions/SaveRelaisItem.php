@@ -70,7 +70,7 @@ class SaveRelaisItem
         $profile = $relais->relaisProfile ?? RelaisSender::profileOf($relais->user);
 
         if ($appel === null || ! $appel->isOpen() || $profile === null || ! AppelAudience::targets($appel, $profile)) {
-            throw new MediaRefused('appel', __('appels.errors.not_targeted'));
+            throw new MediaRefused('appel', __('appels_relais.errors.not_targeted'));
         }
 
         return $appel->id;

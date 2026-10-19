@@ -72,7 +72,7 @@ class ExportRelaisMedias
 
             $zip->addFromString("{$folder}/fiche.pdf", $this->fiche($relais));
 
-            foreach ($relais->medias->where('status', MediaStatus::Ready)->values() as $index => $media) {
+            foreach ($relais->medias->where('status', MediaStatus::Ready)->whereNull('purged_at')->values() as $index => $media) {
                 $local = TemporaryPath::make($media->kind->extensionFor((string) $media->mime));
                 $this->storage->download($media->path, $local);
                 $downloads[] = $local;

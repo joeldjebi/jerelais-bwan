@@ -64,7 +64,7 @@ class Index extends Component
     public function items(): LengthAwarePaginator
     {
         return RelaisSearch::query($this->filters)
-            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'medias' => fn ($query) => $query->with('variants')])
+            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'lockedBy:id,name', 'medias' => fn ($query) => $query->with('variants')])
             ->latest('received_at')
             ->paginate(30);
     }

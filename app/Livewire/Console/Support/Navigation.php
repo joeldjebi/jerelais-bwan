@@ -23,6 +23,7 @@ class Navigation
                     ['label' => __('Accueil'), 'route' => 'console.home', 'icon' => 'home', 'tint' => 'orange', 'keywords' => 'tableau de bord accueil', 'permission' => Permission::ConsoleAccess],
                     ['label' => __('Flux des relais'), 'route' => 'console.flux', 'icon' => 'signal', 'tint' => 'brand', 'keywords' => 'flux temps réel recherche filtres', 'permission' => Permission::RelaisViewPending],
                     ['label' => __('Carte'), 'route' => 'console.map', 'icon' => 'map-pin', 'tint' => 'teal', 'keywords' => 'carte géographie communes quartiers', 'permission' => Permission::RelaisViewPending],
+                    ['label' => __('Rapports'), 'route' => 'console.reports', 'icon' => 'chart', 'tint' => 'green', 'keywords' => 'rapports indicateurs excel pdf statistiques', 'permission' => Permission::ReportsView],
                     ['label' => __('Validation des relais'), 'route' => 'console.validation', 'icon' => 'bolt', 'tint' => 'blue', 'keywords' => 'relais file vérification urgents médias', 'permission' => Permission::RelaisViewPending],
                 ],
             ],
@@ -48,6 +49,7 @@ class Navigation
                 'label' => __('Administration'),
                 'items' => [
                     ['label' => __('Paramètres'), 'route' => 'console.settings', 'icon' => 'layers', 'tint' => 'gray', 'keywords' => 'réglages délais médias conservation', 'permission' => Permission::SettingsManage],
+                    ['label' => __('Données personnelles'), 'route' => 'console.privacy', 'icon' => 'eye-off', 'tint' => 'pink', 'keywords' => 'rgpd artci suppression export accès', 'permission' => Permission::UsersManage],
                     ['label' => __('Textes juridiques'), 'route' => 'console.legal', 'icon' => 'book', 'tint' => 'teal', 'keywords' => 'charte conditions confidentialité cgu versions', 'permission' => Permission::SettingsManage],
                     ['label' => __('Journal d’audit'), 'route' => 'console.audit', 'icon' => 'shield', 'tint' => 'purple', 'keywords' => 'traçabilité historique sécurité', 'permission' => Permission::AuditView],
                 ],

@@ -142,7 +142,7 @@ class Dashboard extends Component
     {
         return RelaisItem::query()
             ->whereIn('state', ['received', 'in_review'])
-            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'medias' => fn ($query) => $query->with('variants')])
+            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'lockedBy:id,name', 'medias' => fn ($query) => $query->with('variants')])
             ->orderByRaw("case urgency when 'urgent' then 0 when 'important' then 1 else 2 end")
             ->orderBy('received_at')
             ->limit(5)

@@ -14,6 +14,6 @@ enum AppelTarget: string
 
     public function label(): string
     {
-        return __("appels.targets.{$this->value}");
+        return __("appels_relais.targets.{$this->value}");
     }
 }

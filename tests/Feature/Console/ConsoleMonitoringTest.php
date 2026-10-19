@@ -1,15 +1,18 @@
 <?php
 
 use App\Domain\Access\Enums\Role;
+use App\Domain\Contribution\Actions\LockRelaisItem;
 use App\Domain\Contribution\Models\Category;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\Validated;
 use App\Domain\Contribution\Support\NetworkAlerts;
 use App\Domain\Settings\Settings;
 use App\Domain\Territoire\Models\Commune;
+use App\Livewire\Console\Dashboard;
 use App\Livewire\Console\Flux\Index as Flux;
 use App\Livewire\Console\Map\Index as Map;
 use App\Livewire\Console\Newsroom\Index as Newsroom;
+use App\Livewire\Console\Validation\Index;
 use App\Models\User;
 use Clickbar\Magellan\Data\Geometries\Point;
 use Database\Seeders\ListsSeeder;
@@ -101,4 +104,15 @@ it('affiche la salle de rédaction en plein écran [ADM-05]', function () {
 
 it('refuse le flux aux Relais et aux candidats', function () {
     $this->actingAs(User::factory()->withRole(Role::Relais)->create())->get(route('console.flux'))->assertForbidden();
+});
+
+it('affiche un relais verrouillé par un autre membre dans toutes les listes, sans chargement paresseux', function () {
+    $coordo = User::factory()->withTwoFactor()->coordonnateurOf($this->yopougon)->create();
+    $suppleant = User::factory()->withTwoFactor()->coordonnateurOf($this->yopougon)->create(['name' => 'Suppléant Yop']);
+    $relais = RelaisItem::factory()->create(['commune_id' => $this->yopougon->id, 'title' => 'Relais réservé']);
+    app(LockRelaisItem::class)->handle($relais, $suppleant);
+
+    Livewire::actingAs($coordo)->test(Flux::class)->assertSee('Relais réservé')->assertSee('Suppléant Yop');
+    Livewire::actingAs($coordo)->test(Dashboard::class)->assertSee('Relais réservé');
+    Livewire::actingAs($coordo)->test(Index::class)->assertSee('Suppléant Yop');
 });

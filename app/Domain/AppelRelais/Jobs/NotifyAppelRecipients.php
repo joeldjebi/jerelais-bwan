@@ -26,7 +26,7 @@ class NotifyAppelRecipients implements ShouldQueue
             return;
         }
 
-        $message = __('appels.sms', ['title' => str($appel->title)->limit(50), 'deadline' => $appel->deadline_at->timezone('Africa/Abidjan')->translatedFormat('j M à H:i')]);
+        $message = __('appels_relais.sms', ['title' => str($appel->title)->limit(50), 'deadline' => $appel->deadline_at->timezone('Africa/Abidjan')->translatedFormat('j M à H:i')]);
 
         AppelAudience::profiles($appel)->with('user')->chunkById(200, function ($profiles) use ($sms, $message): void {
             foreach ($profiles as $profile) {

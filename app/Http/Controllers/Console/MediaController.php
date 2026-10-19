@@ -22,6 +22,7 @@ class MediaController extends Controller
         $relais = RelaisItem::query()->find($media->relais_item_id);
         abort_if($relais === null, 404);
         Gate::authorize('view', $relais);
+        abort_if($media->purged_at !== null, 410, __('Fichier supprimé à l’échéance de la durée de conservation.'));
 
         $file = $variant === null ? $media : $media->variants()->where('kind', $variant)->firstOrFail();
         $disk = Storage::disk($file->disk);
