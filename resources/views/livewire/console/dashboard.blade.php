@@ -32,11 +32,45 @@
             </x-console.widget>
 
             @foreach ($this->stats as $stat)
-                <x-console.stat :label="$stat['label']" :value="$stat['value']" :count="$stat['count']" :suffix="$stat['suffix']" :icon="$stat['icon']" :hint="$stat['hint']" :tone="$stat['tone']" />
+                <x-console.stat :label="$stat['label']" :value="$stat['value']" :count="$stat['count']" :suffix="$stat['suffix']" :icon="$stat['icon']" :hint="$stat['hint']" :tone="$stat['tone']" :href="$stat['route'] && Route::has($stat['route']) ? route($stat['route']) : null" />
             @endforeach
 
             <x-console.panel :title="__('File de validation')" :description="__('Triée par urgence puis par ancienneté')" icon="inbox" tint="orange" :padded="false" class="col-span-2 lg:col-span-4">
-                <x-console.empty icon="check" tint="green" :title="__('Tout est à jour')" :text="__('Aucun relais en attente. Les relais filmés dans votre commune arriveront ici en temps réel, avec un signal pour les urgents.')" />
+                @if ($this->queue->isEmpty())
+                    <x-console.empty icon="check" tint="green" :title="__('Tout est à jour')" :text="__('Aucun relais en attente. Les relais filmés dans votre commune arriveront ici en temps réel, avec un signal pour les urgents.')" />
+                @else
+                    <ul>
+                        @foreach ($this->queue as $relais)
+                            <x-console.relais-row :relais="$relais" :sla="true" />
+                        @endforeach
+                    </ul>
+                @endif
+            </x-console.panel>
+
+            {{-- Activité de la commune sur 30 jours (COO-22) --}}
+            <x-console.widget class="col-span-2 flex flex-col justify-between">
+                <p class="text-[0.8125rem] font-semibold text-mute">{{ __('30 derniers jours') }}</p>
+                <div class="grid grid-cols-4 gap-2 text-center">
+                    @foreach ([__('Reçus') => $this->communeStats['received'], __('Validés') => $this->communeStats['validated'], __('Rejetés') => $this->communeStats['rejected'], __('Diffusés') => $this->communeStats['broadcast']] as $label => $value)
+                        <div><p class="text-[1.875rem] leading-none font-bold tabular-nums" data-count="{{ $value }}">{{ $value }}</p><p class="mt-1.5 text-[0.75rem] text-mute">{{ $label }}</p></div>
+                    @endforeach
+                </div>
+            </x-console.widget>
+
+            <x-console.panel :title="__('Couverture par quartier')" :description="__('Relais actifs par quartier')" icon="map-pin" tint="blue" :padded="false" class="col-span-2">
+                @if ($this->coverage === [])
+                    <x-console.empty icon="map-pin" tint="blue" :title="__('Aucun Relais actif')" :text="__('Acceptez des candidatures pour couvrir votre commune.')" />
+                @else
+                    @php $max = max(array_column($this->coverage, 'relais')); @endphp
+                    <ul class="space-y-2.5 px-4 py-3">
+                        @foreach ($this->coverage as $area)
+                            <li class="text-[0.875rem]">
+                                <div class="flex justify-between"><span>{{ $area['name'] }}</span><span class="font-semibold tabular-nums">{{ $area['relais'] }}</span></div>
+                                <div class="mt-1 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08]"><div class="h-full rounded-full bg-tile-blue" style="width: {{ round($area['relais'] / max(1, $max) * 100) }}%"></div></div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
             </x-console.panel>
         </div>
     @else

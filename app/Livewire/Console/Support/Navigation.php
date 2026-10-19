@@ -37,6 +37,7 @@ class Navigation
             [
                 'label' => __('Réseau'),
                 'items' => [
+                    ['label' => __('Relais'), 'route' => 'console.relais', 'icon' => 'signal', 'tint' => 'brand', 'keywords' => 'relais observateurs suspension radiation fiche', 'permission' => [Permission::RelaisProfilesSuspend, Permission::RelaisValidate]],
                     ['label' => __('Messagerie'), 'route' => 'console.messagerie', 'icon' => 'inbox', 'tint' => 'blue', 'keywords' => 'messages relais conversation', 'permission' => Permission::RelaisValidate],
                     ['label' => __('Candidatures'), 'route' => 'console.candidatures', 'icon' => 'inbox', 'tint' => 'pink', 'keywords' => 'recrutement dossiers candidats relais décision', 'permission' => Permission::CandidaturesValidate],
                     ['label' => __('Communes'), 'route' => 'console.communes', 'icon' => 'map-pin', 'tint' => 'blue', 'keywords' => 'territoire référentiel régions pilote', 'permission' => Permission::TerritoireManage],

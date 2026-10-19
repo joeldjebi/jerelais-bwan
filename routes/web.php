@@ -26,6 +26,8 @@ use App\Livewire\Console\Legal\Index as LegalPage;
 use App\Livewire\Console\Map\Index as MapPage;
 use App\Livewire\Console\Messagerie\Index as MessageriePage;
 use App\Livewire\Console\Newsroom\Index as NewsroomPage;
+use App\Livewire\Console\Relais\Index as RelaisPage;
+use App\Livewire\Console\Relais\Show as RelaisProfilePage;
 use App\Livewire\Console\Settings\Index as SettingsPage;
 use App\Livewire\Console\Team\Index as TeamPage;
 use App\Livewire\Console\Validation\Index as ValidationPage;
@@ -75,6 +77,8 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::get('medias/{media}/{variant?}', ConsoleMediaController::class)->whereIn('variant', ['thumbnail'])->name('medias.show');
         Route::livewire('appels', AppelsPage::class)->middleware('permission:'.Permission::AppelsCreate->value.'|'.Permission::AppelsCreateLocal->value)->name('appels');
         Route::livewire('appels/{appel}', AppelPage::class)->middleware('permission:'.Permission::AppelsCreate->value.'|'.Permission::AppelsCreateLocal->value)->name('appels.show');
+        Route::livewire('relais', RelaisPage::class)->middleware('permission:'.Permission::RelaisProfilesSuspend->value.'|'.Permission::RelaisValidate->value)->name('relais');
+        Route::livewire('relais/{profile}', RelaisProfilePage::class)->middleware('permission:'.Permission::RelaisProfilesSuspend->value.'|'.Permission::RelaisValidate->value)->name('relais.show');
         Route::livewire('messagerie', MessageriePage::class)->middleware('permission:'.Permission::RelaisValidate->value)->name('messagerie');
         Route::livewire('redaction', EditorialPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('editorial');
         Route::livewire('collections', CollectionsPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('collections');
