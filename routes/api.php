@@ -36,6 +36,7 @@ Route::name('api.v1.')->group(function () {
         Route::post('auth/logout', LogoutController::class)->name('auth.logout');
         Route::get('me', [MeController::class, 'show'])->name('me.show');
         Route::put('me/password', [MeController::class, 'updatePassword'])->name('me.password');
+        Route::get('me/badge', [MeController::class, 'badge'])->name('me.badge');
         Route::put('devices/current', [MeController::class, 'updateDevice'])->name('devices.current');
 
         Route::get('consents', [LegalController::class, 'consents'])->name('consents.index');

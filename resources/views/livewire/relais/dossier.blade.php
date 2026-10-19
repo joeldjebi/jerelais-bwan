@@ -61,12 +61,19 @@
             </h1>
             <p class="mt-3 text-lg leading-relaxed text-graphite" data-enter>
                 @switch($status)
-                    @case(CandidatureStatus::Accepted) {{ __('Votre badge de Relais vous attend dans l’application.') }} @break
+                    @case(CandidatureStatus::Accepted) {{ __('Voici votre badge. Vous pouvez désormais envoyer vos premiers relais depuis l’application.') }} @break
                     @case(CandidatureStatus::Rejected) {{ __('Vous trouverez ci-dessous le motif indiqué par votre coordonnateur.') }} @break
                     @default {{ __('Le coordonnateur de :commune va examiner votre dossier. Il peut vous appeler pour faire connaissance.', ['commune' => $candidature->commune?->name]) }}
                 @endswitch
             </p>
         </div>
+
+        @if ($status === CandidatureStatus::Accepted && ($relaisProfile = $this->relaisProfile))
+            <div class="mt-12" data-enter>
+                <x-relais.badge :profile="$relaisProfile" />
+                <p class="mx-auto mt-4 max-w-sm text-center text-[0.8125rem] leading-relaxed text-graphite">{{ __('Présentez ce badge si l’on vous demande qui vous êtes. Le QR code permet de vérifier qu’il est authentique.') }}</p>
+            </div>
+        @endif
 
         <div class="mx-auto mt-12 max-w-xl rounded-[1.75rem] bg-white p-7 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_24px_48px_-28px_rgb(0_0_0/0.18)] sm:p-8" data-enter>
             <p class="text-[0.8125rem] font-medium text-graphite">{{ __('Suivi') }}</p>

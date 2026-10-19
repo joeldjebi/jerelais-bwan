@@ -9,6 +9,7 @@ use App\Domain\Auth\Models\Device;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Formation\Models\QuizAttempt;
 use App\Domain\Legal\Models\Consent;
+use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Region;
 use App\Models\Concerns\HasPublicUuid;
@@ -116,6 +117,16 @@ class User extends Authenticatable
     public function quizAttempts(): HasMany
     {
         return $this->hasMany(QuizAttempt::class);
+    }
+
+    /**
+     * Profil de Relais, créé à l'acceptation de la candidature.
+     *
+     * @return HasOne<RelaisProfile, $this>
+     */
+    public function relaisProfile(): HasOne
+    {
+        return $this->hasOne(RelaisProfile::class);
     }
 
     /**

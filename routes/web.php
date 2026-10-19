@@ -3,7 +3,9 @@
 use App\Domain\Access\Enums\Permission;
 use App\Http\Controllers\Console\CandidatureDocumentController;
 use App\Http\Controllers\Console\SecurityController;
+use App\Http\Controllers\Public\BadgeVerificationController;
 use App\Http\Controllers\Public\LegalPageController;
+use App\Http\Controllers\Relais\BadgePhotoController;
 use App\Http\Controllers\Relais\DocumentPreviewController;
 use App\Http\Controllers\Relais\LogoutController as RelaisLogoutController;
 use App\Livewire\Console\Account\Index as AccountPage;
@@ -21,6 +23,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'public.home')->name('home');
 Route::get('textes/{type}', LegalPageController::class)->name('legal.show');
+Route::get('badge/{token}', BadgeVerificationController::class)->middleware('throttle:30,1')->name('badge.verify');
+Route::get('badge-photo/{profile}', BadgePhotoController::class)->middleware('signed')->name('relais.badge.photo');
 
 /*
  * Devenir Relais et espace candidat sur le site (WEB-02).

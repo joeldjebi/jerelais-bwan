@@ -8,6 +8,7 @@ use App\Domain\Candidature\Enums\CandidatureDecision;
 use App\Domain\Candidature\Events\CandidatureDecided;
 use App\Domain\Candidature\Exceptions\CandidatureLocked;
 use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Relais\Actions\CreateRelaisProfile;
 use App\Domain\Validation\Enums\RejectionTarget;
 use App\Domain\Validation\Models\RejectionReason;
 use App\Models\User;
@@ -20,7 +21,10 @@ use InvalidArgumentException;
  */
 class DecideCandidature
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly CreateRelaisProfile $createProfile,
+    ) {}
 
     public function handle(
         Candidature $candidature,
@@ -54,6 +58,7 @@ class DecideCandidature
 
             if ($decision === CandidatureDecision::Accept) {
                 $candidature->user->syncRoles([Role::Relais->value]);
+                $this->createProfile->handle($candidature);
             }
 
             $this->audit->record($decision->auditAction(), $candidature, array_filter([

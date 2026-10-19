@@ -47,7 +47,8 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | GET | `/appels` · `/appels/{uuid}` | Appels à relais de ma zone | 4 | MOB-23 |
 | GET/POST | `/conversations` · `/conversations/{uuid}/messages` | Messagerie | 4 | MOB-22 |
 | GET ✅ / PUT ✅ | `/me` · `/me/password` | Profil, définition du mot de passe | 1 | MOB-01 |
-| GET | `/me/stats` · `/me/badge` | Statistiques, badge | 2–4 | MOB-07, MOB-24 |
+| GET ✅ | `/me/badge` | Badge : numéro, prénom + initiale, commune, statut, photo (lien signé 15 min), `qr_payload` à encoder en QR ; 404 avant acceptation | 2 | MOB-07 |
+| GET | `/me/stats` | Statistiques | 4 | MOB-24 |
 | GET/DELETE | `/me/export` · `/me` | Droits des personnes | 5 | §9.4 |
 | GET | `/coordination/queue` | File du coordonnateur (mode mobile) | 3 | §4.5 |
 | POST | `/relais/{uuid}/lock` · `/relais/{uuid}/decision` | Verrou, décision | 3 | COO-14 |

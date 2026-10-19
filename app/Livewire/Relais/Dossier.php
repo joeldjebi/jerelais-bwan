@@ -25,6 +25,7 @@ use App\Domain\Legal\Models\Consent;
 use App\Domain\Legal\Models\LegalDocument;
 use App\Domain\Media\Exceptions\InfectedFile;
 use App\Domain\Media\Exceptions\VirusScanUnavailable;
+use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\LieuType;
 use App\Domain\Territoire\Models\Localite;
@@ -58,6 +59,7 @@ use Livewire\WithFileUploads;
  * @property-read Collection<int, FormationModule> $modules
  * @property-read Collection<int, QuizQuestion> $questions
  * @property-read QuizAttempt|null $lastAttempt
+ * @property-read RelaisProfile|null $relaisProfile
  */
 #[Layout('layouts::relais')]
 #[Title('Ma candidature')]
@@ -366,6 +368,12 @@ class Dossier extends Component
         return Consent::query()->with('legalDocument')->where('user_id', $this->user()->id)->whereIn('legal_document_id', array_values($ids))->get()
             ->keyBy(fn (Consent $consent): string => $consent->legalDocument->type->value)
             ->all();
+    }
+
+    #[Computed]
+    public function relaisProfile(): ?RelaisProfile
+    {
+        return RelaisProfile::withoutCommuneRestriction()->with(['commune', 'candidature.documents'])->where('user_id', $this->user()->id)->first();
     }
 
     #[Computed]
