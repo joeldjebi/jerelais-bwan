@@ -18,6 +18,13 @@
 <meta property="og:title" content="{{ $title ?? 'JE RELAIS' }}">
 <meta property="og:description" content="{{ $description ?? __('La plateforme des observateurs citoyens de REFLET TV.') }}">
 <meta property="og:type" content="website">
+<meta property="og:url" content="{{ url()->current() }}">
+<meta property="og:locale" content="fr_CI">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="{{ url()->current() }}">
+@if (request()->is('console*', 'espace-relais*', 'login', 'two-factor*', 'badge/*', 'forgot-password', 'reset-password*'))
+    <meta name="robots" content="noindex, nofollow">
+@endif
 
 {{-- Thème appliqué avant le premier rendu (pas de flash) ; la classe « js » active les animations. --}}
 <script nonce="{{ Vite::cspNonce() }}">

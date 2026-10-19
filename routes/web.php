@@ -7,6 +7,8 @@ use App\Http\Controllers\Console\MediaController as ConsoleMediaController;
 use App\Http\Controllers\Console\SecurityController;
 use App\Http\Controllers\Public\BadgeVerificationController;
 use App\Http\Controllers\Public\LegalPageController;
+use App\Http\Controllers\Public\PublicPagesController;
+use App\Http\Controllers\Public\ShowcaseController;
 use App\Http\Controllers\Relais\BadgePhotoController;
 use App\Http\Controllers\Relais\DocumentPreviewController;
 use App\Http\Controllers\Relais\LogoutController as RelaisLogoutController;
@@ -33,6 +35,7 @@ use App\Livewire\Console\Settings\Index as SettingsPage;
 use App\Livewire\Console\Team\Index as TeamPage;
 use App\Livewire\Console\Validation\Index as ValidationPage;
 use App\Livewire\Console\Validation\Show as ValidationShowPage;
+use App\Livewire\Public\Contact as ContactPage;
 use App\Livewire\Relais\Appels as RelaisAppelsPage;
 use App\Livewire\Relais\Dossier;
 use App\Livewire\Relais\Envoyer as RelaisSendPage;
@@ -43,6 +46,18 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'public.home')->name('home');
 Route::get('textes/{type}', LegalPageController::class)->name('legal.show');
+Route::get('vu-sur-reflet-tv', [ShowcaseController::class, 'index'])->name('showcase');
+Route::get('vu-sur-reflet-tv/{relais}/image', [ShowcaseController::class, 'image'])->name('showcase.image');
+Route::get('reseau', [PublicPagesController::class, 'network'])->name('network');
+Route::get('mentions-legales', [PublicPagesController::class, 'legalNotice'])->name('legal-notice');
+Route::get('cookies', [PublicPagesController::class, 'cookies'])->name('cookies');
+Route::get('sitemap.xml', [PublicPagesController::class, 'sitemap'])->name('sitemap');
+Route::get('robots.txt', fn () => response(
+    "User-agent: *\nDisallow: /console\nDisallow: /espace-relais\nDisallow: /badge\nDisallow: /badge-photo\nDisallow: /livewire\nDisallow: /api\n\nSitemap: ".route('sitemap')."\n",
+    200,
+    ['Content-Type' => 'text/plain'],
+))->name('robots');
+Route::livewire('contact', ContactPage::class)->name('contact');
 Route::get('badge/{token}', BadgeVerificationController::class)->middleware('throttle:30,1')->name('badge.verify');
 Route::get('badge-photo/{profile}', BadgePhotoController::class)->middleware('signed')->name('relais.badge.photo');
 

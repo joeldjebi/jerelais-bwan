@@ -216,6 +216,12 @@
                                 <x-ui.button size="sm" variant="success" icon="signal" wire:click="openEditorial('broadcast')">{{ __('Marquer diffusé') }}</x-ui.button>
                                 <x-ui.button size="sm" variant="ghost" wire:click="unselect">{{ __('Retirer') }}</x-ui.button>
                             @endif
+                            @if ($stateName === 'broadcast')
+                                <x-ui.button size="sm" variant="secondary" icon="sparkles" wire:click="openEditorial('showcase')">{{ $r->showcased_at ? __('Modifier la vitrine') : __('Publier sur la vitrine') }}</x-ui.button>
+                                @if ($r->showcased_at)
+                                    <x-ui.button size="sm" variant="ghost" wire:click="withdrawShowcase">{{ __('Retirer de la vitrine') }}</x-ui.button>
+                                @endif
+                            @endif
                             <x-ui.button size="sm" variant="secondary" icon="layers" wire:click="openEditorial('collection')">{{ __('Collection') }}</x-ui.button>
                         @endif
                         @if ($this->canExport)
@@ -448,10 +454,10 @@
                         </footer>
                     </form>
                 @elseif ($editorial !== '')
-                    <form wire:submit="{{ match ($editorial) { 'arbitrate-validate' => 'arbitrate(true)', 'arbitrate-reject' => 'arbitrate(false)', 'select' => 'selectRelais', 'broadcast' => 'markBroadcast', default => 'addToCollection' } }}" class="flex min-h-0 flex-1 flex-col">
+                    <form wire:submit="{{ match ($editorial) { 'arbitrate-validate' => 'arbitrate(true)', 'arbitrate-reject' => 'arbitrate(false)', 'select' => 'selectRelais', 'broadcast' => 'markBroadcast', 'showcase' => 'showcase', default => 'addToCollection' } }}" class="flex min-h-0 flex-1 flex-col">
                         <header class="px-6 pt-6 pb-3">
                             <h2 class="text-[1.375rem] font-bold tracking-[-0.02em]">
-                                {{ match ($editorial) { 'arbitrate-validate' => __('Valider'), 'arbitrate-reject' => __('Rejeter'), 'select' => __('Sélectionner et affecter'), 'broadcast' => __('Marquer diffusé'), default => __('Ajouter à une collection') } }}
+                                {{ match ($editorial) { 'arbitrate-validate' => __('Valider'), 'arbitrate-reject' => __('Rejeter'), 'select' => __('Sélectionner et affecter'), 'broadcast' => __('Marquer diffusé'), 'showcase' => __('Vitrine « Vu sur REFLET TV »'), default => __('Ajouter à une collection') } }}
                             </h2>
                             @if (str_starts_with($editorial, 'arbitrate'))
                                 <p class="mt-1 text-[0.875rem] text-mute">{{ __('Arbitrage de la rédaction : la décision précédente reste dans l’historique.') }}</p>
@@ -485,6 +491,14 @@
                                 <x-console.input :label="__('Date et heure de diffusion')" type="datetime-local" name="broadcastAt" wire:model="broadcastAt" />
                                 <x-console.input :label="__('Émission')" name="broadcastProgramme" wire:model="broadcastProgramme" />
                                 <x-console.input :label="__('Lien (facultatif)')" type="url" name="broadcastUrl" wire:model="broadcastUrl" placeholder="https://" />
+                            @elseif ($editorial === 'showcase')
+                                <x-console.input :label="__('Titre public')" name="showcaseTitle" wire:model="showcaseTitle" />
+                                <div>
+                                    <label for="showcase-text" class="block text-[0.8125rem] font-medium">{{ __('Texte public (facultatif)') }}</label>
+                                    <textarea id="showcase-text" wire:model="showcaseText" rows="3" class="{{ $textarea }}"></textarea>
+                                </div>
+                                <label class="flex items-center gap-3 text-[0.9375rem]"><input type="checkbox" wire:model="showcaseImage" class="ios-check">{{ __('Publier l’image') }}</label>
+                                <p class="text-[0.8125rem] text-mute">{{ __('Seuls ce titre, ce texte, la commune et le crédit choisi par le Relais sont publics. Jamais la position.') }}</p>
                             @else
                                 <x-console.select :label="__('Collection existante')" name="collection" wire:model="collection">
                                     <option value="">{{ __('Choisir') }}</option>

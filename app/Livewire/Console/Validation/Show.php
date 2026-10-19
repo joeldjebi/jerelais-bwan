@@ -14,6 +14,7 @@ use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\InReview;
 use App\Domain\Contribution\Support\RelaisVerification;
 use App\Domain\Editorial\Actions\ArbitrateRelaisItem;
+use App\Domain\Editorial\Actions\PublishToShowcase;
 use App\Domain\Editorial\Actions\SelectRelaisItem;
 use App\Domain\Editorial\Exceptions\EditorialRefused;
 use App\Domain\Editorial\Models\RelaisCollection;
@@ -84,6 +85,12 @@ class Show extends Component
     public string $collection = '';
 
     public string $newCollection = '';
+
+    public string $showcaseTitle = '';
+
+    public string $showcaseText = '';
+
+    public bool $showcaseImage = false;
 
     public function mount(RelaisItem $relais, LockRelaisItem $lock): void
     {
@@ -183,6 +190,9 @@ class Show extends Component
         $this->programme = (string) $this->relais->programme;
         $this->broadcastAt = now()->timezone('Africa/Abidjan')->format('Y-m-d\TH:i');
         $this->broadcastProgramme = (string) $this->relais->programme;
+        $this->showcaseTitle = (string) ($this->relais->showcase_title ?? $this->relais->title);
+        $this->showcaseText = (string) $this->relais->showcase_text;
+        $this->showcaseImage = $this->relais->showcased_at !== null ? $this->relais->showcase_with_image : ! ($this->relais->blur_required || $this->relais->has_minors);
         $this->editorial = $sheet;
     }
 
@@ -257,6 +267,32 @@ class Show extends Component
         }
 
         $this->closeEditorial(__('Diffusion enregistrée. Le Relais est prévenu.'));
+    }
+
+    /**
+     * Vitrine « Vu sur REFLET TV » (WEB-05, ADM-17).
+     */
+    public function showcase(PublishToShowcase $publish): void
+    {
+        $this->authorizeEditorial();
+        $this->validate(['showcaseTitle' => ['required', 'string', 'max:150'], 'showcaseText' => ['nullable', 'string', 'max:1000']], attributes: ['showcaseTitle' => __('titre public')]);
+
+        try {
+            $publish->publish($this->relais, $this->user(), $this->showcaseTitle, $this->showcaseText, $this->showcaseImage);
+        } catch (EditorialRefused $exception) {
+            $this->addError('editorial', $exception->getMessage());
+
+            return;
+        }
+
+        $this->closeEditorial(__('Publié sur la vitrine.'));
+    }
+
+    public function withdrawShowcase(PublishToShowcase $publish): void
+    {
+        $this->authorizeEditorial();
+        $publish->withdraw($this->relais, $this->user());
+        $this->closeEditorial(__('Retiré de la vitrine.'));
     }
 
     public function addToCollection(AuditLogger $audit): void
