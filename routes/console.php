@@ -65,3 +65,31 @@ Schedule::command('appels:close-expired')->everyFiveMinutes()->withoutOverlappin
 Schedule::command('relais:release-locks')->everyMinute()->withoutOverlapping();
 Schedule::command('relais:escalate')->everyMinute()->withoutOverlapping();
 Schedule::command('medias:purge-abandoned')->hourly()->withoutOverlapping();
+
+/*
+ * Autorise le navigateur à déposer les morceaux de médias directement sur Wasabi (WEB-04).
+ * Ajoute une règle CORS pour les origines données, sans retirer les règles existantes du bucket.
+ */
+Artisan::command('medias:configure-cors {origins* : ex. http://localhost:8000 https://jerelais.reflet.tv}', function (array $origins) {
+    $client = Illuminate\Support\Facades\Storage::disk('medias')->getClient();
+    $bucket = (string) config('filesystems.disks.medias.bucket');
+
+    try {
+        $rules = $client->getBucketCors(['Bucket' => $bucket])['CORSRules'] ?? [];
+    } catch (Aws\S3\Exception\S3Exception) {
+        $rules = [];
+    }
+
+    $rules = array_values(array_filter($rules, fn (array $rule): bool => ($rule['ID'] ?? '') !== 'jerelais-upload'));
+    $rules[] = [
+        'ID' => 'jerelais-upload',
+        'AllowedOrigins' => array_values($origins),
+        'AllowedMethods' => ['PUT', 'GET', 'HEAD'],
+        'AllowedHeaders' => ['*'],
+        'ExposeHeaders' => ['ETag'],
+        'MaxAgeSeconds' => 3000,
+    ];
+
+    $client->putBucketCors(['Bucket' => $bucket, 'CORSConfiguration' => ['CORSRules' => $rules]]);
+    $this->components->info('Règle CORS « jerelais-upload » enregistrée pour : '.implode(', ', $origins));
+})->purpose('Autorise l’envoi direct des médias depuis le navigateur vers Wasabi');
