@@ -46,7 +46,7 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | PUT | *URL signée Wasabi* | Déposer un morceau (5 Mo minimum sauf le dernier) ; noter l'en-tête `ETag` de la réponse | 3 | MOB-16 |
 | GET ✅ / POST ✅ | `/medias/{uuid}` · `/medias/{uuid}/complete` | Reprise (morceaux reçus et URL des manquants) ; clôture avec `parts[{number, etag}]` ; statut `pending → uploaded → processing → ready` ou `rejected` (motif) | 3 | MOB-16 |
 | GET ✅ | `/relais` · `/relais/{uuid}` | Mes relais et statut public (`uploading`, `received`, `complement_requested`, `validated`, `rejected`, `selected`, `broadcast`, `archived`) | 3 | MOB-20 |
-| POST | `/relais/{uuid}/complement` | Répondre à un complément | 3 | MOB-22 |
+| POST ✅ | `/relais/{uuid}/complement` | Répondre à un complément : `message` (facultatif si un média a été ajouté) ; le relais revient dans la file | 3 | COO-14, MOB-22 |
 | GET | `/appels` · `/appels/{uuid}` | Appels à relais de ma zone | 4 | MOB-23 |
 | GET/POST | `/conversations` · `/conversations/{uuid}/messages` | Messagerie | 4 | MOB-22 |
 | GET ✅ / PUT ✅ | `/me` · `/me/password` | Profil, définition du mot de passe | 1 | MOB-01 |

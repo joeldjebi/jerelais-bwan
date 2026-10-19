@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Relais;
 
+use App\Domain\Contribution\Actions\RespondToComplement;
 use App\Domain\Contribution\Actions\SaveRelaisItem;
 use App\Domain\Contribution\Actions\SubmitRelaisItem;
 use App\Domain\Contribution\Exceptions\RelaisIncomplete;
@@ -99,6 +100,27 @@ class RelaisItemController extends Controller
 
         try {
             $submit->handle($relais);
+        } catch (RelaisIncomplete $exception) {
+            throw ValidationException::withMessages($exception->missing);
+        } catch (RelaisNotEditable $exception) {
+            throw new ConflictHttpException($exception->getMessage());
+        }
+
+        return $this->respond($relais);
+    }
+
+    /**
+     * Répondre à une demande de complément.
+     *
+     * Message facultatif si un média a été ajouté entre-temps (`POST /relais/{uuid}/medias`). Le relais revient dans la file.
+     */
+    public function complement(Request $request, RelaisItem $relais, RespondToComplement $respond): JsonResponse
+    {
+        abort_unless($relais->user_id === $request->user()?->getAuthIdentifier(), 404);
+        $request->validate(['message' => ['nullable', 'string', 'max:2000']]);
+
+        try {
+            $respond->handle($relais, $request->string('message')->toString() ?: null);
         } catch (RelaisIncomplete $exception) {
             throw ValidationException::withMessages($exception->missing);
         } catch (RelaisNotEditable $exception) {

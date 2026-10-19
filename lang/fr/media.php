@@ -17,5 +17,6 @@ return [
         'too_long' => 'Le média dépasse la durée maximale autorisée.',
         'too_large' => 'Le fichier dépasse la taille maximale.',
         'unreadable' => 'Le fichier est illisible.',
+        'abandoned' => 'L’envoi n’a jamais été terminé.',
     ],
 ];

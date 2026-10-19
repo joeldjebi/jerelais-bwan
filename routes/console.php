@@ -1,8 +1,12 @@
 <?php
 
+use App\Domain\Contribution\Actions\EscalateOverdueRelais;
+use App\Domain\Contribution\Actions\ReleaseExpiredLocks;
+use App\Domain\Media\Actions\PurgeAbandonedUploads;
 use App\Models\User;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 use PragmaRX\Google2FA\Google2FA;
 
 Artisan::command('inspire', function () {
@@ -33,3 +37,22 @@ Artisan::command('jerelais:demo-2fa {email}', function (string $email) {
 
     return 0;
 })->purpose('Affiche le code de double authentification courant d’un compte de démo (local uniquement)');
+
+/*
+ * Traitements planifiés du cycle de vie des relais (§8.2, COO-17).
+ */
+Artisan::command('relais:escalate', function (EscalateOverdueRelais $escalate) {
+    $this->components->info($escalate->handle().' relais escaladé(s).');
+})->purpose('Escalade les relais non traités dans le délai cible');
+
+Artisan::command('relais:release-locks', function (ReleaseExpiredLocks $release) {
+    $this->components->info($release->handle().' verrou(s) expiré(s) libéré(s).');
+})->purpose('Remet dans la file les relais dont le verrou a expiré');
+
+Artisan::command('medias:purge-abandoned', function (PurgeAbandonedUploads $purge) {
+    $this->components->info($purge->handle().' envoi(s) abandonné(s) annulé(s).');
+})->purpose('Annule les envois de médias jamais terminés');
+
+Schedule::command('relais:release-locks')->everyMinute()->withoutOverlapping();
+Schedule::command('relais:escalate')->everyMinute()->withoutOverlapping();
+Schedule::command('medias:purge-abandoned')->hourly()->withoutOverlapping();

@@ -50,6 +50,8 @@ class AuditPresenter
         'relais.rejected' => ['Relais rejeté', 'x', 'danger'],
         'relais.complement_requested' => ['Complément demandé au Relais', 'inbox', 'warning'],
         'relais.flagged_sensitive' => ['Relais transmis à la rédaction (sensible)', 'flag', 'warning'],
+        'relais.escalated' => ['Relais en retard escaladé', 'clock', 'warning'],
+        'relais.complement_received' => ['Complément envoyé par le Relais', 'inbox', 'accent'],
         'relais.received' => ['Relais reçu', 'inbox', 'accent'],
         'relais.created' => ['Nouveau Relais', 'signal', 'success'],
         'legal.accepted' => ['Charte et conditions acceptées', 'flag', 'success'],

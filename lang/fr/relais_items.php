@@ -63,6 +63,7 @@ return [
         'reason_required' => 'Choisissez le motif du rejet dans la liste.',
         'comment_required' => 'Précisez votre demande dans le commentaire.',
         'blur_required' => 'Indiquez si un floutage est nécessaire : des personnes sont identifiables.',
+        'complement_empty' => 'Répondez par un message ou ajoutez un média.',
         'missing' => 'Il manque des informations avant l’envoi.',
     ],
 ];
