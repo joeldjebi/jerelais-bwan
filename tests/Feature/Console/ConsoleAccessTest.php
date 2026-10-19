@@ -28,7 +28,7 @@ it('ouvre la console une fois la double authentification confirmée', function (
     $this->actingAs(User::factory()->withTwoFactor()->withRole(Role::Journaliste)->create(['name' => 'Awa Traoré']))
         ->get(route('console.home'))
         ->assertOk()
-        ->assertSee('Bonjour, Awa.')
+        ->assertSee('Bonjour, Awa')
         ->assertSee('Journaliste')
         ->assertDontSee('Mise en service');
 });

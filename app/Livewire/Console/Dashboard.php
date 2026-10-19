@@ -99,11 +99,17 @@ class Dashboard extends Component
         $open = Commune::query()->active()->count();
         $covered = Commune::query()->whereHas('coordinators')->count();
 
-        return [
-            ['label' => __('Mise en service'), 'value' => $done.'/'.max(1, count($setup)), 'ratio' => $setup === [] ? 1.0 : $done / count($setup), 'color' => '#ff9f0a'],
+        $rings = [
             ['label' => __('Communes ouvertes'), 'value' => $open.'/'.$total, 'ratio' => $open / $total, 'color' => '#30d158'],
             ['label' => __('Communes coordonnées'), 'value' => $covered.'/'.$total, 'ratio' => $covered / $total, 'color' => '#0a84ff'],
         ];
+
+        // L'anneau de mise en service ne concerne que l'administration.
+        if ($setup !== []) {
+            array_unshift($rings, ['label' => __('Mise en service'), 'value' => $done.'/'.count($setup), 'ratio' => $done / count($setup), 'color' => '#ff9f0a']);
+        }
+
+        return $rings;
     }
 
     /**

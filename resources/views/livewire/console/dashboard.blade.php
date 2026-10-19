@@ -44,8 +44,8 @@
             {{-- Anneaux d'activité --}}
             <x-console.widget class="col-span-2 row-span-2 flex flex-col">
                 <div class="flex items-center gap-2.5">
-                    <x-console.tile icon="bolt" tint="orange" size="sm" />
-                    <p class="text-[0.8125rem] font-semibold text-mute">{{ __('Mise en service') }}</p>
+                    <x-console.tile :icon="$setup !== [] ? 'bolt' : 'signal'" :tint="$setup !== [] ? 'orange' : 'green'" size="sm" />
+                    <p class="text-[0.8125rem] font-semibold text-mute">{{ $setup !== [] ? __('Mise en service') : __('Couverture du réseau') }}</p>
                 </div>
                 <div class="mt-4 flex flex-1 flex-col items-center gap-6 sm:flex-row">
                     <svg viewBox="0 0 120 120" class="size-44 shrink-0 -rotate-90" aria-hidden="true">
