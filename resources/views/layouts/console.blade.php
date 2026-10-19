@@ -139,6 +139,6 @@
     <x-console.command-palette :commands="Navigation::commands($user)" />
     <x-console.toasts />
 
-    @livewireScriptConfig
+    @livewireScriptConfig(['nonce' => Vite::cspNonce()])
 </body>
 </html>

@@ -144,3 +144,38 @@ Artisan::command('data:purge', function (PurgeExpiredData $purge) {
 })->purpose('Applique les durées de conservation des données personnelles et des médias');
 
 Schedule::command('data:purge')->dailyAt('03:00')->timezone('Africa/Abidjan')->withoutOverlapping();
+
+/*
+ * Vérification avant mise en production (durcissement, §10) : refuse de valider une configuration dangereuse.
+ */
+Artisan::command('jerelais:check-production', function () {
+    $checks = [
+        'APP_ENV = production' => app()->isProduction(),
+        'APP_DEBUG désactivé' => ! config('app.debug'),
+        'APP_URL en HTTPS' => str_starts_with((string) config('app.url'), 'https://'),
+        'Clé d’application définie' => filled(config('app.key')),
+        'Clé HMAC des téléphones distincte de APP_KEY' => filled(config('jerelais.phone.hash_key')) && config('jerelais.phone.hash_key') !== config('app.key'),
+        'Cookies de session sécurisés' => (bool) config('session.secure'),
+        'Session chiffrée' => (bool) config('session.encrypt'),
+        'Passerelle SMS réelle (pas « log »)' => config('jerelais.sms.driver') !== 'log',
+        'Antivirus ClamAV' => config('jerelais.antivirus.driver') === 'clamav',
+        'Code 2FA de démonstration désactivé' => blank(config('jerelais.demo.two_factor_code')),
+        'Stockage Wasabi configuré' => filled(config('filesystems.disks.medias.key')) && filled(config('filesystems.disks.medias.bucket')),
+        'Bucket dédié aux pièces d’identité' => config('filesystems.disks.identity.bucket') !== config('filesystems.disks.medias.bucket'),
+        'File d’attente Redis' => config('queue.default') === 'redis',
+        'Diffusion temps réel Reverb' => config('broadcasting.default') === 'reverb',
+        'Courriel sortant configuré' => ! in_array(config('mail.default'), ['log', 'array'], true),
+        'Sentry configuré' => filled(config('sentry.dsn')),
+    ];
+
+    $failed = 0;
+
+    foreach ($checks as $label => $ok) {
+        $ok ? $this->components->twoColumnDetail($label, '<fg=green>OK</>') : $this->components->twoColumnDetail($label, '<fg=red>À CORRIGER</>');
+        $failed += $ok ? 0 : 1;
+    }
+
+    $failed === 0 ? $this->components->info('Configuration prête pour la production.') : $this->components->error($failed.' point(s) à corriger avant la mise en production.');
+
+    return $failed === 0 ? 0 : 1;
+})->purpose('Vérifie la configuration de production (sécurité, services externes)');

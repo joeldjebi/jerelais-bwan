@@ -39,6 +39,6 @@
         {{ __('JE RELAIS · les observateurs citoyens de REFLET TV') }}
     </footer>
 
-    @livewireScriptConfig
+    @livewireScriptConfig(['nonce' => Vite::cspNonce()])
 </body>
 </html>

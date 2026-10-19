@@ -9,6 +9,6 @@
     <main data-console-main class="h-full">
         {{ $slot }}
     </main>
-    @livewireScriptConfig
+    @livewireScriptConfig(['nonce' => Vite::cspNonce()])
 </body>
 </html>
