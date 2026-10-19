@@ -11,6 +11,14 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Motif de rejet paramétrable (COO-15 pour les relais, COO-02 pour les candidatures).
+ *
+ * @property int $id
+ * @property string $uuid
+ * @property RejectionTarget $applies_to
+ * @property string $label
+ * @property string $slug
+ * @property int $position
+ * @property bool $is_active
  */
 #[Fillable(['applies_to', 'label', 'slug', 'position', 'is_active'])]
 class RejectionReason extends Model

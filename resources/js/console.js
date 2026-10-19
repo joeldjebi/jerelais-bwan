@@ -163,7 +163,7 @@ function choreograph() {
             stagger: { each: 0.07, grid: 'auto', from: 'start' },
             clearProps: 'transform',
         }, 0.15)
-        .from(main.querySelectorAll('[data-enter]:not([data-bento] > [data-enter])'), { y: 24, autoAlpha: 0, duration: 0.9, stagger: 0.07, clearProps: 'transform' }, 0.2)
+        .from(main.querySelectorAll('[data-enter]:not([data-bento] > [data-enter]):not([data-widget])'), { y: 24, autoAlpha: 0, duration: 0.9, stagger: 0.07, clearProps: 'transform' }, 0.2)
         .from(main.querySelectorAll('[data-stagger] > *'), { y: 8, autoAlpha: 0, duration: 0.35, stagger: 0.03, ease: 'power1.out', clearProps: 'all' }, 0.45);
 
     // Carte du réseau : les points s'allument depuis Abidjan.

@@ -77,6 +77,24 @@ return [
     ],
 
     'document_not_expected' => 'Cette pièce n’est pas demandée pour votre dossier.',
+    'decision' => [
+        'reason_required' => 'Choisissez le motif du refus dans la liste.',
+        'comment_required' => 'Précisez au candidat ce qu’il doit compléter.',
+    ],
+
+    'sms' => [
+        'accept' => 'JE RELAIS : bonne nouvelle, votre candidature est acceptée ! Ouvrez l’application pour découvrir votre badge.',
+        'reject' => 'JE RELAIS : votre candidature a été examinée. Connectez-vous pour connaître la décision.',
+        'complement' => 'JE RELAIS : votre coordonnateur vous demande de compléter votre dossier. Connectez-vous pour le faire.',
+    ],
+
+    'duplicates' => [
+        'document' => 'Même pièce d’identité',
+        'identity' => 'Même nom et date de naissance',
+        'email' => 'Même adresse e-mail',
+        'device' => 'Même appareil',
+    ],
+
     'age_refused' => 'Il faut avoir au moins :age ans pour devenir Relais.',
     'locked' => 'Votre dossier a été déposé : il n’est plus modifiable pour le moment.',
     'incomplete' => 'Votre dossier n’est pas encore complet.',

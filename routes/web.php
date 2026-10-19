@@ -1,12 +1,15 @@
 <?php
 
 use App\Domain\Access\Enums\Permission;
+use App\Http\Controllers\Console\CandidatureDocumentController;
 use App\Http\Controllers\Console\SecurityController;
 use App\Http\Controllers\Public\LegalPageController;
 use App\Http\Controllers\Relais\DocumentPreviewController;
 use App\Http\Controllers\Relais\LogoutController as RelaisLogoutController;
 use App\Livewire\Console\Account\Index as AccountPage;
 use App\Livewire\Console\Audit\Index as AuditPage;
+use App\Livewire\Console\Candidatures\Index as CandidaturesPage;
+use App\Livewire\Console\Candidatures\Show as CandidaturePage;
 use App\Livewire\Console\Communes\Index as CommunesPage;
 use App\Livewire\Console\Dashboard;
 use App\Livewire\Console\Legal\Index as LegalPage;
@@ -44,6 +47,9 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::livewire('communes', CommunesPage::class)->middleware('permission:'.Permission::TerritoireManage->value)->name('communes');
         Route::livewire('equipe', TeamPage::class)->middleware('permission:'.Permission::UsersManage->value)->name('team');
         Route::livewire('parametres', SettingsPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('settings');
+        Route::livewire('candidatures', CandidaturesPage::class)->middleware('permission:'.Permission::CandidaturesValidate->value)->name('candidatures');
+        Route::livewire('candidatures/{candidature}', CandidaturePage::class)->middleware('permission:'.Permission::CandidaturesValidate->value)->name('candidatures.show');
+        Route::get('candidatures/pieces/{document}', CandidatureDocumentController::class)->middleware('signed')->name('candidatures.document');
         Route::livewire('textes', LegalPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('legal');
         Route::livewire('journal', AuditPage::class)->middleware('permission:'.Permission::AuditView->value)->name('audit');
     });

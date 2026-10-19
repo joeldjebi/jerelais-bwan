@@ -8,12 +8,17 @@ use App\Domain\Auth\Contracts\SmsGateway;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Sms\LogSmsGateway;
 use App\Domain\Auth\Support\DemoTwoFactorProvider;
+use App\Domain\Candidature\Events\CandidatureDecided;
+use App\Domain\Candidature\Listeners\NotifyCandidateOfDecision;
+use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Candidature\Policies\CandidaturePolicy;
 use App\Domain\Media\Antivirus\ClamAvScanner;
 use App\Domain\Media\Antivirus\FakeVirusScanner;
 use App\Domain\Media\Contracts\VirusScanner;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
@@ -63,6 +68,9 @@ class DomainServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::subscribe(RecordAuthenticationEvents::class);
+        Event::listen(CandidatureDecided::class, NotifyCandidateOfDecision::class);
+
+        Gate::policy(Candidature::class, CandidaturePolicy::class);
 
         $this->configureRateLimiting();
     }

@@ -26,6 +26,7 @@ class Navigation
             [
                 'label' => __('Réseau'),
                 'items' => [
+                    ['label' => __('Candidatures'), 'route' => 'console.candidatures', 'icon' => 'inbox', 'tint' => 'pink', 'keywords' => 'recrutement dossiers candidats relais décision', 'permission' => Permission::CandidaturesValidate],
                     ['label' => __('Communes'), 'route' => 'console.communes', 'icon' => 'map-pin', 'tint' => 'blue', 'keywords' => 'territoire référentiel régions pilote', 'permission' => Permission::TerritoireManage],
                     ['label' => __('Équipe'), 'route' => 'console.team', 'icon' => 'users', 'tint' => 'green', 'keywords' => 'coordonnateurs journalistes comptes membres', 'permission' => Permission::UsersManage],
                 ],
