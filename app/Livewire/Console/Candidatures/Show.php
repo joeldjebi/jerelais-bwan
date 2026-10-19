@@ -133,7 +133,7 @@ class Show extends Component
     public function render(): View
     {
         return view('livewire.console.candidatures.show')
-            ->title($this->candidature->fullName() ?: __('Candidature'));
+            ->title($this->candidature->fullName() ?: __('Dossier de candidature'));
     }
 
     private function decide(DecideCandidature $decide, CandidatureDecision $decision, ?RejectionReason $reason = null): void

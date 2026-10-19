@@ -71,7 +71,9 @@ Schedule::command('medias:purge-abandoned')->hourly()->withoutOverlapping();
  * Ajoute une règle CORS pour les origines données, sans retirer les règles existantes du bucket.
  */
 Artisan::command('medias:configure-cors {origins* : ex. http://localhost:8000 https://jerelais.reflet.tv}', function (array $origins) {
-    $client = Illuminate\Support\Facades\Storage::disk('medias')->getClient();
+    /** @var Illuminate\Filesystem\AwsS3V3Adapter $disk */
+    $disk = Illuminate\Support\Facades\Storage::disk('medias');
+    $client = $disk->getClient();
     $bucket = (string) config('filesystems.disks.medias.bucket');
 
     try {

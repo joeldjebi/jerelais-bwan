@@ -39,7 +39,7 @@ class PublishAppel
         $national = $creator->hasPermissionTo(Permission::AppelsCreate->value);
 
         if (! $national && ! $creator->hasPermissionTo(Permission::AppelsCreateLocal->value)) {
-            throw new InvalidArgumentException(__('appels.errors.forbidden'));
+            throw new InvalidArgumentException(__('appels_relais.errors.forbidden'));
         }
 
         $target = AppelTarget::from($data['target']);
@@ -53,7 +53,7 @@ class PublishAppel
         }
 
         if ($target === AppelTarget::Communes && $communeIds === []) {
-            throw new InvalidArgumentException(__('appels.errors.no_commune'));
+            throw new InvalidArgumentException(__('appels_relais.errors.no_commune'));
         }
 
         $needsApproval = ! $national && (bool) $this->settings->get('appels.local_requires_approval');

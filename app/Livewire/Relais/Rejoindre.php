@@ -7,6 +7,7 @@ use App\Domain\Auth\Actions\ConfirmPhoneOwnership;
 use App\Domain\Auth\Actions\RequestOtp;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Exceptions\AuthenticationRefused;
+use App\Domain\Contribution\Support\RelaisSender;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -113,7 +114,7 @@ class Rejoindre extends Component
         $user->forceFill(['last_login_at' => now()])->save();
         $audit->record('auth.login', $user, ['method' => 'otp', 'channel' => 'web'], actor: $user);
 
-        return $this->redirectRoute('relais.candidature', navigate: true);
+        return $this->redirectRoute(RelaisSender::profileOf($user) !== null ? 'relais.items' : 'relais.candidature', navigate: true);
     }
 
     public function changeNumber(): void

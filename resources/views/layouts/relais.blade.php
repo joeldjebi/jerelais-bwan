@@ -28,6 +28,9 @@
     </header>
 
     <main id="contenu" class="px-5 pt-10 pb-24 sm:pt-14">
+        @if ($toast = session('toast'))
+            <div class="mx-auto mb-6 max-w-3xl rounded-2xl bg-tile-green/12 px-5 py-3 text-[0.9375rem] font-medium text-[#248a3d]" role="status">{{ $toast['message'] ?? '' }}</div>
+        @endif
         {{ $slot }}
     </main>
 

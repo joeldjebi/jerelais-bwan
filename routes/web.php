@@ -10,6 +10,7 @@ use App\Http\Controllers\Public\LegalPageController;
 use App\Http\Controllers\Relais\BadgePhotoController;
 use App\Http\Controllers\Relais\DocumentPreviewController;
 use App\Http\Controllers\Relais\LogoutController as RelaisLogoutController;
+use App\Http\Controllers\Relais\WebMediaController;
 use App\Livewire\Console\Account\Index as AccountPage;
 use App\Livewire\Console\Appels\Index as AppelsPage;
 use App\Livewire\Console\Appels\Show as AppelPage;
@@ -32,7 +33,11 @@ use App\Livewire\Console\Settings\Index as SettingsPage;
 use App\Livewire\Console\Team\Index as TeamPage;
 use App\Livewire\Console\Validation\Index as ValidationPage;
 use App\Livewire\Console\Validation\Show as ValidationShowPage;
+use App\Livewire\Relais\Appels as RelaisAppelsPage;
 use App\Livewire\Relais\Dossier;
+use App\Livewire\Relais\Envoyer as RelaisSendPage;
+use App\Livewire\Relais\MesRelais as RelaisItemsPage;
+use App\Livewire\Relais\Messages as RelaisMessagesPage;
 use App\Livewire\Relais\Rejoindre;
 use Illuminate\Support\Facades\Route;
 
@@ -50,6 +55,15 @@ Route::middleware('auth')->prefix('espace-relais')->name('relais.')->group(funct
     Route::livewire('candidature', Dossier::class)->name('candidature');
     Route::get('candidature/pieces/{document}', DocumentPreviewController::class)->name('documents.show');
     Route::post('deconnexion', RelaisLogoutController::class)->name('logout');
+
+    // Espace Relais (WEB-03, WEB-04)
+    Route::livewire('envoyer', RelaisSendPage::class)->name('send');
+    Route::livewire('mes-relais', RelaisItemsPage::class)->name('items');
+    Route::livewire('appels', RelaisAppelsPage::class)->name('appels');
+    Route::livewire('messages', RelaisMessagesPage::class)->name('messages');
+    Route::post('relais/{relais}/medias', [WebMediaController::class, 'store'])->middleware('throttle:120,1')->name('medias.store');
+    Route::get('medias/{media}', [WebMediaController::class, 'show'])->name('medias.show');
+    Route::post('medias/{media}/complete', [WebMediaController::class, 'complete'])->name('medias.complete');
 });
 
 /*

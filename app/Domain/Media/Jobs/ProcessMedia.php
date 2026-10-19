@@ -73,7 +73,7 @@ class ProcessMedia implements ShouldQueue
 
             $sha256 = (string) hash_file('sha256', $local);
 
-            if (! hash_equals($media->declared_sha256, $sha256)) {
+            if ($media->declared_sha256 !== null && ! hash_equals($media->declared_sha256, $sha256)) {
                 $this->reject($media, 'checksum', $audit);
 
                 return;

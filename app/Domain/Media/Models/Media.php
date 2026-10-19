@@ -28,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $declared_mime
  * @property string|null $mime
  * @property int $size
- * @property string $declared_sha256
+ * @property string|null $declared_sha256
  * @property string|null $sha256
  * @property string|null $phash
  * @property string $disk
