@@ -70,6 +70,7 @@ class Index extends Component
             ->whereIn('state', $this->stateNames(self::FILTERS[$this->filter] ?? self::FILTERS['a-valider']))
             ->when($pending, fn ($query) => $query
                 ->orderByRaw("case urgency when 'urgent' then 0 when 'important' then 1 else 2 end")
+                ->orderByRaw('appel_relais_id is null')
                 ->orderBy('received_at'))
             ->when(! $pending, fn ($query) => $query->latest('updated_at'))
             ->paginate(25);

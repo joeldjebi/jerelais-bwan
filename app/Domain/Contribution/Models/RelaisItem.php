@@ -3,6 +3,7 @@
 namespace App\Domain\Contribution\Models;
 
 use App\Domain\Access\Concerns\BelongsToCommune;
+use App\Domain\AppelRelais\Models\AppelRelais;
 use App\Domain\Contribution\Enums\CreditMode;
 use App\Domain\Contribution\Enums\PeopleConsent;
 use App\Domain\Contribution\Enums\Urgency;
@@ -40,6 +41,8 @@ use Spatie\ModelStates\HasStates;
  * @property int|null $declared_commune_id
  * @property string|null $routed_by
  * @property int|null $category_id
+ * @property int|null $appel_relais_id
+ * @property-read AppelRelais|null $appel
  * @property RelaisState $state
  * @property Urgency $urgency
  * @property string|null $title
@@ -150,6 +153,16 @@ class RelaisItem extends Model
     public function declaredCommune(): BelongsTo
     {
         return $this->belongsTo(Commune::class, 'declared_commune_id');
+    }
+
+    /**
+     * Appel à relais auquel ce relais répond (MOB-23).
+     *
+     * @return BelongsTo<AppelRelais, $this>
+     */
+    public function appel(): BelongsTo
+    {
+        return $this->belongsTo(AppelRelais::class, 'appel_relais_id');
     }
 
     /**

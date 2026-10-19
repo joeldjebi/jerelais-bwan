@@ -4,6 +4,7 @@ return [
     'groups' => [
         'media' => ['Médias', 'Durées et tailles maximales acceptées à l’envoi (MOB-11, §10).'],
         'validation' => ['Validation', 'Délais cibles de traitement et verrouillage des relais (COO-17, §8.2).'],
+        'appels' => ['Appels à relais', 'Appels locaux lancés par les coordonnateurs (COO-21).'],
         'alerts' => ['Alertes', 'Afflux inhabituel de relais sur une même commune, signe d’un événement (ADM-03).'],
         'candidature' => ['Candidatures', 'Conditions d’admission des Relais (MOB-05, §9.3).'],
         'retention' => ['Conservation des données', 'Durées avant purge automatique (§9.4). Vide : aucune purge.'],
@@ -20,6 +21,9 @@ return [
             'sla_urgent_minutes' => 'Délai cible — relais urgent',
             'sla_normal_minutes' => 'Délai cible — relais normal',
             'lock_minutes' => 'Verrouillage d’un relais ouvert',
+        ],
+        'appels' => [
+            'local_requires_approval' => 'Soumettre les appels locaux à l’accord de l’administrateur',
         ],
         'alerts' => [
             'surge_threshold' => 'Seuil d’afflux',

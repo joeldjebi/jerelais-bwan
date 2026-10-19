@@ -30,6 +30,7 @@ class Navigation
                 'label' => __('Rédaction'),
                 'items' => [
                     ['label' => __('Exploitation'), 'route' => 'console.editorial', 'icon' => 'sparkles', 'tint' => 'purple', 'keywords' => 'rédaction sélection arbitrage diffusé émission', 'permission' => Permission::RelaisArbitrate],
+                    ['label' => __('Appels à relais'), 'route' => 'console.appels', 'icon' => 'bell', 'tint' => 'orange', 'keywords' => 'appels zone sujet consignes', 'permission' => [Permission::AppelsCreate, Permission::AppelsCreateLocal]],
                     ['label' => __('Collections'), 'route' => 'console.collections', 'icon' => 'layers', 'tint' => 'teal', 'keywords' => 'collections dossiers sujets événements', 'permission' => Permission::RelaisArbitrate],
                 ],
             ],
@@ -56,7 +57,8 @@ class Navigation
         foreach ($groups as $group) {
             $items = array_values(array_map(
                 fn (array $item): array => ['label' => $item['label'], 'route' => $item['route'], 'icon' => $item['icon'], 'tint' => $item['tint'], 'keywords' => $item['keywords']],
-                array_filter($group['items'], fn (array $item): bool => $user->hasPermissionTo($item['permission']->value)),
+                array_filter($group['items'], fn (array $item): bool => collect(is_array($item['permission']) ? $item['permission'] : [$item['permission']])
+                    ->contains(fn (Permission $permission): bool => $user->hasPermissionTo($permission->value))),
             ));
 
             if ($items !== []) {

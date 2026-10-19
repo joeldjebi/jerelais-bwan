@@ -19,6 +19,7 @@ trait RelaisItemRules
     protected function relaisRules(): array
     {
         return [
+            'appel' => ['bail', 'nullable', 'uuid', Rule::exists('appels_relais', 'uuid')],
             'category' => ['bail', 'nullable', 'uuid', Rule::exists('categories', 'uuid')->where('is_active', true)],
             'urgency' => ['nullable', Rule::enum(Urgency::class)],
             'title' => ['nullable', 'string', 'max:120'],

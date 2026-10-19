@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Access\Enums\Permission;
+use App\Http\Controllers\Api\V1\Appels\AppelController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\OtpController;
 use App\Http\Controllers\Api\V1\Auth\PasswordLoginController;
@@ -46,6 +47,9 @@ Route::name('api.v1.')->group(function () {
 
         Route::get('quiz', [FormationController::class, 'quiz'])->name('quiz.show');
         Route::post('quiz/attempts', [FormationController::class, 'attempt'])->middleware('throttle:quiz')->name('quiz.attempts.store');
+
+        Route::get('appels', [AppelController::class, 'index'])->name('appels.index');
+        Route::get('appels/{appel}', [AppelController::class, 'show'])->name('appels.show');
 
         Route::get('relais', [RelaisItemController::class, 'index'])->name('relais.index');
         Route::post('relais', [RelaisItemController::class, 'store'])->middleware('throttle:60,1')->name('relais.store');

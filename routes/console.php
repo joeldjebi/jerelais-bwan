@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\AppelRelais\Actions\PublishAppel;
+use App\Domain\AppelRelais\Models\AppelRelais;
 use App\Domain\Contribution\Actions\EscalateOverdueRelais;
 use App\Domain\Contribution\Actions\ReleaseExpiredLocks;
 use App\Domain\Media\Actions\PurgeAbandonedUploads;
@@ -53,6 +55,13 @@ Artisan::command('medias:purge-abandoned', function (PurgeAbandonedUploads $purg
     $this->components->info($purge->handle().' envoi(s) abandonné(s) annulé(s).');
 })->purpose('Annule les envois de médias jamais terminés');
 
+Artisan::command('appels:close-expired', function (PublishAppel $appels) {
+    $expired = AppelRelais::query()->where('status', 'open')->where('deadline_at', '<=', now())->get();
+    $expired->each(fn ($appel) => $appels->close($appel));
+    $this->components->info($expired->count().' appel(s) clos.');
+})->purpose('Clôt les appels à relais dont la date limite est passée');
+
+Schedule::command('appels:close-expired')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('relais:release-locks')->everyMinute()->withoutOverlapping();
 Schedule::command('relais:escalate')->everyMinute()->withoutOverlapping();
 Schedule::command('medias:purge-abandoned')->hourly()->withoutOverlapping();

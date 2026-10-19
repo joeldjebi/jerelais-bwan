@@ -11,6 +11,8 @@ use App\Http\Controllers\Relais\BadgePhotoController;
 use App\Http\Controllers\Relais\DocumentPreviewController;
 use App\Http\Controllers\Relais\LogoutController as RelaisLogoutController;
 use App\Livewire\Console\Account\Index as AccountPage;
+use App\Livewire\Console\Appels\Index as AppelsPage;
+use App\Livewire\Console\Appels\Show as AppelPage;
 use App\Livewire\Console\Audit\Index as AuditPage;
 use App\Livewire\Console\Candidatures\Index as CandidaturesPage;
 use App\Livewire\Console\Candidatures\Show as CandidaturePage;
@@ -70,6 +72,8 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::livewire('validation', ValidationPage::class)->middleware('permission:'.Permission::RelaisViewPending->value)->name('validation');
         Route::livewire('validation/{relais}', ValidationShowPage::class)->middleware('permission:'.Permission::RelaisViewPending->value)->name('validation.show');
         Route::get('medias/{media}/{variant?}', ConsoleMediaController::class)->whereIn('variant', ['thumbnail'])->name('medias.show');
+        Route::livewire('appels', AppelsPage::class)->middleware('permission:'.Permission::AppelsCreate->value.'|'.Permission::AppelsCreateLocal->value)->name('appels');
+        Route::livewire('appels/{appel}', AppelPage::class)->middleware('permission:'.Permission::AppelsCreate->value.'|'.Permission::AppelsCreateLocal->value)->name('appels.show');
         Route::livewire('redaction', EditorialPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('editorial');
         Route::livewire('collections', CollectionsPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('collections');
         Route::livewire('collections/{collection}', CollectionPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('collections.show');

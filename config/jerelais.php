@@ -118,6 +118,7 @@ return [
         'candidature.quiz_min_score' => 70,
         'candidature.minimum_age' => 18,
         'candidature.minors_allowed' => false,
+        'appels.local_requires_approval' => false,
         'alerts.surge_threshold' => 5,
         'alerts.surge_window_minutes' => 30,
         'retention.rejected_candidatures_days' => null,
