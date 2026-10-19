@@ -12,6 +12,8 @@ use App\Domain\Candidature\Events\CandidatureDecided;
 use App\Domain\Candidature\Listeners\NotifyCandidateOfDecision;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Candidature\Policies\CandidaturePolicy;
+use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Contribution\Policies\RelaisItemPolicy;
 use App\Domain\Media\Antivirus\ClamAvScanner;
 use App\Domain\Media\Antivirus\FakeVirusScanner;
 use App\Domain\Media\Contracts\VirusScanner;
@@ -71,6 +73,7 @@ class DomainServiceProvider extends ServiceProvider
         Event::listen(CandidatureDecided::class, NotifyCandidateOfDecision::class);
 
         Gate::policy(Candidature::class, CandidaturePolicy::class);
+        Gate::policy(RelaisItem::class, RelaisItemPolicy::class);
 
         $this->configureRateLimiting();
     }

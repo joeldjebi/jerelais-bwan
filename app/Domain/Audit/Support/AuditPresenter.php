@@ -44,6 +44,7 @@ class AuditPresenter
         'candidature.document.deleted' => ['Pièce de candidature retirée', 'photo', 'neutral'],
         'candidature.document.infected' => ['Fichier infecté refusé', 'x', 'danger'],
         'formation.quiz.attempted' => ['Quiz de formation passé', 'book', 'neutral'],
+        'relais.received' => ['Relais reçu', 'inbox', 'accent'],
         'relais.created' => ['Nouveau Relais', 'signal', 'success'],
         'legal.accepted' => ['Charte et conditions acceptées', 'flag', 'success'],
         'legal.published' => ['Nouvelle version d’un texte juridique', 'book', 'accent'],
