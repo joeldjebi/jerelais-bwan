@@ -7,6 +7,7 @@ use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Enums\UserStatus;
 use App\Domain\Auth\Models\Device;
 use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Legal\Models\Consent;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Region;
 use App\Models\Concerns\HasPublicUuid;
@@ -94,6 +95,16 @@ class User extends Authenticatable
     public function candidature(): HasOne
     {
         return $this->hasOne(Candidature::class);
+    }
+
+    /**
+     * Acceptations de la charte et des conditions (MOB-04).
+     *
+     * @return HasMany<Consent, $this>
+     */
+    public function consents(): HasMany
+    {
+        return $this->hasMany(Consent::class);
     }
 
     /**

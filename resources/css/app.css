@@ -502,3 +502,17 @@ html.lenis body {
 }
 .ios-check:active { transform: scale(0.88); }
 .ios-check:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(10 132 255 / 0.3); }
+
+/* Textes juridiques (charte, conditions, confidentialité) rendus depuis le Markdown */
+.legal-prose { font-size: 0.9375rem; line-height: 1.65; color: var(--color-onyx, #1d1d1f); }
+.legal-prose > * + * { margin-top: 0.85em; }
+.legal-prose h2 { margin-top: 1.6em; font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; }
+.legal-prose h2:first-child { margin-top: 0; }
+.legal-prose ol, .legal-prose ul { padding-left: 1.25em; }
+.legal-prose ol { list-style: decimal; }
+.legal-prose ul { list-style: disc; }
+.legal-prose li + li { margin-top: 0.55em; }
+.legal-prose li::marker { color: var(--color-relais-500, #f28c28); font-weight: 600; }
+.legal-prose strong { font-weight: 600; }
+.legal-prose blockquote { border-radius: 0.9rem; background: rgb(242 140 40 / 0.1); padding: 0.75em 1em; font-size: 0.8125rem; color: #8a4a0f; }
+.legal-prose a { color: var(--color-relais-600, #d97706); text-decoration: underline; }

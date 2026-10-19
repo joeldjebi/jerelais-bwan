@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             TerritoireSeeder::class,
             ListsSeeder::class,
+            LegalDocumentsSeeder::class,
         ]);
 
         if (app()->isLocal()) {

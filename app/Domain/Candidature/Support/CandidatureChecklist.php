@@ -5,10 +5,11 @@ namespace App\Domain\Candidature\Support;
 use App\Domain\Candidature\Enums\CandidatureStep;
 use App\Domain\Candidature\Enums\DocumentType;
 use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Legal\Actions\AcceptLegalDocuments;
 
 /**
  * Ce qui doit être complet avant le dépôt du dossier.
- * La charte et la formation s'y ajoutent au fil de l'étape 2.
+ * La formation s'y ajoute au fil de l'étape 2.
  */
 class CandidatureChecklist
 {
@@ -33,6 +34,11 @@ class CandidatureChecklist
         $items['documents'] = [
             'label' => __('candidature.steps.documents'),
             'complete' => $this->missingDocuments($candidature) === [],
+        ];
+
+        $items['charte'] = [
+            'label' => __('candidature.steps.charte'),
+            'complete' => AcceptLegalDocuments::isUpToDate($candidature->user),
         ];
 
         return $items;

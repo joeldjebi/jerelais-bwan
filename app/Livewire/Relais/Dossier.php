@@ -16,6 +16,9 @@ use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Candidature\Support\CandidatureChecklist;
 use App\Domain\Candidature\Support\StepRules;
 use App\Domain\Contribution\Models\Category;
+use App\Domain\Legal\Actions\AcceptLegalDocuments;
+use App\Domain\Legal\Models\Consent;
+use App\Domain\Legal\Models\LegalDocument;
 use App\Domain\Media\Exceptions\InfectedFile;
 use App\Domain\Media\Exceptions\VirusScanUnavailable;
 use App\Domain\Territoire\Models\Commune;
@@ -46,6 +49,8 @@ use Livewire\WithFileUploads;
  * @property-read Collection<int, Localite> $localites
  * @property-read Collection<int, LieuType> $lieuTypes
  * @property-read Collection<int, Category> $categories
+ * @property-read array<string, LegalDocument> $legalDocuments
+ * @property-read array<string, Consent> $consents
  */
 #[Layout('layouts::relais')]
 #[Title('Ma candidature')]
@@ -54,6 +59,8 @@ class Dossier extends Component
     use WithFileUploads;
 
     public const DOCUMENTS = 'documents';
+
+    public const CHARTE = 'charte';
 
     public const RECAP = 'recapitulatif';
 
@@ -68,6 +75,9 @@ class Dossier extends Component
 
     /** @var array{occupation: string, languages: list<string>, interests: list<string>, motivation: string} */
     public array $profil = ['occupation' => '', 'languages' => [], 'interests' => [], 'motivation' => ''];
+
+    /** @var array<string, bool> textes cochés avant acceptation, par type */
+    public array $accepted = ['charte' => false, 'conditions' => false, 'confidentialite' => false];
 
     /** @var array<string, TemporaryUploadedFile|null> pièce en cours d'envoi, par type */
     public array $uploads = [];
@@ -200,6 +210,64 @@ class Dossier extends Component
         unset($this->candidature, $this->checklist);
     }
 
+    /**
+     * Acceptation horodatée de la charte, des conditions et de la politique de confidentialité (MOB-04).
+     */
+    public function acceptLegal(AcceptLegalDocuments $accept): void
+    {
+        $this->resetErrorBag('accepted');
+        $documents = $this->legalDocuments;
+
+        foreach (array_keys($documents) as $type) {
+            if (! ($this->accepted[$type] ?? false)) {
+                $this->addError('accepted', __('legal.must_accept_all'));
+
+                return;
+            }
+        }
+
+        try {
+            $accept->handle(
+                $this->user(),
+                array_values(array_map(fn (LegalDocument $document): string => $document->uuid, $documents)),
+                'web',
+                request()->ip(),
+                request()->userAgent(),
+            );
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('accepted', $exception->getMessage());
+
+            return;
+        }
+
+        unset($this->checklist, $this->legalDocuments);
+        $this->savedAt = now()->format('H:i');
+    }
+
+    /**
+     * @return array<string, LegalDocument>
+     */
+    #[Computed]
+    public function legalDocuments(): array
+    {
+        return LegalDocument::currentSet();
+    }
+
+    /**
+     * Acceptations des versions en vigueur, par type de texte.
+     *
+     * @return array<string, Consent>
+     */
+    #[Computed]
+    public function consents(): array
+    {
+        $ids = array_map(fn (LegalDocument $document): int => $document->id, $this->legalDocuments);
+
+        return Consent::query()->with('legalDocument')->where('user_id', $this->user()->id)->whereIn('legal_document_id', array_values($ids))->get()
+            ->keyBy(fn (Consent $consent): string => $consent->legalDocument->type->value)
+            ->all();
+    }
+
     #[Computed]
     public function candidature(): Candidature
     {
@@ -263,7 +331,7 @@ class Dossier extends Component
      */
     public function stepKeys(): array
     {
-        return [...array_map(fn (CandidatureStep $step): string => $step->value, CandidatureStep::cases()), self::DOCUMENTS, self::RECAP];
+        return [...array_map(fn (CandidatureStep $step): string => $step->value, CandidatureStep::cases()), self::DOCUMENTS, self::CHARTE, self::RECAP];
     }
 
     public function render(): View

@@ -15,11 +15,11 @@
             </a>
 
             <div class="hidden items-center gap-8 text-[0.75rem] opacity-80 md:flex">
-                <a href="#principe" class="transition-opacity duration-300 hover:opacity-100">{{ __('Le principe') }}</a>
-                <a href="#terrain" class="transition-opacity duration-300 hover:opacity-100">{{ __('Sur le terrain') }}</a>
-                <a href="#devenir-relais" class="transition-opacity duration-300 hover:opacity-100">{{ __('Devenir Relais') }}</a>
-                <a href="#confiance" class="transition-opacity duration-300 hover:opacity-100">{{ __('Confiance') }}</a>
-                <a href="#faq" class="transition-opacity duration-300 hover:opacity-100">{{ __('Questions') }}</a>
+                <a href="{{ route('home') }}#principe" class="transition-opacity duration-300 hover:opacity-100">{{ __('Le principe') }}</a>
+                <a href="{{ route('home') }}#terrain" class="transition-opacity duration-300 hover:opacity-100">{{ __('Sur le terrain') }}</a>
+                <a href="{{ route('home') }}#devenir-relais" class="transition-opacity duration-300 hover:opacity-100">{{ __('Devenir Relais') }}</a>
+                <a href="{{ route('home') }}#confiance" class="transition-opacity duration-300 hover:opacity-100">{{ __('Confiance') }}</a>
+                <a href="{{ route('home') }}#faq" class="transition-opacity duration-300 hover:opacity-100">{{ __('Questions') }}</a>
             </div>
 
             <a href="{{ route('relais.join') }}" class="press rounded-full bg-onyx px-3.5 py-1.5 text-[0.75rem] font-medium text-white transition-colors duration-500 hover:bg-black in-data-nav-dark:bg-white in-data-nav-dark:text-onyx">{{ __('Rejoindre') }}</a>
@@ -37,23 +37,23 @@
                 <div>
                     <p class="font-semibold text-onyx">{{ __('Découvrir') }}</p>
                     <ul class="mt-3 space-y-2">
-                        <li><a href="#principe" class="hover:text-onyx hover:underline">{{ __('Le principe') }}</a></li>
-                        <li><a href="#terrain" class="hover:text-onyx hover:underline">{{ __('Sur le terrain') }}</a></li>
-                        <li><a href="#faq" class="hover:text-onyx hover:underline">{{ __('Questions fréquentes') }}</a></li>
+                        <li><a href="{{ route('home') }}#principe" class="hover:text-onyx hover:underline">{{ __('Le principe') }}</a></li>
+                        <li><a href="{{ route('home') }}#terrain" class="hover:text-onyx hover:underline">{{ __('Sur le terrain') }}</a></li>
+                        <li><a href="{{ route('home') }}#faq" class="hover:text-onyx hover:underline">{{ __('Questions fréquentes') }}</a></li>
                     </ul>
                 </div>
                 <div>
                     <p class="font-semibold text-onyx">{{ __('Rejoindre') }}</p>
                     <ul class="mt-3 space-y-2">
                         <li><a href="{{ route('relais.join') }}" class="hover:text-onyx hover:underline">{{ __('Devenir Relais') }}</a></li>
-                        <li><span>{{ __('Charte du Relais') }}</span></li>
+                        <li><a href="{{ route('legal.show', 'charte') }}" class="hover:text-onyx hover:underline">{{ __('Charte du Relais') }}</a></li>
                     </ul>
                 </div>
                 <div>
                     <p class="font-semibold text-onyx">{{ __('Informations légales') }}</p>
                     <ul class="mt-3 space-y-2">
-                        <li><span>{{ __('Conditions d’utilisation') }}</span></li>
-                        <li><span>{{ __('Politique de confidentialité') }}</span></li>
+                        <li><a href="{{ route('legal.show', 'conditions') }}" class="hover:text-onyx hover:underline">{{ __('Conditions d’utilisation') }}</a></li>
+                        <li><a href="{{ route('legal.show', 'confidentialite') }}" class="hover:text-onyx hover:underline">{{ __('Politique de confidentialité') }}</a></li>
                         <li><span>{{ __('Mentions légales') }}</span></li>
                     </ul>
                 </div>

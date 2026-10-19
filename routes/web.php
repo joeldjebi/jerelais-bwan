@@ -2,12 +2,14 @@
 
 use App\Domain\Access\Enums\Permission;
 use App\Http\Controllers\Console\SecurityController;
+use App\Http\Controllers\Public\LegalPageController;
 use App\Http\Controllers\Relais\DocumentPreviewController;
 use App\Http\Controllers\Relais\LogoutController as RelaisLogoutController;
 use App\Livewire\Console\Account\Index as AccountPage;
 use App\Livewire\Console\Audit\Index as AuditPage;
 use App\Livewire\Console\Communes\Index as CommunesPage;
 use App\Livewire\Console\Dashboard;
+use App\Livewire\Console\Legal\Index as LegalPage;
 use App\Livewire\Console\Settings\Index as SettingsPage;
 use App\Livewire\Console\Team\Index as TeamPage;
 use App\Livewire\Relais\Dossier;
@@ -15,6 +17,7 @@ use App\Livewire\Relais\Rejoindre;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'public.home')->name('home');
+Route::get('textes/{type}', LegalPageController::class)->name('legal.show');
 
 /*
  * Devenir Relais et espace candidat sur le site (WEB-02).
@@ -41,6 +44,7 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::livewire('communes', CommunesPage::class)->middleware('permission:'.Permission::TerritoireManage->value)->name('communes');
         Route::livewire('equipe', TeamPage::class)->middleware('permission:'.Permission::UsersManage->value)->name('team');
         Route::livewire('parametres', SettingsPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('settings');
+        Route::livewire('textes', LegalPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('legal');
         Route::livewire('journal', AuditPage::class)->middleware('permission:'.Permission::AuditView->value)->name('audit');
     });
 });

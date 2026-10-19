@@ -1,5 +1,5 @@
 {{-- Feuille modale façon iOS / macOS : monte du bas sur mobile, apparaît au centre avec un ressort sur grand écran. --}}
-@props(['model', 'title', 'description' => null])
+@props(['model', 'title', 'description' => null, 'wide' => false])
 
 <div x-data="{ open: $wire.entangle('{{ $model }}') }" x-on:keydown.escape.window="open = false" x-cloak>
     <div x-show="open" x-transition.opacity.duration.300ms class="fixed inset-0 z-[55] bg-black/30 backdrop-blur-[3px]" x-on:click="open = false"></div>
@@ -13,7 +13,7 @@
             x-transition:leave="transition duration-200 ease-in"
             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
             x-transition:leave-end="opacity-0 translate-y-10 sm:translate-y-2 sm:scale-[0.97]"
-            class="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[1.6rem] bg-canvas shadow-[0_40px_100px_-30px_rgb(0_0_0/0.5)] sm:max-w-lg sm:rounded-[1.6rem] sm:shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_40px_100px_-30px_rgb(0_0_0/0.5)] dark:sm:shadow-[0_0_0_0.5px_rgb(255_255_255/0.1),0_40px_100px_-30px_rgb(0_0_0/0.9)]"
+            class="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[1.6rem] bg-canvas shadow-[0_40px_100px_-30px_rgb(0_0_0/0.5)] {{ $wide ? 'sm:max-w-3xl' : 'sm:max-w-lg' }} sm:rounded-[1.6rem] sm:shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_40px_100px_-30px_rgb(0_0_0/0.5)] dark:sm:shadow-[0_0_0_0.5px_rgb(255_255_255/0.1),0_40px_100px_-30px_rgb(0_0_0/0.9)]"
             role="dialog"
             aria-modal="true"
             aria-label="{{ $title }}"

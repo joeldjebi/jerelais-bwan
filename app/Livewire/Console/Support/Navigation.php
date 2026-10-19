@@ -34,6 +34,7 @@ class Navigation
                 'label' => __('Administration'),
                 'items' => [
                     ['label' => __('Paramètres'), 'route' => 'console.settings', 'icon' => 'layers', 'tint' => 'gray', 'keywords' => 'réglages délais médias conservation', 'permission' => Permission::SettingsManage],
+                    ['label' => __('Textes juridiques'), 'route' => 'console.legal', 'icon' => 'book', 'tint' => 'teal', 'keywords' => 'charte conditions confidentialité cgu versions', 'permission' => Permission::SettingsManage],
                     ['label' => __('Journal d’audit'), 'route' => 'console.audit', 'icon' => 'shield', 'tint' => 'purple', 'keywords' => 'traçabilité historique sécurité', 'permission' => Permission::AuditView],
                 ],
             ],

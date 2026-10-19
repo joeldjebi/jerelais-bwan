@@ -17,6 +17,7 @@ return [
         'territoire' => 'Commune et quartier',
         'profil' => 'Profil et motivation',
         'documents' => 'Pièces justificatives',
+        'charte' => 'Charte et conditions',
     ],
 
     'documents' => [

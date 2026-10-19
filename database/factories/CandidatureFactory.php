@@ -8,6 +8,7 @@ use App\Domain\Candidature\Enums\DocumentType;
 use App\Domain\Candidature\Enums\Gender;
 use App\Domain\Candidature\Enums\Occupation;
 use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Legal\Models\LegalDocument;
 use App\Domain\Territoire\Models\Commune;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -57,6 +58,14 @@ class CandidatureFactory extends Factory
                     'size' => 120_000,
                     'sha256' => hash('sha256', $candidature->uuid.$type->value),
                     'scanned_at' => now(),
+                ]);
+            }
+
+            foreach (LegalDocument::currentSet() as $document) {
+                $candidature->user->consents()->create([
+                    'legal_document_id' => $document->id,
+                    'accepted_at' => now(),
+                    'channel' => 'app',
                 ]);
             }
         });

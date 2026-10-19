@@ -16,6 +16,7 @@
         'territoire' => ['map-pin', __('Où êtes-vous ?'), __('Votre candidature est examinée par le coordonnateur de cette commune.')],
         'profil' => ['sparkles', __('Ce qui vous anime'), __('Aidez votre coordonnateur à mieux vous connaître.')],
         'documents' => ['shield', __('Vos pièces justificatives'), __('Protégées et stockées à part : seuls votre coordonnateur et l’administration habilitée peuvent les consulter, et chaque consultation est enregistrée.')],
+        'charte' => ['flag', __('La charte du Relais'), __('Lisez attentivement ces engagements : ils protègent les personnes filmées, la chaîne et vous-même.')],
         'recapitulatif' => ['check', __('Vérifiez et déposez'), __('Relisez votre dossier. Une fois déposé, il ne sera plus modifiable pendant l’examen.')],
     ];
     $stepLabels = [...collect($this->checklist)->map(fn ($item) => $item['label'])->all(), 'recapitulatif' => __('Dépôt')];
@@ -374,6 +375,67 @@
                             </p>
                             @break
 
+                        @case('charte')
+                            @php
+                                $legal = $this->legalDocuments;
+                                $consents = $this->consents;
+                                $allAccepted = $legal !== [] && count($consents) === count($legal);
+                            @endphp
+                            @if ($charte = $legal['charte'] ?? null)
+                                <article class="legal-prose max-h-[26rem] overflow-y-auto rounded-2xl bg-mist p-6 sm:p-7" data-field tabindex="0" aria-label="{{ $charte->title }}">
+                                    {{ $charte->html() }}
+                                </article>
+                            @endif
+
+                            <div class="space-y-2" data-field>
+                                @foreach ($legal as $type => $legalDocument)
+                                    @if ($type !== 'charte')
+                                        <details class="group rounded-2xl bg-mist [&_summary::-webkit-details-marker]:hidden">
+                                            <summary class="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-[0.9375rem] font-semibold">
+                                                {{ $legalDocument->title }}
+                                                <x-ui.icon name="arrow-right" class="size-4 text-graphite transition-transform duration-300 group-open:rotate-90" />
+                                            </summary>
+                                            <div class="legal-prose max-h-80 overflow-y-auto px-5 pb-5">{{ $legalDocument->html() }}</div>
+                                        </details>
+                                    @endif
+                                @endforeach
+                            </div>
+
+                            @if ($allAccepted)
+                                <div class="flex items-start gap-3 rounded-2xl bg-tile-green/10 p-5" data-field>
+                                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-tile-green text-white"><x-ui.icon name="check" class="size-4" stroke="3" /></span>
+                                    <div class="text-[0.9375rem]">
+                                        <p class="font-semibold">{{ __('Textes acceptés') }}</p>
+                                        <ul class="mt-1 space-y-0.5 text-[0.8125rem] text-graphite">
+                                            @foreach ($consents as $type => $consent)
+                                                <li>{{ $legal[$type]->title }} · {{ __('version :version', ['version' => $legal[$type]->version]) }} · {{ $consent->accepted_at->translatedFormat('j F Y à H:i') }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                </div>
+                            @else
+                                <ul class="divide-y divide-black/[0.06] rounded-2xl ring-1 ring-black/[0.08]" data-field>
+                                    @foreach ($legal as $type => $legalDocument)
+                                        <li>
+                                            <label class="flex cursor-pointer items-center gap-3.5 px-5 py-4 text-[0.9375rem]">
+                                                <input type="checkbox" wire:model.live="accepted.{{ $type }}" class="ios-check">
+                                                <span class="flex-1">
+                                                    <span class="block font-medium">{{ $legalDocument->title }}</span>
+                                                    <span class="block text-[0.8125rem] text-graphite">{{ __('J’ai lu et j’accepte la version :version', ['version' => $legalDocument->version]) }}</span>
+                                                </span>
+                                            </label>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                @error('accepted') <p class="text-[0.8125rem] font-medium text-status-rejected" data-field>{{ $message }}</p> @enderror
+                                <div data-field>
+                                    <x-ui.button wire:click="acceptLegal" wire:loading.attr="disabled" wire:target="acceptLegal" :disabled="in_array(false, array_intersect_key($accepted, $legal), true)">
+                                        {{ __('J’accepte et je m’engage') }}
+                                    </x-ui.button>
+                                </div>
+                            @endif
+                            @break
+
                         @default
                             <ul class="divide-y divide-black/[0.06] overflow-hidden rounded-2xl bg-mist" data-field>
                                 @foreach ($this->checklist as $key => $item)
@@ -389,6 +451,7 @@
                                                         @case('identite') {{ $candidature->fullName() ?: __('À compléter') }}@if ($candidature->birth_date) · {{ $candidature->birth_date->translatedFormat('j F Y') }}@endif @break
                                                         @case('territoire') {{ collect([$candidature->commune?->name, $candidature->localite?->name])->filter()->join(' · ') ?: __('À compléter') }} @break
                                                         @case('profil') {{ $candidature->occupation?->label() ?? __('À compléter') }} @break
+                                                        @case('charte') {{ $item['complete'] ? __('Acceptées') : __('À accepter') }} @break
                                                         @case('documents') {{ __(':count sur :total pièces', ['count' => $candidature->documents->count(), 'total' => count(DocumentType::requiredFor($candidature))]) }} @break
                                                     @endswitch
                                                 </span>

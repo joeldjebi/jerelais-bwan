@@ -36,7 +36,9 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | POST ✅ | `/candidature/submit` | Dépôt (422 avec la liste des éléments manquants) | 2 | MOB-06 |
 | GET ✅ | `/candidature/options` · `/communes/{uuid}/localites` | Listes du formulaire, quartiers d'une commune | 2 | MOB-02 |
 | POST ✅ / DELETE ✅ | `/candidature/documents` · `/candidature/documents/{type}` | Pièces (multipart `type` + `file`) : photo de profil, recto, verso, selfie, autorisation parentale si mineur. JPEG/PNG/HEIC (PDF pour l'autorisation), 10 Mo, antivirus ; 503 si l'antivirus est indisponible | 2 | MOB-03 |
-| POST | `/consents` · `/quiz/attempts` | Charte, quiz | 2 | MOB-04, MOB-05 |
+| GET ✅ | `/legal` | Textes en vigueur (charte, conditions, confidentialité), Markdown et HTML | 2 | MOB-04 |
+| GET ✅ / POST ✅ | `/consents` | Mes acceptations ; accepter en envoyant les `uuid` de toutes les versions en vigueur (422 si une version a changé) | 2 | MOB-04 |
+| POST | `/quiz/attempts` | Quiz | 2 | MOB-05 |
 | POST | `/relais` | Créer un relais (`client_uuid`) | 3 | MOB-10 à MOB-15 |
 | — | Téléversement tus ou multipart S3 signé | Médias reprenables | 3 | MOB-16, MOB-18 |
 | GET | `/relais` · `/relais/{uuid}` | Mes relais et statuts | 3 | MOB-20 |

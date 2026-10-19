@@ -5,11 +5,13 @@ use App\Domain\Audit\Models\AuditLog;
 use App\Domain\Candidature\Enums\CandidatureStatus;
 use App\Domain\Candidature\Events\CandidatureSubmitted;
 use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Legal\Models\LegalDocument;
 use App\Domain\Settings\Settings;
 use App\Domain\Territoire\Enums\LocaliteType;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Localite;
 use App\Models\User;
+use Database\Seeders\LegalDocumentsSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +24,7 @@ beforeEach(function () {
     $this->localite = Localite::query()->create(['commune_id' => $this->commune->id, 'name' => 'Niangon', 'type' => LocaliteType::cases()[0]]);
     Sanctum::actingAs($this->candidat);
     Storage::fake('identity');
+    $this->seed(LegalDocumentsSeeder::class);
 });
 
 /**
@@ -41,6 +44,10 @@ function fillAllSteps(): void
     foreach (['profile_photo', 'id_front', 'id_back', 'selfie'] as $type) {
         uploadDocument($type)->assertCreated();
     }
+
+    test()->postJson(route('api.v1.consents.store'), [
+        'documents' => array_values(array_map(fn (LegalDocument $document) => $document->uuid, LegalDocument::currentSet())),
+    ])->assertCreated();
 }
 
 function uploadDocument(string $type, ?UploadedFile $file = null): TestResponse
@@ -57,7 +64,7 @@ it('ouvre un dossier en brouillon au premier accès [MOB-02]', function () {
         ->assertJsonPath('data.status', 'draft')
         ->assertJsonPath('data.status_label', 'En cours de rédaction')
         ->assertJsonPath('data.is_editable', true)
-        ->assertJsonCount(4, 'data.checklist')
+        ->assertJsonCount(5, 'data.checklist')
         ->assertJsonMissingPath('data.id');
 
     expect(Candidature::query()->where('user_id', $this->candidat->id)->count())->toBe(1);
@@ -135,7 +142,7 @@ it('refuse le dépôt d’un dossier incomplet en listant ce qui manque [MOB-06]
 
     $this->postJson(route('api.v1.candidature.submit'))
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['identite', 'territoire', 'profil', 'documents']);
+        ->assertJsonValidationErrors(['identite', 'territoire', 'profil', 'documents', 'charte']);
 });
 
 it('exige une motivation d’au moins 30 caractères au dépôt', function () {

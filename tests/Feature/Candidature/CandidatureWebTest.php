@@ -10,12 +10,14 @@ use App\Domain\Territoire\Models\Commune;
 use App\Livewire\Relais\Dossier;
 use App\Livewire\Relais\Rejoindre;
 use App\Models\User;
+use Database\Seeders\LegalDocumentsSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
     $this->sms = fakeSms();
+    $this->seed(LegalDocumentsSeeder::class);
 });
 
 it('affiche la page Devenir Relais [WEB-02]', function () {
