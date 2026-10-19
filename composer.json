@@ -6,7 +6,7 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "clickbar/laravel-magellan": "^2.2",
         "dedoc/scramble": "^0.13.49",
         "laravel/fortify": "^1.41",
@@ -17,8 +17,10 @@
         "laravel/tinker": "^3.0",
         "league/flysystem-aws-s3-v3": "^3.35",
         "livewire/livewire": "^4.4",
+        "pbmedia/laravel-ffmpeg": "^8.9",
         "predis/predis": "^3.7",
         "sentry/sentry-laravel": "^4.29",
+        "spatie/laravel-model-states": "^2.14",
         "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {

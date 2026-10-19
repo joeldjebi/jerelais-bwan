@@ -71,6 +71,13 @@ return [
     |--------------------------------------------------------------------------
     */
 
+    'media' => [
+        // Taille d'un morceau d'envoi multipart (5 Mo minimum imposé par S3, sauf le dernier).
+        'part_size_mb' => 8,
+        'part_url_minutes' => 30,
+        'view_url_minutes' => 15,
+    ],
+
     'candidature' => [
         'document_max_kb' => 10_240,
         'identity_url_minutes' => 5,

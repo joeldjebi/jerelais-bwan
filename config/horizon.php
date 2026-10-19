@@ -210,6 +210,20 @@ return [
             'timeout' => 60,
             'nice' => 0,
         ],
+
+        // Contrôle des médias (antivirus, FFmpeg) : longs traitements isolés de la file principale.
+        'supervisor-medias' => [
+            'connection' => 'redis',
+            'queue' => ['medias'],
+            'balance' => 'simple',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 512,
+            'tries' => 3,
+            'timeout' => 660,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -218,6 +232,9 @@ return [
                 'maxProcesses' => 10,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
+            ],
+            'supervisor-medias' => [
+                'maxProcesses' => 4,
             ],
         ],
 

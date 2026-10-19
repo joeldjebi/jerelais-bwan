@@ -9,8 +9,11 @@ use App\Domain\Territoire\Models\Localite;
 use App\Models\Concerns\HasPublicUuid;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Database\Factories\RelaisProfileFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -36,9 +39,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable(['commune_id', 'localite_id', 'display_name', 'status', 'activated_at', 'suspended_at'])]
 #[Hidden(['badge_token', 'reliability'])]
+#[UseFactory(RelaisProfileFactory::class)]
 class RelaisProfile extends Model
 {
-    use BelongsToCommune, HasPublicUuid;
+    /** @use HasFactory<RelaisProfileFactory> */
+    use BelongsToCommune, HasFactory, HasPublicUuid;
 
     /**
      * @return array<string, string>
