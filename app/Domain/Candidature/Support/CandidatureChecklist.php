@@ -3,11 +3,12 @@
 namespace App\Domain\Candidature\Support;
 
 use App\Domain\Candidature\Enums\CandidatureStep;
+use App\Domain\Candidature\Enums\DocumentType;
 use App\Domain\Candidature\Models\Candidature;
 
 /**
  * Ce qui doit être complet avant le dépôt du dossier.
- * Les pièces, la charte et la formation s'y ajoutent au fil de l'étape 2.
+ * La charte et la formation s'y ajoutent au fil de l'étape 2.
  */
 class CandidatureChecklist
 {
@@ -28,6 +29,11 @@ class CandidatureChecklist
                 'complete' => $candidature->isStepComplete($step),
             ];
         }
+
+        $items['documents'] = [
+            'label' => __('candidature.steps.documents'),
+            'complete' => $this->missingDocuments($candidature) === [],
+        ];
 
         return $items;
     }
@@ -56,6 +62,21 @@ class CandidatureChecklist
         }
 
         return $missing;
+    }
+
+    /**
+     * Pièces attendues et pas encore fournies.
+     *
+     * @return list<DocumentType>
+     */
+    public function missingDocuments(Candidature $candidature): array
+    {
+        $provided = $candidature->documents()->pluck('type')->map(fn (mixed $type): string => $type instanceof DocumentType ? $type->value : (string) $type)->all();
+
+        return array_values(array_filter(
+            DocumentType::requiredFor($candidature),
+            fn (DocumentType $type): bool => ! in_array($type->value, $provided, true),
+        ));
     }
 
     public function isComplete(Candidature $candidature): bool

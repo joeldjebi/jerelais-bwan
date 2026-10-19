@@ -16,6 +16,15 @@ return [
         'identite' => 'Identité',
         'territoire' => 'Commune et quartier',
         'profil' => 'Profil et motivation',
+        'documents' => 'Pièces justificatives',
+    ],
+
+    'documents' => [
+        'profile_photo' => ['label' => 'Photo de profil', 'hint' => 'Visage bien éclairé, de face. Elle figurera sur votre badge.'],
+        'id_front' => ['label' => 'Pièce d’identité · recto', 'hint' => 'CNI, passeport ou attestation d’identité. Tout le document doit être lisible.'],
+        'id_back' => ['label' => 'Pièce d’identité · verso', 'hint' => 'Le dos du même document.'],
+        'selfie' => ['label' => 'Selfie de contrôle', 'hint' => 'Prenez-vous en photo en tenant votre pièce d’identité à côté du visage.'],
+        'parental_authorization' => ['label' => 'Autorisation parentale', 'hint' => 'Signée par un parent ou tuteur légal (photo ou PDF).'],
     ],
 
     'genders' => [
@@ -65,6 +74,7 @@ return [
         'motivation' => 'motivation',
     ],
 
+    'document_not_expected' => 'Cette pièce n’est pas demandée pour votre dossier.',
     'age_refused' => 'Il faut avoir au moins :age ans pour devenir Relais.',
     'locked' => 'Votre dossier a été déposé : il n’est plus modifiable pour le moment.',
     'incomplete' => 'Votre dossier n’est pas encore complet.',

@@ -36,6 +36,10 @@ Route::name('api.v1.')->group(function () {
 
         Route::get('candidature', [CandidatureController::class, 'show'])->name('candidature.show');
         Route::put('candidature/steps/{step}', [CandidatureController::class, 'updateStep'])->name('candidature.steps.update');
+        Route::post('candidature/documents', [CandidatureController::class, 'storeDocument'])
+            ->middleware('throttle:30,1')->name('candidature.documents.store');
+        Route::delete('candidature/documents/{type}', [CandidatureController::class, 'destroyDocument'])
+            ->middleware('permission:'.Permission::CandidatureApply->value)->name('candidature.documents.destroy');
         Route::post('candidature/submit', [CandidatureController::class, 'submit'])
             ->middleware('permission:'.Permission::CandidatureApply->value)->name('candidature.submit');
     });

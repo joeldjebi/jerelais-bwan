@@ -2,6 +2,7 @@
 
 use App\Domain\Access\Enums\Permission;
 use App\Http\Controllers\Console\SecurityController;
+use App\Http\Controllers\Relais\DocumentPreviewController;
 use App\Http\Controllers\Relais\LogoutController as RelaisLogoutController;
 use App\Livewire\Console\Account\Index as AccountPage;
 use App\Livewire\Console\Audit\Index as AuditPage;
@@ -22,6 +23,7 @@ Route::livewire('devenir-relais', Rejoindre::class)->name('relais.join');
 
 Route::middleware('auth')->prefix('espace-relais')->name('relais.')->group(function () {
     Route::livewire('candidature', Dossier::class)->name('candidature');
+    Route::get('candidature/pieces/{document}', DocumentPreviewController::class)->name('documents.show');
     Route::post('deconnexion', RelaisLogoutController::class)->name('logout');
 });
 

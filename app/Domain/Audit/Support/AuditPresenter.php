@@ -35,6 +35,10 @@ class AuditPresenter
         'territoire.commune.closed' => ['Commune fermée aux Relais', 'map-pin', 'warning'],
         'candidature.submitted' => ['Candidature déposée', 'inbox', 'accent'],
         'candidature.resubmitted' => ['Candidature complétée et redéposée', 'inbox', 'accent'],
+        'candidature.document.uploaded' => ['Pièce de candidature reçue', 'photo', 'neutral'],
+        'candidature.document.deleted' => ['Pièce de candidature retirée', 'photo', 'neutral'],
+        'candidature.document.infected' => ['Fichier infecté refusé', 'x', 'danger'],
+        'candidature.document.viewed' => ['Pièce d’identité consultée', 'eye-off', 'warning'],
     ];
 
     public function label(AuditLog $entry): string

@@ -8,6 +8,9 @@ use App\Domain\Auth\Contracts\SmsGateway;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Sms\LogSmsGateway;
 use App\Domain\Auth\Support\DemoTwoFactorProvider;
+use App\Domain\Media\Antivirus\ClamAvScanner;
+use App\Domain\Media\Antivirus\FakeVirusScanner;
+use App\Domain\Media\Contracts\VirusScanner;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -26,6 +29,24 @@ class DomainServiceProvider extends ServiceProvider
         $this->app->bind(SmsGateway::class, fn () => match (config('jerelais.sms.driver')) {
             'log' => new LogSmsGateway,
             default => throw new InvalidArgumentException('Passerelle SMS non configurée : '.config('jerelais.sms.driver')),
+        });
+
+        $this->app->bind(VirusScanner::class, function () {
+            $driver = config('jerelais.antivirus.driver');
+
+            if ($driver === 'fake' && $this->app->isProduction()) {
+                throw new InvalidArgumentException('Antivirus factice interdit en production.');
+            }
+
+            return match ($driver) {
+                'clamav' => new ClamAvScanner(
+                    (string) config('jerelais.antivirus.host'),
+                    (int) config('jerelais.antivirus.port'),
+                    (int) config('jerelais.antivirus.timeout'),
+                ),
+                'fake' => new FakeVirusScanner,
+                default => throw new InvalidArgumentException('Antivirus non configuré : '.$driver),
+            };
         });
 
         // Une instance par requête : le périmètre calculé ne fuit jamais d'une requête à l'autre.

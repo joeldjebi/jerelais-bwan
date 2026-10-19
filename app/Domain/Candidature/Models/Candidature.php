@@ -17,9 +17,11 @@ use Carbon\CarbonImmutable;
 use Database\Factories\CandidatureFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Dossier de candidature d'un futur Relais (MOB-02 à MOB-06).
@@ -52,6 +54,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read Localite|null $localite
  * @property-read LieuType|null $lieuType
  * @property-read User $user
+ * @property-read Collection<int, CandidatureDocument> $documents
  */
 #[Fillable([
     'commune_id', 'localite_id', 'lieu_type_id', 'status',
@@ -125,6 +128,14 @@ class Candidature extends Model
     public function rejectionReason(): BelongsTo
     {
         return $this->belongsTo(RejectionReason::class);
+    }
+
+    /**
+     * @return HasMany<CandidatureDocument, $this>
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(CandidatureDocument::class);
     }
 
     public function fullName(): string

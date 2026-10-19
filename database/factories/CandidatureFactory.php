@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Domain\Access\Enums\Role;
 use App\Domain\Candidature\Enums\CandidatureStatus;
+use App\Domain\Candidature\Enums\DocumentType;
 use App\Domain\Candidature\Enums\Gender;
 use App\Domain\Candidature\Enums\Occupation;
 use App\Domain\Candidature\Models\Candidature;
@@ -46,7 +47,19 @@ class CandidatureFactory extends Factory
             'languages' => ['fr'],
             'interests' => [],
             'motivation' => 'Je veux montrer ce qui se passe dans mon quartier.',
-        ]);
+        ])->afterCreating(function (Candidature $candidature): void {
+            foreach (DocumentType::requiredFor($candidature) as $type) {
+                $candidature->documents()->create([
+                    'type' => $type,
+                    'disk' => 'identity',
+                    'path' => "candidatures/{$candidature->uuid}/{$type->value}.jpg",
+                    'mime' => 'image/jpeg',
+                    'size' => 120_000,
+                    'sha256' => hash('sha256', $candidature->uuid.$type->value),
+                    'scanned_at' => now(),
+                ]);
+            }
+        });
     }
 
     public function submitted(): static

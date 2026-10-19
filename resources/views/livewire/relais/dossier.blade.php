@@ -1,5 +1,6 @@
 @php
     use App\Domain\Candidature\Enums\CandidatureStatus;
+    use App\Domain\Candidature\Enums\DocumentType;
     use App\Domain\Candidature\Enums\Gender;
     use App\Domain\Candidature\Enums\Occupation;
     use App\Domain\Candidature\Support\StepRules;
@@ -14,6 +15,7 @@
         'identite' => ['users', __('Qui êtes-vous ?'), __('Ces informations restent confidentielles : seuls votre coordonnateur et l’administration y ont accès.')],
         'territoire' => ['map-pin', __('Où êtes-vous ?'), __('Votre candidature est examinée par le coordonnateur de cette commune.')],
         'profil' => ['sparkles', __('Ce qui vous anime'), __('Aidez votre coordonnateur à mieux vous connaître.')],
+        'documents' => ['shield', __('Vos pièces justificatives'), __('Protégées et stockées à part : seuls votre coordonnateur et l’administration habilitée peuvent les consulter, et chaque consultation est enregistrée.')],
         'recapitulatif' => ['check', __('Vérifiez et déposez'), __('Relisez votre dossier. Une fois déposé, il ne sera plus modifiable pendant l’examen.')],
     ];
     $stepLabels = [...collect($this->checklist)->map(fn ($item) => $item['label'])->all(), 'recapitulatif' => __('Dépôt')];
@@ -157,10 +159,10 @@
                 </nav>
 
                 <p class="mt-6 flex items-center gap-2 text-[0.8125rem] text-graphite" aria-live="polite" data-enter>
-                    <span wire:loading.delay wire:target="identite,territoire,profil" class="inline-flex items-center gap-2">
+                    <span wire:loading.delay wire:target="identite,territoire,profil,uploads" class="inline-flex items-center gap-2">
                         <span class="size-3.5 animate-spin rounded-full border-2 border-black/15 border-t-relais-500"></span>{{ __('Enregistrement…') }}
                     </span>
-                    <span wire:loading.remove wire:target="identite,territoire,profil" class="inline-flex items-center gap-2">
+                    <span wire:loading.remove wire:target="identite,territoire,profil,uploads" class="inline-flex items-center gap-2">
                         <x-ui.icon name="cloud-check" class="size-4 text-tile-green" />
                         {{ $savedAt ? __('Enregistré à :time', ['time' => $savedAt]) : __('Enregistrement automatique') }}
                     </span>
@@ -168,7 +170,7 @@
             </aside>
 
             {{-- Étape courante --}}
-            <section class="rounded-[1.75rem] bg-white p-7 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_24px_48px_-28px_rgb(0_0_0/0.18)] sm:p-10" data-step-panel wire:key="panel-{{ $step }}" data-enter>
+            <section class="rounded-[1.75rem] bg-white p-5 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_24px_48px_-28px_rgb(0_0_0/0.18)] sm:p-10" data-step-panel wire:key="panel-{{ $step }}" data-enter>
                 <header data-field>
                     <span class="grid size-12 place-items-center rounded-2xl bg-relais-500 text-white shadow-[0_10px_24px_-10px_rgb(242_140_40/0.8)]">
                         <x-ui.icon :name="$meta[$step][0]" class="size-6" />
@@ -307,6 +309,71 @@
                             </div>
                             @break
 
+                        @case('documents')
+                            <ul class="grid gap-3" data-field>
+                                @foreach (DocumentType::requiredFor($candidature) as $type)
+                                    @php
+                                        $document = $candidature->documents->firstWhere('type', $type);
+                                        $accept = implode(',', [...$type->mimeTypes(), '.heic']);
+                                    @endphp
+                                    <li wire:key="doc-{{ $type->value }}"
+                                        x-data="{ progress: 0, uploading: false }"
+                                        x-on:livewire-upload-start="uploading = true; progress = 0"
+                                        x-on:livewire-upload-progress="progress = $event.detail.progress"
+                                        x-on:livewire-upload-finish="uploading = false"
+                                        x-on:livewire-upload-error="uploading = false"
+                                        @class([
+                                            'relative flex flex-wrap items-center gap-x-4 gap-y-2 overflow-hidden rounded-2xl p-3 pr-4 transition-colors duration-300',
+                                            'bg-mist' => $document,
+                                            'border border-dashed border-black/15 bg-white' => ! $document,
+                                        ])>
+                                        <span class="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-mist sm:size-[4.5rem]">
+                                            @if ($document && $document->isImage() && $document->mime !== 'image/heic' && $document->mime !== 'image/heif')
+                                                <img src="{{ route('relais.documents.show', $document) }}" alt="" class="size-full object-cover" loading="lazy">
+                                            @elseif ($document)
+                                                <x-ui.icon name="check" class="size-6 text-tile-green" stroke="2.5" />
+                                            @else
+                                                <x-ui.icon :name="$type === DocumentType::Selfie || $type === DocumentType::ProfilePhoto ? 'camera' : 'photo'" class="size-6 text-graphite" />
+                                            @endif
+                                            <span x-show="uploading" x-cloak class="absolute inset-0 grid place-items-center bg-white/80">
+                                                <svg viewBox="0 0 36 36" class="size-9 -rotate-90" aria-hidden="true">
+                                                    <circle cx="18" cy="18" r="15" fill="none" stroke-width="3" class="stroke-black/10" />
+                                                    <circle cx="18" cy="18" r="15" fill="none" stroke-width="3" stroke-linecap="round" class="stroke-relais-500 transition-[stroke-dashoffset] duration-200" stroke-dasharray="94.25" :stroke-dashoffset="94.25 - 94.25 * progress / 100" />
+                                                </svg>
+                                            </span>
+                                        </span>
+
+                                        <div class="min-w-0 flex-1 basis-[11rem]">
+                                            <p class="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                                {{ $type->label() }}
+                                                @if ($document)
+                                                    <span class="grid size-4.5 place-items-center rounded-full bg-tile-green text-white"><x-ui.icon name="check" class="size-3" stroke="3.5" /></span>
+                                                @endif
+                                            </p>
+                                            <p class="mt-0.5 text-[0.8125rem] leading-snug text-graphite">{{ $type->hint() }}</p>
+                                            @error('uploads.'.$type->value) <p class="mt-1 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                                        </div>
+
+                                        <div class="ml-auto flex shrink-0 items-center gap-1">
+                                            <label class="press cursor-pointer rounded-full px-3.5 py-2 text-[0.8125rem] font-semibold transition-colors duration-300 {{ $document ? 'text-relais-600 hover:bg-black/[0.04]' : 'bg-relais-500 text-white hover:bg-relais-600' }}">
+                                                {{ $document ? __('Remplacer') : __('Ajouter') }}
+                                                <input type="file" class="sr-only" wire:model="uploads.{{ $type->value }}" accept="{{ $accept }}" @if ($type === DocumentType::Selfie) capture="user" @endif>
+                                            </label>
+                                            @if ($document)
+                                                <button type="button" wire:click="removeDocument('{{ $type->value }}')" class="press grid size-9 place-items-center rounded-full text-graphite transition-colors duration-300 hover:bg-black/[0.04] hover:text-status-rejected" aria-label="{{ __('Retirer') }}">
+                                                    <x-ui.icon name="x" class="size-4" />
+                                                </button>
+                                            @endif
+                                        </div>
+                                    </li>
+                                @endforeach
+                            </ul>
+                            <p class="flex items-start gap-2 text-[0.8125rem] leading-relaxed text-graphite" data-field>
+                                <x-ui.icon name="shield" class="mt-0.5 size-4 shrink-0 text-tile-green" />
+                                {{ __('Photos JPEG, PNG ou HEIC, 10 Mo maximum. Chaque fichier est analysé par un antivirus avant d’être enregistré.') }}
+                            </p>
+                            @break
+
                         @default
                             <ul class="divide-y divide-black/[0.06] overflow-hidden rounded-2xl bg-mist" data-field>
                                 @foreach ($this->checklist as $key => $item)
@@ -322,6 +389,7 @@
                                                         @case('identite') {{ $candidature->fullName() ?: __('À compléter') }}@if ($candidature->birth_date) · {{ $candidature->birth_date->translatedFormat('j F Y') }}@endif @break
                                                         @case('territoire') {{ collect([$candidature->commune?->name, $candidature->localite?->name])->filter()->join(' · ') ?: __('À compléter') }} @break
                                                         @case('profil') {{ $candidature->occupation?->label() ?? __('À compléter') }} @break
+                                                        @case('documents') {{ __(':count sur :total pièces', ['count' => $candidature->documents->count(), 'total' => count(DocumentType::requiredFor($candidature))]) }} @break
                                                     @endswitch
                                                 </span>
                                             </span>

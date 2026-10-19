@@ -49,6 +49,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Antivirus (§10)
+    |--------------------------------------------------------------------------
+    |
+    | « clamav » : clamd (conteneur clamav, profil « media » de compose.yaml).
+    | « fake » : développement et tests uniquement, refusé en production.
+    | Si l'antivirus ne répond pas, le fichier est refusé.
+    |
+    */
+
+    'antivirus' => [
+        'driver' => env('ANTIVIRUS_DRIVER', 'clamav'),
+        'host' => env('CLAMAV_HOST', '127.0.0.1'),
+        'port' => (int) env('CLAMAV_PORT', 3310),
+        'timeout' => (int) env('CLAMAV_TIMEOUT', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pièces du dossier de candidature (MOB-03)
+    |--------------------------------------------------------------------------
+    */
+
+    'candidature' => [
+        'document_max_kb' => 10_240,
+        'identity_url_minutes' => 5,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Démonstration (environnement local uniquement)
     |--------------------------------------------------------------------------
     |

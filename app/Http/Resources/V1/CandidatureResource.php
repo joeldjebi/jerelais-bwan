@@ -3,6 +3,7 @@
 namespace App\Http\Resources\V1;
 
 use App\Domain\Candidature\Enums\CandidatureStatus;
+use App\Domain\Candidature\Enums\DocumentType;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Candidature\Support\CandidatureChecklist;
 use Illuminate\Http\Request;
@@ -50,6 +51,17 @@ class CandidatureResource extends JsonResource
                 'interests' => $this->interests ?? [],
                 'motivation' => $this->motivation,
             ],
+            'documents' => collect(DocumentType::requiredFor($this->resource))->map(function (DocumentType $type): array {
+                $document = $this->documents->firstWhere('type', $type);
+
+                return [
+                    'type' => $type->value,
+                    'label' => $type->label(),
+                    'hint' => $type->hint(),
+                    'accepted_mimes' => $type->mimeTypes(),
+                    'document' => $document === null ? null : new CandidatureDocumentResource($document),
+                ];
+            })->values(),
             'decision' => $this->status->isFinal() || $this->status === CandidatureStatus::ComplementRequested ? [
                 'decided_at' => $this->decided_at?->toIso8601ZuluString(),
                 'reason' => $this->rejectionReason?->label,

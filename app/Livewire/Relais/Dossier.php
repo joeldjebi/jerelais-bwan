@@ -3,16 +3,21 @@
 namespace App\Livewire\Relais;
 
 use App\Domain\Access\Enums\Permission;
+use App\Domain\Candidature\Actions\DeleteCandidatureDocument;
 use App\Domain\Candidature\Actions\SaveCandidatureStep;
 use App\Domain\Candidature\Actions\StartCandidature;
+use App\Domain\Candidature\Actions\StoreCandidatureDocument;
 use App\Domain\Candidature\Actions\SubmitCandidature;
 use App\Domain\Candidature\Enums\CandidatureStep;
+use App\Domain\Candidature\Enums\DocumentType;
 use App\Domain\Candidature\Exceptions\CandidatureIncomplete;
 use App\Domain\Candidature\Exceptions\CandidatureLocked;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Candidature\Support\CandidatureChecklist;
 use App\Domain\Candidature\Support\StepRules;
 use App\Domain\Contribution\Models\Category;
+use App\Domain\Media\Exceptions\InfectedFile;
+use App\Domain\Media\Exceptions\VirusScanUnavailable;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\LieuType;
 use App\Domain\Territoire\Models\Localite;
@@ -22,12 +27,15 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 /**
  * Dossier de candidature sur le site (WEB-02 = MOB-02 à MOB-06), enregistré automatiquement champ par champ.
@@ -43,6 +51,10 @@ use Livewire\Component;
 #[Title('Ma candidature')]
 class Dossier extends Component
 {
+    use WithFileUploads;
+
+    public const DOCUMENTS = 'documents';
+
     public const RECAP = 'recapitulatif';
 
     #[Url(as: 'etape')]
@@ -56,6 +68,9 @@ class Dossier extends Component
 
     /** @var array{occupation: string, languages: list<string>, interests: list<string>, motivation: string} */
     public array $profil = ['occupation' => '', 'languages' => [], 'interests' => [], 'motivation' => ''];
+
+    /** @var array<string, TemporaryUploadedFile|null> pièce en cours d'envoi, par type */
+    public array $uploads = [];
 
     #[Locked]
     public ?string $savedAt = null;
@@ -107,6 +122,12 @@ class Dossier extends Component
      */
     public function updated(string $property): void
     {
+        if (str_starts_with($property, 'uploads.')) {
+            $this->storeUpload(substr($property, strlen('uploads.')));
+
+            return;
+        }
+
         $group = explode('.', $property)[0];
         $step = CandidatureStep::tryFrom($group);
 
@@ -162,11 +183,28 @@ class Dossier extends Component
         $this->dispatch('candidature-submitted');
     }
 
+    public function removeDocument(string $type, DeleteCandidatureDocument $delete): void
+    {
+        $documentType = DocumentType::tryFrom($type);
+
+        if ($documentType === null) {
+            return;
+        }
+
+        try {
+            $delete->handle($this->candidature, $documentType);
+        } catch (CandidatureLocked) {
+            return;
+        }
+
+        unset($this->candidature, $this->checklist);
+    }
+
     #[Computed]
     public function candidature(): Candidature
     {
         return Candidature::withoutCommuneRestriction()
-            ->with(['commune', 'localite', 'lieuType', 'rejectionReason'])
+            ->with(['commune', 'localite', 'lieuType', 'rejectionReason', 'documents'])
             ->where('user_id', $this->user()->id)
             ->firstOrFail();
     }
@@ -225,7 +263,7 @@ class Dossier extends Component
      */
     public function stepKeys(): array
     {
-        return [...array_map(fn (CandidatureStep $step): string => $step->value, CandidatureStep::cases()), self::RECAP];
+        return [...array_map(fn (CandidatureStep $step): string => $step->value, CandidatureStep::cases()), self::DOCUMENTS, self::RECAP];
     }
 
     public function render(): View
@@ -272,6 +310,45 @@ class Dossier extends Component
         unset($this->candidature, $this->checklist);
         $this->missing = [];
         $this->savedAt = now()->format('H:i');
+    }
+
+    /**
+     * Pièce choisie : contrôle du type réel et de la taille, antivirus, puis stockage privé.
+     */
+    private function storeUpload(string $type): void
+    {
+        $documentType = DocumentType::tryFrom($type);
+        $file = $this->uploads[$type] ?? null;
+
+        if ($documentType === null || ! $file instanceof TemporaryUploadedFile) {
+            return;
+        }
+
+        $this->resetErrorBag("uploads.{$type}");
+
+        $validator = Validator::make(['file' => $file], ['file' => [
+            'file',
+            'max:'.(int) config('jerelais.candidature.document_max_kb'),
+            'mimetypes:'.implode(',', $documentType->mimeTypes()),
+        ]], attributes: ['file' => $documentType->label()]);
+
+        if ($validator->fails()) {
+            $this->addError("uploads.{$type}", (string) $validator->errors()->first('file'));
+        } else {
+            try {
+                app(StoreCandidatureDocument::class)->handle($this->candidature, $documentType, $file);
+                $this->savedAt = now()->format('H:i');
+            } catch (InfectedFile $exception) {
+                $this->addError("uploads.{$type}", $exception->getMessage());
+            } catch (VirusScanUnavailable) {
+                $this->addError("uploads.{$type}", __('media.scan_unavailable'));
+            } catch (CandidatureLocked|InvalidArgumentException $exception) {
+                $this->addError("uploads.{$type}", __('candidature.document_not_expected'));
+            }
+        }
+
+        $file->delete();
+        unset($this->uploads[$type], $this->candidature, $this->checklist);
     }
 
     private function user(): User

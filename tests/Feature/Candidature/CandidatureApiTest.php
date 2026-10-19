@@ -10,7 +10,9 @@ use App\Domain\Territoire\Enums\LocaliteType;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Localite;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 
@@ -19,6 +21,7 @@ beforeEach(function () {
     $this->commune = Commune::factory()->create(['name' => 'Yopougon', 'slug' => 'yopougon']);
     $this->localite = Localite::query()->create(['commune_id' => $this->commune->id, 'name' => 'Niangon', 'type' => LocaliteType::cases()[0]]);
     Sanctum::actingAs($this->candidat);
+    Storage::fake('identity');
 });
 
 /**
@@ -34,6 +37,18 @@ function fillAllSteps(): void
     saveStep('identite', ['last_name' => 'Kouassi', 'first_names' => 'Awa Marie', 'birth_date' => now()->subYears(24)->toDateString(), 'gender' => 'femme'])->assertOk();
     saveStep('territoire', ['commune' => test()->commune->uuid, 'localite' => test()->localite->uuid])->assertOk();
     saveStep('profil', ['occupation' => 'etudiant', 'languages' => ['fr', 'dioula'], 'motivation' => 'Montrer la vie de mon quartier et alerter vite quand il se passe quelque chose.'])->assertOk();
+
+    foreach (['profile_photo', 'id_front', 'id_back', 'selfie'] as $type) {
+        uploadDocument($type)->assertCreated();
+    }
+}
+
+function uploadDocument(string $type, ?UploadedFile $file = null): TestResponse
+{
+    return test()->post(route('api.v1.candidature.documents.store'), [
+        'type' => $type,
+        'file' => $file ?? UploadedFile::fake()->image("{$type}.jpg", 800, 600),
+    ], ['Accept' => 'application/json']);
 }
 
 it('ouvre un dossier en brouillon au premier accès [MOB-02]', function () {
@@ -42,7 +57,7 @@ it('ouvre un dossier en brouillon au premier accès [MOB-02]', function () {
         ->assertJsonPath('data.status', 'draft')
         ->assertJsonPath('data.status_label', 'En cours de rédaction')
         ->assertJsonPath('data.is_editable', true)
-        ->assertJsonCount(3, 'data.checklist')
+        ->assertJsonCount(4, 'data.checklist')
         ->assertJsonMissingPath('data.id');
 
     expect(Candidature::query()->where('user_id', $this->candidat->id)->count())->toBe(1);
@@ -120,7 +135,7 @@ it('refuse le dépôt d’un dossier incomplet en listant ce qui manque [MOB-06]
 
     $this->postJson(route('api.v1.candidature.submit'))
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['identite', 'territoire', 'profil']);
+        ->assertJsonValidationErrors(['identite', 'territoire', 'profil', 'documents']);
 });
 
 it('exige une motivation d’au moins 30 caractères au dépôt', function () {

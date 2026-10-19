@@ -5,10 +5,13 @@ use App\Domain\Audit\Models\AuditLog;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Candidature\Enums\CandidatureStatus;
 use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Candidature\Models\CandidatureDocument;
 use App\Domain\Territoire\Models\Commune;
 use App\Livewire\Relais\Dossier;
 use App\Livewire\Relais\Rejoindre;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -126,4 +129,35 @@ it('interdit l’espace candidat aux comptes de l’équipe', function () {
     $this->actingAs(User::factory()->withRole(Role::Coordonnateur)->create())
         ->get(route('relais.candidature'))
         ->assertForbidden();
+});
+
+it('envoie une pièce depuis le site, l’affiche à son propriétaire uniquement [MOB-03, WEB-02]', function () {
+    Storage::fake('identity');
+    $candidature = Candidature::factory()->create();
+
+    Livewire::actingAs($candidature->user)->test(Dossier::class)
+        ->call('goTo', 'documents')
+        ->set('uploads.id_front', UploadedFile::fake()->image('recto.jpg', 800, 600))
+        ->assertHasNoErrors()
+        ->assertSee('Remplacer');
+
+    $document = CandidatureDocument::query()->sole();
+    Storage::disk('identity')->assertExists($document->path);
+
+    $this->actingAs($candidature->user)->get(route('relais.documents.show', $document))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/jpeg');
+
+    $this->actingAs(Candidature::factory()->create()->user)->get(route('relais.documents.show', $document))->assertNotFound();
+});
+
+it('signale une pièce au mauvais format sans l’enregistrer', function () {
+    Storage::fake('identity');
+    $candidature = Candidature::factory()->create();
+
+    Livewire::actingAs($candidature->user)->test(Dossier::class)
+        ->set('uploads.selfie', UploadedFile::fake()->create('selfie.pdf', 50, 'application/pdf'))
+        ->assertHasErrors('uploads.selfie');
+
+    expect(CandidatureDocument::query()->count())->toBe(0);
 });
