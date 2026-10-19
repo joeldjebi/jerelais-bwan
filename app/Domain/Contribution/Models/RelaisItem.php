@@ -7,6 +7,7 @@ use App\Domain\Contribution\Enums\CreditMode;
 use App\Domain\Contribution\Enums\PeopleConsent;
 use App\Domain\Contribution\Enums\Urgency;
 use App\Domain\Contribution\States\RelaisState;
+use App\Domain\Media\Models\Media;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Validation\Models\RejectionReason;
@@ -16,6 +17,7 @@ use Carbon\CarbonImmutable;
 use Clickbar\Magellan\Data\Geometries\Point;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -66,6 +68,7 @@ use Spatie\ModelStates\HasStates;
  * @property-read Commune|null $declaredCommune
  * @property-read Category|null $category
  * @property-read RejectionReason|null $rejectionReason
+ * @property-read Collection<int, Media> $medias
  */
 #[Fillable([
     'category_id', 'declared_commune_id', 'urgency', 'title', 'description',
@@ -144,6 +147,14 @@ class RelaisItem extends Model
     public function rejectionReason(): BelongsTo
     {
         return $this->belongsTo(RejectionReason::class);
+    }
+
+    /**
+     * @return HasMany<Media, $this>
+     */
+    public function medias(): HasMany
+    {
+        return $this->hasMany(Media::class)->orderBy('id');
     }
 
     /**

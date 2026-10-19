@@ -9,6 +9,7 @@ use App\Domain\Contribution\Exceptions\RelaisNotEditable;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\Received;
 use App\Domain\Contribution\States\Uploading;
+use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Settings\Settings;
 use App\Domain\Territoire\Actions\ResolveCommuneFromPoint;
 use App\Domain\Territoire\Models\Commune;
@@ -91,6 +92,14 @@ class SubmitRelaisItem
             if ($value === null || $value === '') {
                 $missing[$field] = __('validation.required', ['attribute' => __("relais_items.attributes.{$field}")]);
             }
+        }
+
+        $medias = $relais->medias()->where('status', '!=', MediaStatus::Rejected->value)->pluck('status');
+
+        if ($medias->isEmpty()) {
+            $missing['medias'] = __('media.none');
+        } elseif ($medias->contains(fn (mixed $status): bool => ($status instanceof MediaStatus ? $status : MediaStatus::from((string) $status)) === MediaStatus::Pending)) {
+            $missing['medias'] = __('media.still_uploading');
         }
 
         if ($relais->credit_mode === CreditMode::Pseudonym && blank($relais->credit_name)) {

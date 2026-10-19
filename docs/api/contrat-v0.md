@@ -42,7 +42,9 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | GET ✅ / POST ✅ | `/quiz` · `/quiz/attempts` | Questions sans les bonnes réponses ; correction avec explications ; score minimal paramétrable ; 10 tentatives par heure | 2 | MOB-05 |
 | POST ✅ / PUT ✅ | `/relais` · `/relais/{uuid}` | Créer un relais (idempotent sur `client_uuid` : 201 puis 200 ; 409 si l'identifiant appartient à un autre compte) et compléter le brouillon. Champs : `category`, `urgency`, `title`, `description`, `location{lat,lng,accuracy_m}`, `declared_commune`, `declared_place`, `device_captured_at`, `device_model`, `protections{has_minors,people_consent,credit_mode,credit_name}` | 3 | MOB-10 à MOB-15, MOB-19 |
 | POST ✅ | `/relais/{uuid}/submit` | Envoi : 422 avec les champs manquants ; routage GPS puis commune déclarée ; idempotent | 3 | MOB-15, §8.2 |
-| — | Téléversement tus ou multipart S3 signé | Médias reprenables | 3 | MOB-16, MOB-18 |
+| POST ✅ | `/relais/{uuid}/medias` | Annoncer un média (`client_uuid`, `kind` photo/video/audio, `mime`, `size`, `sha256`, `filename`, `is_imported`, `device_captured_at`) ; renvoie `part_size` et les URL signées (30 min) des morceaux | 3 | MOB-11, MOB-12, MOB-16 |
+| PUT | *URL signée Wasabi* | Déposer un morceau (5 Mo minimum sauf le dernier) ; noter l'en-tête `ETag` de la réponse | 3 | MOB-16 |
+| GET ✅ / POST ✅ | `/medias/{uuid}` · `/medias/{uuid}/complete` | Reprise (morceaux reçus et URL des manquants) ; clôture avec `parts[{number, etag}]` ; statut `pending → uploaded → processing → ready` ou `rejected` (motif) | 3 | MOB-16 |
 | GET ✅ | `/relais` · `/relais/{uuid}` | Mes relais et statut public (`uploading`, `received`, `complement_requested`, `validated`, `rejected`, `selected`, `broadcast`, `archived`) | 3 | MOB-20 |
 | POST | `/relais/{uuid}/complement` | Répondre à un complément | 3 | MOB-22 |
 | GET | `/appels` · `/appels/{uuid}` | Appels à relais de ma zone | 4 | MOB-23 |

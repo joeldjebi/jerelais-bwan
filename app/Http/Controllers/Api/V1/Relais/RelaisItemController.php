@@ -33,7 +33,7 @@ class RelaisItemController extends Controller
         $user = $request->user();
 
         return RelaisItemResource::collection(
-            RelaisItem::withoutCommuneRestriction()->with(['category', 'commune', 'rejectionReason'])
+            RelaisItem::withoutCommuneRestriction()->with(['category', 'commune', 'rejectionReason', 'medias'])
                 ->where('user_id', $user->id)->latest('id')->paginate(20)
         );
     }
@@ -110,7 +110,7 @@ class RelaisItemController extends Controller
 
     private function respond(RelaisItem $relais, int $status = 200): JsonResponse
     {
-        $relais->load(['category', 'commune', 'rejectionReason']);
+        $relais->load(['category', 'commune', 'rejectionReason', 'medias']);
 
         return (new RelaisItemResource($relais))->response()->setStatusCode($status);
     }

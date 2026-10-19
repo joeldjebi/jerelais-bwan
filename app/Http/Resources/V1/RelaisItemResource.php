@@ -3,6 +3,7 @@
 namespace App\Http\Resources\V1;
 
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Media\Models\Media;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -43,6 +44,13 @@ class RelaisItemResource extends JsonResource
                 'credit_mode' => $this->credit_mode?->value,
                 'credit_name' => $this->credit_name,
             ],
+            'medias' => $this->whenLoaded('medias', fn () => $this->medias->map(fn (Media $media): array => [
+                'uuid' => $media->uuid,
+                'client_uuid' => $media->client_uuid,
+                'kind' => $media->kind->value,
+                'status' => $media->status->value,
+                'rejection' => $media->rejection === null ? null : __("media.rejections.{$media->rejection}"),
+            ])->values()),
             'rejection' => $public === 'rejected' ? ['reason' => $this->rejectionReason?->label, 'comment' => $this->decision_comment] : null,
             'complement_request' => $public === 'complement_requested' ? $this->decision_comment : null,
             'submitted_at' => $this->submitted_at?->toIso8601ZuluString(),

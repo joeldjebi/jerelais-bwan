@@ -17,6 +17,8 @@ use App\Domain\Contribution\Policies\RelaisItemPolicy;
 use App\Domain\Media\Antivirus\ClamAvScanner;
 use App\Domain\Media\Antivirus\FakeVirusScanner;
 use App\Domain\Media\Contracts\VirusScanner;
+use App\Domain\Media\Storage\MultipartStorage;
+use App\Domain\Media\Storage\S3MultipartStorage;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -55,6 +57,8 @@ class DomainServiceProvider extends ServiceProvider
                 default => throw new InvalidArgumentException('Antivirus non configuré : '.$driver),
             };
         });
+
+        $this->app->singleton(MultipartStorage::class, fn () => new S3MultipartStorage('medias'));
 
         // Une instance par requête : le périmètre calculé ne fuit jamais d'une requête à l'autre.
         $this->app->scoped(CommuneAccess::class);

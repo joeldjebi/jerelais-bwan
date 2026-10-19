@@ -59,9 +59,15 @@ function relaisPayload(array $overrides = []): array
     ];
 }
 
-function createRelais(array $overrides = []): TestResponse
+function createRelais(array $overrides = [], bool $withMedia = true): TestResponse
 {
-    return test()->postJson(route('api.v1.relais.store'), relaisPayload($overrides));
+    $response = test()->postJson(route('api.v1.relais.store'), relaisPayload($overrides));
+
+    if ($withMedia && $response->isSuccessful()) {
+        attachReadyMedia(RelaisItem::withoutCommuneRestriction()->where('uuid', $response->json('data.uuid'))->firstOrFail());
+    }
+
+    return $response;
 }
 
 it('crée un relais en brouillon (envoi en cours) [MOB-14, MOB-19]', function () {
@@ -121,6 +127,12 @@ it('refuse l’envoi sans les questions de protection ni la commune [MOB-15]', f
     $this->postJson(route('api.v1.relais.submit', $uuid))
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['has_minors', 'people_consent', 'credit_mode', 'title', 'declared_commune']);
+});
+
+it('exige au moins un média entièrement reçu avant l’envoi [MOB-11]', function () {
+    $uuid = createRelais(withMedia: false)->json('data.uuid');
+
+    $this->postJson(route('api.v1.relais.submit', $uuid))->assertJsonValidationErrors(['medias' => 'Ajoutez au moins une photo, une vidéo ou un enregistrement.']);
 });
 
 it('exige le pseudonyme quand le Relais veut être crédité sous pseudonyme', function () {
