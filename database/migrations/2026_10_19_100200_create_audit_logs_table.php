@@ -18,11 +18,12 @@ return new class extends Migration
             $table->id();
             $table->uuid()->unique();
             $table->timestampTz('occurred_at')->index();
-            $table->foreignId('actor_id')->nullable()->constrained('users')->nullOnDelete();
+            // Un compte présent dans l'audit ne se supprime pas : il se pseudonymise (§9.4).
+            $table->foreignId('actor_id')->nullable()->constrained('users')->restrictOnDelete();
             $table->string('action', 100)->index();
             $table->string('subject_type', 100)->nullable();
             $table->string('subject_id', 64)->nullable();
-            $table->foreignId('commune_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('commune_id')->nullable()->constrained()->restrictOnDelete();
             $table->string('ip_address', 45)->nullable();
             $table->string('user_agent', 255)->nullable();
             $table->jsonb('payload')->nullable();

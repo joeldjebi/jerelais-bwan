@@ -49,6 +49,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Démonstration (environnement local uniquement)
+    |--------------------------------------------------------------------------
+    |
+    | Code de double authentification fixe accepté pour faciliter les démos locales.
+    | Ignoré dans tout autre environnement.
+    |
+    */
+
+    'demo' => [
+        'two_factor_code' => env('DEMO_TWO_FACTOR_CODE'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Paramètres de la plateforme (ADM-23) : valeurs par défaut
     |--------------------------------------------------------------------------
     |

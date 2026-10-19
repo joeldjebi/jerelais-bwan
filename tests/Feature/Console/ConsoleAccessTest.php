@@ -29,7 +29,8 @@ it('ouvre la console une fois la double authentification confirmée', function (
         ->get(route('console.home'))
         ->assertOk()
         ->assertSee('Bonjour, Awa.')
-        ->assertSee('Journaliste');
+        ->assertSee('Journaliste')
+        ->assertDontSee('Mise en service');
 });
 
 it('affiche le périmètre communal d’un coordonnateur', function () {
@@ -38,7 +39,7 @@ it('affiche le périmètre communal d’un coordonnateur', function () {
     $this->actingAs(User::factory()->withTwoFactor()->coordonnateurOf($commune)->create())
         ->get(route('console.home'))
         ->assertOk()
-        ->assertSee('Back-office coordonnateur')
+        ->assertSee('Coordination')
         ->assertSee('Yopougon');
 });
 

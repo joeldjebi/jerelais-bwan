@@ -29,22 +29,35 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Comptes de démonstration locaux (mot de passe « password »), jamais créés hors environnement local.
+     * Comptes de démonstration locaux (mot de passe « 12345678 »), jamais créés hors environnement local.
+     * Code de double authentification : DEMO_TWO_FACTOR_CODE (123456) ou un code TOTP réel.
      */
     private function seedDemoAccounts(): void
     {
-        User::factory()->withTwoFactor()->withRole(Role::Admin)->create([
-            'name' => 'Admin Démo',
-            'email' => 'admin@jerelais.test',
-        ]);
+        $admin = $this->demoAccount('admin@jerelais.com', 'Admin Démo');
+        $admin->syncRoles([Role::Admin->value]);
+
+        $coordinateur = $this->demoAccount('coordinateur@jerelais.com', 'Coordinateur Yopougon');
+        $coordinateur->syncRoles([Role::Coordonnateur->value]);
 
         $yopougon = Commune::query()->where('slug', 'yopougon')->first();
 
         if ($yopougon !== null) {
-            User::factory()->withTwoFactor()->coordonnateurOf($yopougon)->create([
-                'name' => 'Coordonnateur Yopougon',
-                'email' => 'coordo.yopougon@jerelais.test',
-            ]);
+            $coordinateur->communes()->syncWithoutDetaching([$yopougon->id => ['assignment' => 'titulaire']]);
         }
+    }
+
+    private function demoAccount(string $email, string $name): User
+    {
+        $user = User::query()->firstOrNew(['email' => $email]);
+        $user->fill(['name' => $name, 'password' => '12345678']);
+        $user->forceFill([
+            'email_verified_at' => now(),
+            'two_factor_secret' => encrypt('JBSWY3DPEHPK3PXP'),
+            'two_factor_recovery_codes' => encrypt(json_encode(['demo-recovery-1', 'demo-recovery-2'])),
+            'two_factor_confirmed_at' => now(),
+        ])->save();
+
+        return $user;
     }
 }

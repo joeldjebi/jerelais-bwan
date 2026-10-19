@@ -7,12 +7,14 @@ use App\Domain\Audit\Listeners\RecordAuthenticationEvents;
 use App\Domain\Auth\Contracts\SmsGateway;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Sms\LogSmsGateway;
+use App\Domain\Auth\Support\DemoTwoFactorProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
+use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 
 /**
  * Branchements du métier JE RELAIS : services externes, périmètre territorial, audit, limites d'usage.
@@ -28,6 +30,13 @@ class DomainServiceProvider extends ServiceProvider
 
         // Une instance par requête : le périmètre calculé ne fuit jamais d'une requête à l'autre.
         $this->app->scoped(CommuneAccess::class);
+
+        // Code de double authentification de démonstration : environnement local uniquement.
+        $demoCode = config('jerelais.demo.two_factor_code');
+
+        if (is_string($demoCode) && preg_match('/^\d{6}$/', $demoCode) === 1 && $this->app->environment('local')) {
+            $this->app->extend(TwoFactorAuthenticationProvider::class, fn (TwoFactorAuthenticationProvider $provider) => new DemoTwoFactorProvider($provider, $demoCode));
+        }
     }
 
     public function boot(): void
