@@ -64,6 +64,7 @@ class AuditPresenter
         'appel.created' => ['Appel à relais créé', 'bell', 'accent'],
         'appel.approved' => ['Appel local approuvé', 'check', 'success'],
         'appel.closed' => ['Appel à relais clos', 'x', 'neutral'],
+        'message.broadcast' => ['Message groupé aux Relais d’une commune', 'bell', 'neutral'],
         'relais.received' => ['Relais reçu', 'inbox', 'accent'],
         'relais.created' => ['Nouveau Relais', 'signal', 'success'],
         'legal.accepted' => ['Charte et conditions acceptées', 'flag', 'success'],

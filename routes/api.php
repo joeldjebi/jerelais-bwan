@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Candidature\CandidatureController;
 use App\Http\Controllers\Api\V1\Formation\FormationController;
 use App\Http\Controllers\Api\V1\Legal\LegalController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\Messagerie\ConversationController;
 use App\Http\Controllers\Api\V1\ReferentielController;
 use App\Http\Controllers\Api\V1\Relais\MediaController;
 use App\Http\Controllers\Api\V1\Relais\RelaisItemController;
@@ -47,6 +48,11 @@ Route::name('api.v1.')->group(function () {
 
         Route::get('quiz', [FormationController::class, 'quiz'])->name('quiz.show');
         Route::post('quiz/attempts', [FormationController::class, 'attempt'])->middleware('throttle:quiz')->name('quiz.attempts.store');
+
+        Route::get('conversations', [ConversationController::class, 'index'])->name('conversations.index');
+        Route::post('conversations', [ConversationController::class, 'store'])->middleware('throttle:30,1')->name('conversations.store');
+        Route::get('conversations/{conversation}/messages', [ConversationController::class, 'messages'])->name('conversations.messages');
+        Route::post('conversations/{conversation}/messages', [ConversationController::class, 'reply'])->middleware('throttle:30,1')->name('conversations.reply');
 
         Route::get('appels', [AppelController::class, 'index'])->name('appels.index');
         Route::get('appels/{appel}', [AppelController::class, 'show'])->name('appels.show');

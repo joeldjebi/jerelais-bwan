@@ -19,6 +19,7 @@ use App\Domain\Editorial\Exceptions\EditorialRefused;
 use App\Domain\Editorial\Models\RelaisCollection;
 use App\Domain\Media\Actions\FindMediaDuplicates;
 use App\Domain\Media\Models\Media;
+use App\Domain\Messagerie\Actions\SendMessage;
 use App\Domain\Validation\Enums\RejectionTarget;
 use App\Domain\Validation\Models\RejectionReason;
 use App\Models\User;
@@ -283,6 +284,19 @@ class Show extends Component
         $audit->record('editorial.collection_added', $this->relais, ['collection' => $target->name], communeId: $this->relais->commune_id);
 
         $this->closeEditorial(__('Ajouté à « :name ».', ['name' => $target->name]));
+    }
+
+    /**
+     * Ouvre (ou reprend) la conversation rattachée à ce relais.
+     */
+    public function writeToRelais(SendMessage $send): mixed
+    {
+        Gate::authorize('validate', $this->relais);
+        abort_if($this->relais->relaisProfile === null, 404);
+
+        $conversation = $send->conversationFor($this->relais->relaisProfile, $this->relais);
+
+        return $this->redirectRoute('console.messagerie', ['c' => $conversation->uuid], navigate: true);
     }
 
     #[Computed]

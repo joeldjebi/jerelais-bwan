@@ -309,6 +309,9 @@
             </x-console.group>
 
             @can('validate', $r)
+                @if ($r->relaisProfile)
+                    <x-ui.button variant="secondary" icon="inbox" class="w-full" wire:click="writeToRelais">{{ __('Écrire au Relais') }}</x-ui.button>
+                @endif
                 <x-console.group :title="__('Note interne')" :footer="__('Visible par l’équipe et la rédaction, jamais par le Relais.')">
                     <div class="p-3">
                         <textarea wire:model="note" wire:blur="saveNote" rows="3" class="{{ $textarea }} mt-0!" placeholder="{{ __('Ex. : appelé le Relais, confirme être sur place.') }}"></textarea>
