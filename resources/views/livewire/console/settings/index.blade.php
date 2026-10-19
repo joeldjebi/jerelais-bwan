@@ -1,10 +1,12 @@
 @php
     use App\Livewire\Console\Settings\Index as SettingsPage;
 
-    $groupTint = ['media' => 'orange', 'validation' => 'blue', 'candidature' => 'green', 'retention' => 'gray'];
+    $groupTint = ['media' => 'orange', 'validation' => 'blue', 'appels' => 'purple', 'alerts' => 'pink', 'candidature' => 'green', 'retention' => 'gray'];
     $icons = [
         'media.video_max_seconds' => 'video', 'media.audio_max_seconds' => 'mic', 'media.max_medias_per_relais' => 'photo', 'media.max_file_size_mb' => 'layers',
         'validation.sla_urgent_minutes' => 'bolt', 'validation.sla_normal_minutes' => 'clock', 'validation.lock_minutes' => 'shield',
+        'appels.local_requires_approval' => 'bell',
+        'alerts.surge_threshold' => 'chart', 'alerts.surge_window_minutes' => 'clock',
         'candidature.quiz_min_score' => 'book', 'candidature.minimum_age' => 'users', 'candidature.minors_allowed' => 'users',
     ];
 @endphp
@@ -37,7 +39,7 @@
                                 @if (is_bool($default))
                                     <div class="flex-1">
                                         <x-console.toggle :label="__('settings.labels.'.$key)" name="values.{{ $field }}" wire:model="values.{{ $field }}"
-                                            :description="__('Une autorisation parentale signée sera alors exigée (§9.3).')" />
+                                            :description="$key === 'candidature.minors_allowed' ? __('Une autorisation parentale signée sera alors exigée (§9.3).') : null" />
                                     </div>
                                 @else
                                     <div class="min-w-0 flex-1">

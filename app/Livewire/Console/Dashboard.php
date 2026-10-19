@@ -5,7 +5,8 @@ namespace App\Livewire\Console;
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Audit\Models\AuditLog;
-use App\Domain\Settings\Settings;
+use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Relais\Support\CommuneStats;
 use App\Domain\Territoire\Models\Commune;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -20,6 +21,9 @@ use Livewire\Component;
  *
  * @property-read User $user
  * @property-read bool $isCoordination
+ * @property-read array{active_relais: int, to_validate: int, candidatures: int, received: int, validated: int, rejected: int, broadcast: int, average_minutes: int|null} $communeStats
+ * @property-read list<array{name: string, relais: int, items: int}> $coverage
+ * @property-read Collection<int, RelaisItem> $queue
  */
 #[Title('Accueil')]
 class Dashboard extends Component
@@ -113,6 +117,39 @@ class Dashboard extends Component
     }
 
     /**
+     * @return array{active_relais: int, to_validate: int, candidatures: int, received: int, validated: int, rejected: int, broadcast: int, average_minutes: int|null}
+     */
+    #[Computed]
+    public function communeStats(): array
+    {
+        return app(CommuneStats::class)->summary();
+    }
+
+    /**
+     * @return list<array{name: string, relais: int, items: int}>
+     */
+    #[Computed]
+    public function coverage(): array
+    {
+        return app(CommuneStats::class)->coverage();
+    }
+
+    /**
+     * @return Collection<int, RelaisItem>
+     */
+    #[Computed]
+    public function queue(): Collection
+    {
+        return RelaisItem::query()
+            ->whereIn('state', ['received', 'in_review'])
+            ->with(['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'medias' => fn ($query) => $query->with('variants')])
+            ->orderByRaw("case urgency when 'urgent' then 0 when 'important' then 1 else 2 end")
+            ->orderBy('received_at')
+            ->limit(5)
+            ->get();
+    }
+
+    /**
      * Indicateurs de l'accueil ; « count » est animé à l'affichage, « suffix » le complète.
      *
      * @return list<array{label: string, count: ?int, suffix: string, value: string, icon: string, hint: string, tone: string, route: ?string}>
@@ -124,10 +161,10 @@ class Dashboard extends Component
 
         if ($this->isCoordination) {
             return [
-                ['label' => __('Relais à valider'), 'count' => 0, 'suffix' => '', 'value' => '', 'icon' => 'inbox', 'hint' => __('File de validation de votre commune'), 'tone' => 'accent', 'route' => null],
-                ['label' => __('Candidatures'), 'count' => 0, 'suffix' => '', 'value' => '', 'icon' => 'users', 'hint' => __('Nouveaux Relais à examiner'), 'tone' => 'default', 'route' => null],
-                ['label' => __('Relais actifs'), 'count' => User::role(Role::Relais->value)->count(), 'suffix' => '', 'value' => '', 'icon' => 'signal', 'hint' => __('Au moins un envoi sur 30 jours'), 'tone' => 'success', 'route' => null],
-                ['label' => __('Délai urgent'), 'count' => app(Settings::class)->integer('validation.sla_urgent_minutes'), 'suffix' => ' min', 'value' => '', 'icon' => 'clock', 'hint' => __('Au-delà, escalade au suppléant'), 'tone' => 'default', 'route' => null],
+                ['label' => __('Relais à valider'), 'count' => $this->communeStats['to_validate'], 'suffix' => '', 'value' => '', 'icon' => 'inbox', 'hint' => __('File de validation de votre commune'), 'tone' => 'accent', 'route' => 'console.validation'],
+                ['label' => __('Candidatures'), 'count' => $this->communeStats['candidatures'], 'suffix' => '', 'value' => '', 'icon' => 'users', 'hint' => __('Nouveaux Relais à examiner'), 'tone' => 'default', 'route' => 'console.candidatures'],
+                ['label' => __('Relais actifs'), 'count' => $this->communeStats['active_relais'], 'suffix' => '', 'value' => '', 'icon' => 'signal', 'hint' => __('Recrutés et non suspendus'), 'tone' => 'success', 'route' => 'console.relais'],
+                ['label' => __('Délai moyen'), 'count' => $this->communeStats['average_minutes'], 'suffix' => ' min', 'value' => $this->communeStats['average_minutes'] === null ? '—' : '', 'icon' => 'clock', 'hint' => __('Avant décision, sur 30 jours'), 'tone' => 'default', 'route' => null],
             ];
         }
 

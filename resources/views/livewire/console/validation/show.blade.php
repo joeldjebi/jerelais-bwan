@@ -185,6 +185,57 @@
 
         {{-- Panneau de vérification (COO-12) --}}
         <aside class="space-y-6">
+            @if ($this->canEdit || $this->canExport)
+                @php $stateName = $r->state->getValue(); @endphp
+                <x-console.group :title="__('Exploitation')" data-enter>
+                    @if ($r->assignee || $r->programme || $r->broadcast_at)
+                        <ul class="border-b border-line text-[0.875rem]">
+                            @if ($r->assignee)<li class="flex gap-3 px-4 py-2.5"><span class="w-24 shrink-0 text-mute">{{ __('Affecté à') }}</span><span>{{ $r->assignee->name }}</span></li>@endif
+                            @if ($r->programme)<li class="flex gap-3 px-4 py-2.5"><span class="w-24 shrink-0 text-mute">{{ __('Émission') }}</span><span>{{ $r->programme }}</span></li>@endif
+                            @if ($r->broadcast_at)
+                                <li class="flex gap-3 px-4 py-2.5"><span class="w-24 shrink-0 text-mute">{{ __('Diffusé') }}</span>
+                                    <span>{{ $date($r->broadcast_at) }} · {{ $r->broadcast_programme }}@if ($r->broadcast_url) · <a href="{{ $r->broadcast_url }}" target="_blank" rel="noopener" class="text-tile-blue">{{ __('lien') }}</a>@endif</span></li>
+                            @endif
+                        </ul>
+                    @endif
+                    <div class="flex flex-wrap gap-2 p-3">
+                        @if ($this->canEdit)
+                            @if ($stateName === 'sensitive')
+                                <x-ui.button size="sm" variant="success" wire:click="openEditorial('arbitrate-validate')">{{ __('Valider (arbitrage)') }}</x-ui.button>
+                                <x-ui.button size="sm" variant="ghost" class="text-status-rejected!" wire:click="openEditorial('arbitrate-reject')">{{ __('Rejeter (arbitrage)') }}</x-ui.button>
+                            @elseif ($stateName === 'rejected')
+                                <x-ui.button size="sm" variant="secondary" wire:click="openEditorial('arbitrate-validate')">{{ __('Revenir sur le rejet') }}</x-ui.button>
+                            @endif
+                            @if (in_array($stateName, ['validated', 'selected'], true))
+                                <x-ui.button size="sm" wire:click="openEditorial('select')">{{ $stateName === 'selected' ? __('Modifier l’affectation') : __('Sélectionner') }}</x-ui.button>
+                            @endif
+                            @if ($stateName === 'validated')
+                                <x-ui.button size="sm" variant="ghost" class="text-status-rejected!" wire:click="openEditorial('arbitrate-reject')">{{ __('Revenir sur la validation') }}</x-ui.button>
+                            @endif
+                            @if ($stateName === 'selected')
+                                <x-ui.button size="sm" variant="success" icon="signal" wire:click="openEditorial('broadcast')">{{ __('Marquer diffusé') }}</x-ui.button>
+                                <x-ui.button size="sm" variant="ghost" wire:click="unselect">{{ __('Retirer') }}</x-ui.button>
+                            @endif
+                            <x-ui.button size="sm" variant="secondary" icon="layers" wire:click="openEditorial('collection')">{{ __('Collection') }}</x-ui.button>
+                        @endif
+                        @if ($this->canExport)
+                            @if ($r->isExploitable())
+                                <form method="POST" action="{{ route('console.export.relais', $r) }}">
+                                    @csrf
+                                    <x-ui.button size="sm" type="submit" variant="dark" icon="arrow-up-right">{{ __('Télécharger (ZIP + fiche)') }}</x-ui.button>
+                                </form>
+                            @elseif (auth()->user()->can(\App\Domain\Access\Enums\Permission::RelaisExportUnvalidated->value))
+                                <x-ui.button size="sm" variant="secondary" icon="shield" wire:click="openEditorial('derogation')">{{ __('Exporter par dérogation') }}</x-ui.button>
+                            @else
+                                <span class="px-1 py-1.5 text-[0.8125rem] text-mute">{{ __('Export bloqué tant que le relais n’est pas validé.') }}</span>
+                            @endif
+                        @endif
+                    </div>
+                    @if ($r->collections->isNotEmpty())
+                        <p class="border-t border-line px-4 py-2.5 text-[0.8125rem] text-mute">{{ __('Collections') }} : {{ $r->collections->pluck('name')->join(', ') }}</p>
+                    @endif
+                </x-console.group>
+            @endif
             @if ($map)
                 <section class="overflow-hidden rounded-[1.6rem] bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.06),0_2px_12px_-4px_rgb(0_0_0/0.06)]" data-enter>
                     <div class="relative h-56 overflow-hidden bg-black/[0.04]">
@@ -258,6 +309,9 @@
             </x-console.group>
 
             @can('validate', $r)
+                @if ($r->relaisProfile)
+                    <x-ui.button variant="secondary" icon="inbox" class="w-full" wire:click="writeToRelais">{{ __('Écrire au Relais') }}</x-ui.button>
+                @endif
                 <x-console.group :title="__('Note interne')" :footer="__('Visible par l’équipe et la rédaction, jamais par le Relais.')">
                     <div class="p-3">
                         <textarea wire:model="note" wire:blur="saveNote" rows="3" class="{{ $textarea }} mt-0!" placeholder="{{ __('Ex. : appelé le Relais, confirme être sur place.') }}"></textarea>
@@ -367,6 +421,85 @@
                         </x-ui.button>
                     </footer>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Feuille éditoriale --}}
+    <div x-data="{ open: $wire.entangle('editorial') }" x-cloak>
+        <div x-show="open !== ''" x-transition.opacity.duration.300ms class="fixed inset-0 z-[55] bg-black/30 backdrop-blur-[3px]" x-on:click="open = ''"></div>
+        <div x-show="open !== ''" x-on:keydown.escape.window="open = ''" class="fixed inset-0 z-[56] flex items-end justify-center sm:items-center sm:p-6" x-on:click.self="open = ''">
+            <div x-show="open !== ''" x-transition:enter="transition duration-500 ease-spring" x-transition:enter-start="opacity-0 translate-y-16 sm:translate-y-6 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                class="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[1.6rem] bg-canvas shadow-[0_40px_100px_-30px_rgb(0_0_0/0.5)] sm:max-w-lg sm:rounded-[1.6rem]" role="dialog" aria-modal="true">
+                @if ($editorial === 'derogation')
+                    <form method="POST" action="{{ route('console.export.relais', $r) }}" class="flex flex-col" x-on:submit="open = ''">
+                        @csrf
+                        <header class="px-6 pt-6 pb-3">
+                            <h2 class="text-[1.375rem] font-bold tracking-[-0.02em]">{{ __('Exporter par dérogation') }}</h2>
+                            <p class="mt-1 text-[0.875rem] text-mute">{{ __('Ce relais n’est pas validé. La dérogation et son motif sont inscrits au journal d’audit (ADM-12).') }}</p>
+                        </header>
+                        <div class="px-6 pb-6">
+                            <label for="derogation" class="block text-[0.8125rem] font-medium">{{ __('Motif') }}</label>
+                            <textarea id="derogation" name="derogation" required rows="3" class="{{ $textarea }}"></textarea>
+                        </div>
+                        <footer class="flex justify-end gap-2 border-t border-line px-6 py-4">
+                            <x-ui.button variant="secondary" x-on:click="open = ''">{{ __('Annuler') }}</x-ui.button>
+                            <x-ui.button type="submit" variant="danger">{{ __('Télécharger') }}</x-ui.button>
+                        </footer>
+                    </form>
+                @elseif ($editorial !== '')
+                    <form wire:submit="{{ match ($editorial) { 'arbitrate-validate' => 'arbitrate(true)', 'arbitrate-reject' => 'arbitrate(false)', 'select' => 'selectRelais', 'broadcast' => 'markBroadcast', default => 'addToCollection' } }}" class="flex min-h-0 flex-1 flex-col">
+                        <header class="px-6 pt-6 pb-3">
+                            <h2 class="text-[1.375rem] font-bold tracking-[-0.02em]">
+                                {{ match ($editorial) { 'arbitrate-validate' => __('Valider'), 'arbitrate-reject' => __('Rejeter'), 'select' => __('Sélectionner et affecter'), 'broadcast' => __('Marquer diffusé'), default => __('Ajouter à une collection') } }}
+                            </h2>
+                            @if (str_starts_with($editorial, 'arbitrate'))
+                                <p class="mt-1 text-[0.875rem] text-mute">{{ __('Arbitrage de la rédaction : la décision précédente reste dans l’historique.') }}</p>
+                            @endif
+                        </header>
+                        <div class="flex-1 space-y-4 overflow-y-auto px-6 pb-6">
+                            @if (str_starts_with($editorial, 'arbitrate'))
+                                @if ($editorial === 'arbitrate-validate' && $needsBlur)
+                                    <fieldset class="rounded-[1rem] bg-status-pending/12 p-4">
+                                        <p class="text-[0.875rem] font-semibold">{{ __('Un floutage est-il nécessaire ?') }}</p>
+                                        <div class="mt-3 flex gap-2">
+                                            @foreach (['1' => __('Oui, flouter'), '0' => __('Non')] as $value => $label)
+                                                <label @class(['press flex-1 cursor-pointer rounded-full px-4 py-2 text-center text-[0.875rem] font-medium ring-1', 'bg-ink text-canvas ring-ink' => $blur === (string) $value, 'bg-surface ring-line' => $blur !== (string) $value])>
+                                                    <input type="radio" wire:model.live="blur" value="{{ $value }}" class="sr-only">{{ $label }}
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </fieldset>
+                                @endif
+                                <div>
+                                    <label for="editor-reason" class="block text-[0.8125rem] font-medium">{{ __('Motif') }}</label>
+                                    <textarea id="editor-reason" wire:model="editorReason" rows="3" class="{{ $textarea }}"></textarea>
+                                </div>
+                            @elseif ($editorial === 'select')
+                                <x-console.select :label="__('Journaliste')" name="journalist" wire:model="journalist">
+                                    <option value="">{{ __('Non affecté') }}</option>
+                                    @foreach ($this->journalists as $person)<option value="{{ $person->uuid }}">{{ $person->name }}</option>@endforeach
+                                </x-console.select>
+                                <x-console.input :label="__('Émission')" name="programme" wire:model="programme" :placeholder="__('Journal de 20 h')" />
+                            @elseif ($editorial === 'broadcast')
+                                <x-console.input :label="__('Date et heure de diffusion')" type="datetime-local" name="broadcastAt" wire:model="broadcastAt" />
+                                <x-console.input :label="__('Émission')" name="broadcastProgramme" wire:model="broadcastProgramme" />
+                                <x-console.input :label="__('Lien (facultatif)')" type="url" name="broadcastUrl" wire:model="broadcastUrl" placeholder="https://" />
+                            @else
+                                <x-console.select :label="__('Collection existante')" name="collection" wire:model="collection">
+                                    <option value="">{{ __('Choisir') }}</option>
+                                    @foreach ($this->collectionsList as $item)<option value="{{ $item->uuid }}">{{ $item->name }}</option>@endforeach
+                                </x-console.select>
+                                <x-console.input :label="__('Ou nouvelle collection')" name="newCollection" wire:model="newCollection" :placeholder="__('Inondations de juin')" />
+                            @endif
+                            @error('editorial') <p class="text-[0.8125rem] font-medium text-status-rejected">{{ $message }}</p> @enderror
+                        </div>
+                        <footer class="flex justify-end gap-2 border-t border-line px-6 py-4">
+                            <x-ui.button variant="secondary" x-on:click="open = ''">{{ __('Annuler') }}</x-ui.button>
+                            <x-ui.button type="submit" :variant="$editorial === 'arbitrate-reject' ? 'danger' : 'primary'" wire:loading.attr="disabled">{{ __('Confirmer') }}</x-ui.button>
+                        </footer>
+                    </form>
+                @endif
             </div>
         </div>
     </div>

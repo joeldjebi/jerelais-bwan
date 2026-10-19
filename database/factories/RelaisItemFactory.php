@@ -59,7 +59,7 @@ class RelaisItemFactory extends Factory
 
     public function urgent(): static
     {
-        return $this->state(['urgency' => Urgency::Urgent])->afterMaking(fn (RelaisItem $relais) => $relais->forceFill(['sla_due_at' => now()->addMinutes(25)]));
+        return $this->state(fn (): array => ['urgency' => Urgency::Urgent, 'sla_due_at' => now()->addMinutes(25)]);
     }
 
     public function withMinors(): static

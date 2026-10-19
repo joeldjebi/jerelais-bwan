@@ -8,6 +8,7 @@ use App\Domain\Contribution\Actions\SubmitRelaisItem;
 use App\Domain\Contribution\Exceptions\RelaisIncomplete;
 use App\Domain\Contribution\Exceptions\RelaisNotEditable;
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Media\Exceptions\MediaRefused;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Relais\StoreRelaisItemRequest;
 use App\Http\Requests\Api\V1\Relais\UpdateRelaisItemRequest;
@@ -57,7 +58,11 @@ class RelaisItemController extends Controller
             throw new ConflictHttpException(__('relais_items.errors.client_uuid_taken'));
         }
 
-        $relais = $save->create($user, $clientUuid, $request->relaisData());
+        try {
+            $relais = $save->create($user, $clientUuid, $request->relaisData());
+        } catch (MediaRefused $exception) {
+            throw ValidationException::withMessages([$exception->field => $exception->getMessage()]);
+        }
 
         return $this->respond($relais, $relais->wasRecentlyCreated ? 201 : 200);
     }
@@ -81,6 +86,8 @@ class RelaisItemController extends Controller
 
         try {
             $save->update($relais, $request->relaisData());
+        } catch (MediaRefused $exception) {
+            throw ValidationException::withMessages([$exception->field => $exception->getMessage()]);
         } catch (RelaisNotEditable $exception) {
             throw new ConflictHttpException($exception->getMessage());
         }

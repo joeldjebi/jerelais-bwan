@@ -4,6 +4,7 @@ namespace App\Domain\Relais\Models;
 
 use App\Domain\Access\Concerns\BelongsToCommune;
 use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Relais\Enums\RelaisStatus;
 use App\Domain\Territoire\Models\Localite;
 use App\Models\Concerns\HasPublicUuid;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Profil du Relais recruté. Son badge porte un QR code qui renvoie vers une page publique de vérification.
@@ -79,6 +81,16 @@ class RelaisProfile extends Model
     public function localite(): BelongsTo
     {
         return $this->belongsTo(Localite::class);
+    }
+
+    /**
+     * Relais envoyés par ce Relais.
+     *
+     * @return HasMany<RelaisItem, $this>
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(RelaisItem::class)->withoutGlobalScopes();
     }
 
     /**

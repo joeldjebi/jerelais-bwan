@@ -7,6 +7,10 @@ import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.e
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { applyTheme } from './theme';
+import L from 'leaflet';
+import 'leaflet.markercluster';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
 
 gsap.registerPlugin(SplitText);
 
@@ -128,6 +132,53 @@ document.addEventListener('livewire:init', () => {
         }));
     });
 });
+
+/**
+ * Carte des relais (ADM-02) : fond OpenStreetMap, points colorés par urgence, regroupés quand ils sont proches.
+ */
+const urgencyColor = { urgent: '#ff3b30', important: '#ff9f0a', normal: '#0a84ff' };
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+
+Alpine.data('relaisMap', (points = []) => ({
+    map: null,
+    layer: null,
+
+    init() {
+        this.map = L.map(this.$refs.map, { zoomControl: true, attributionControl: true }).setView([7.54, -5.55], 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap',
+        }).addTo(this.map);
+
+        this.layer = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 48 });
+        this.map.addLayer(this.layer);
+        this.update(points, true);
+    },
+
+    update(points, fit = false) {
+        this.layer.clearLayers();
+
+        const markers = points.map((point) => L.circleMarker([point.lat, point.lng], {
+            radius: point.urgency === 'urgent' ? 9 : 7,
+            color: '#ffffff',
+            weight: 2,
+            fillColor: urgencyColor[point.urgency] ?? urgencyColor.normal,
+            fillOpacity: 0.95,
+        }).bindPopup(
+            `<strong>${escapeHtml(point.title)}</strong><br><span>${escapeHtml(point.commune)} · ${escapeHtml(point.label)}</span><br><a href="${escapeHtml(point.url)}">Ouvrir le relais</a>`,
+        ));
+
+        this.layer.addLayers(markers);
+
+        if (fit && markers.length > 0) {
+            this.map.fitBounds(this.layer.getBounds(), { padding: [40, 40], maxZoom: 15 });
+        }
+    },
+
+    destroy() {
+        this.map?.remove();
+    },
+}));
 
 /** Compteur qui défile jusqu'à sa valeur (chiffres des indicateurs). */
 function countUp(element) {

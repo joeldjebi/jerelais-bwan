@@ -21,12 +21,24 @@ class Navigation
                 'label' => __('Pilotage'),
                 'items' => [
                     ['label' => __('Accueil'), 'route' => 'console.home', 'icon' => 'home', 'tint' => 'orange', 'keywords' => 'tableau de bord accueil', 'permission' => Permission::ConsoleAccess],
+                    ['label' => __('Flux des relais'), 'route' => 'console.flux', 'icon' => 'signal', 'tint' => 'brand', 'keywords' => 'flux temps réel recherche filtres', 'permission' => Permission::RelaisViewPending],
+                    ['label' => __('Carte'), 'route' => 'console.map', 'icon' => 'map-pin', 'tint' => 'teal', 'keywords' => 'carte géographie communes quartiers', 'permission' => Permission::RelaisViewPending],
                     ['label' => __('Validation des relais'), 'route' => 'console.validation', 'icon' => 'bolt', 'tint' => 'blue', 'keywords' => 'relais file vérification urgents médias', 'permission' => Permission::RelaisViewPending],
+                ],
+            ],
+            [
+                'label' => __('Rédaction'),
+                'items' => [
+                    ['label' => __('Exploitation'), 'route' => 'console.editorial', 'icon' => 'sparkles', 'tint' => 'purple', 'keywords' => 'rédaction sélection arbitrage diffusé émission', 'permission' => Permission::RelaisArbitrate],
+                    ['label' => __('Appels à relais'), 'route' => 'console.appels', 'icon' => 'bell', 'tint' => 'orange', 'keywords' => 'appels zone sujet consignes', 'permission' => [Permission::AppelsCreate, Permission::AppelsCreateLocal]],
+                    ['label' => __('Collections'), 'route' => 'console.collections', 'icon' => 'layers', 'tint' => 'teal', 'keywords' => 'collections dossiers sujets événements', 'permission' => Permission::RelaisArbitrate],
                 ],
             ],
             [
                 'label' => __('Réseau'),
                 'items' => [
+                    ['label' => __('Relais'), 'route' => 'console.relais', 'icon' => 'signal', 'tint' => 'brand', 'keywords' => 'relais observateurs suspension radiation fiche', 'permission' => [Permission::RelaisProfilesSuspend, Permission::RelaisValidate]],
+                    ['label' => __('Messagerie'), 'route' => 'console.messagerie', 'icon' => 'inbox', 'tint' => 'blue', 'keywords' => 'messages relais conversation', 'permission' => Permission::RelaisValidate],
                     ['label' => __('Candidatures'), 'route' => 'console.candidatures', 'icon' => 'inbox', 'tint' => 'pink', 'keywords' => 'recrutement dossiers candidats relais décision', 'permission' => Permission::CandidaturesValidate],
                     ['label' => __('Communes'), 'route' => 'console.communes', 'icon' => 'map-pin', 'tint' => 'blue', 'keywords' => 'territoire référentiel régions pilote', 'permission' => Permission::TerritoireManage],
                     ['label' => __('Équipe'), 'route' => 'console.team', 'icon' => 'users', 'tint' => 'green', 'keywords' => 'coordonnateurs journalistes comptes membres', 'permission' => Permission::UsersManage],
@@ -47,7 +59,8 @@ class Navigation
         foreach ($groups as $group) {
             $items = array_values(array_map(
                 fn (array $item): array => ['label' => $item['label'], 'route' => $item['route'], 'icon' => $item['icon'], 'tint' => $item['tint'], 'keywords' => $item['keywords']],
-                array_filter($group['items'], fn (array $item): bool => $user->hasPermissionTo($item['permission']->value)),
+                array_filter($group['items'], fn (array $item): bool => collect(is_array($item['permission']) ? $item['permission'] : [$item['permission']])
+                    ->contains(fn (Permission $permission): bool => $user->hasPermissionTo($permission->value))),
             ));
 
             if ($items !== []) {
