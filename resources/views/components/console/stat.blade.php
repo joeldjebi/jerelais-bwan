@@ -1,29 +1,24 @@
-@props(['label', 'value', 'icon' => null, 'hint' => null, 'tone' => 'default', 'href' => null])
+{{-- Indicateur compact (widget 1×1) : tuile d'icône, grand chiffre qui défile. --}}
+@props(['label', 'value', 'icon' => null, 'hint' => null, 'tone' => 'default', 'href' => null, 'count' => null, 'suffix' => null, 'tint' => null])
 
 @php
-    $iconTone = [
-        'default' => 'bg-ink/[0.05] text-ink-soft',
-        'accent' => 'bg-relais-500/12 text-relais-600',
-        'success' => 'bg-status-validated/12 text-status-validated',
-        'alert' => 'bg-status-rejected/12 text-status-rejected',
-    ][$tone];
-    $tag = $href ? 'a' : 'div';
+    $tint ??= ['default' => 'gray', 'accent' => 'orange', 'success' => 'green', 'alert' => 'pink'][$tone] ?? 'gray';
 @endphp
 
-<{{ $tag }} @if ($href) href="{{ $href }}" wire:navigate @endif {{ $attributes->merge(['class' => 'group relative block rounded-[1.25rem] bg-surface p-5 ring-1 ring-line shadow-[0_1px_2px_rgb(0_0_0/0.03)] transition duration-500 ease-out-expo'.($href ? ' hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-16px_rgb(0_0_0/0.18)]' : '')]) }}>
-    <div class="flex items-start justify-between gap-3">
-        <p class="text-[0.8125rem] font-medium text-mute">{{ $label }}</p>
+<x-console.widget :href="$href" {{ $attributes }}>
+    <div class="flex items-center gap-2.5">
         @if ($icon)
-            <span class="grid size-8 shrink-0 place-items-center rounded-full {{ $iconTone }}">
-                <x-ui.icon :name="$icon" class="size-4" />
-            </span>
+            <x-console.tile :icon="$icon" :tint="$tint" size="sm" />
         @endif
+        <p class="truncate text-[0.8125rem] font-semibold text-mute">{{ $label }}</p>
     </div>
-    <p class="mt-3 font-display text-[2rem] leading-none font-semibold tracking-tight tabular-nums">{{ $value }}</p>
+    <p class="mt-6 text-[2.5rem] leading-none font-bold tracking-[-0.03em] tabular-nums">
+        @if ($count !== null)<span data-count="{{ $count }}">{{ number_format((float) $count, 0, ',', ' ') }}</span><span class="text-[1.5rem] font-semibold text-mute">{{ $suffix }}</span>@else{{ $value }}@endif
+    </p>
     @if ($hint)
-        <p class="mt-2 text-xs text-mute">{{ $hint }}</p>
+        <p class="mt-2 text-[0.8125rem] leading-snug text-mute">{{ $hint }}</p>
     @endif
     @if ($href)
-        <x-ui.icon name="arrow-up-right" class="absolute right-5 bottom-5 size-4 text-mute opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <svg class="absolute top-5 right-5 size-4 text-mute/60 transition-transform duration-500 ease-spring group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
     @endif
-</{{ $tag }}>
+</x-console.widget>

@@ -1,14 +1,15 @@
 <div class="space-y-8">
     <x-console.page-header
+        index="02"
         :eyebrow="__('Réseau')"
         :title="__('Communes')"
         :subtitle="__('Ouvrez les communes aux Relais au rythme du déploiement : pilote à Abidjan, puis lancement national.')"
     />
 
     <div class="grid grid-cols-3 gap-4">
-        <x-console.stat :label="__('Communes')" :value="$this->counts['total']" icon="map-pin" />
-        <x-console.stat :label="__('Ouvertes aux Relais')" :value="$this->counts['open']" icon="check" tone="success" />
-        <x-console.stat :label="__('Contours importés')" :value="$this->counts['contours']" icon="layers" :tone="$this->counts['contours'] === 0 ? 'alert' : 'default'"
+        <x-console.stat :label="__('Communes')" value="" :count="$this->counts['total']" icon="map-pin" />
+        <x-console.stat :label="__('Ouvertes aux Relais')" value="" :count="$this->counts['open']" icon="check" tone="success" />
+        <x-console.stat :label="__('Contours importés')" value="" :count="$this->counts['contours']" icon="layers" :tone="$this->counts['contours'] === 0 ? 'alert' : 'default'"
             :hint="$this->counts['contours'] === 0 ? __('Nécessaires au routage par GPS') : null" />
     </div>
 
@@ -48,7 +49,7 @@
             @else
                 <table class="w-full text-left text-[0.875rem]">
                     <thead>
-                        <tr class="border-b border-line text-xs font-medium text-mute">
+                        <tr class="border-b border-line text-[0.75rem] font-semibold text-mute">
                             <th class="px-6 py-3 font-medium">{{ __('Commune') }}</th>
                             <th class="hidden px-4 py-3 font-medium md:table-cell">{{ __('Contour') }}</th>
                             <th class="hidden px-4 py-3 font-medium sm:table-cell">{{ __('Coordonnateurs') }}</th>
@@ -56,7 +57,7 @@
                             <th class="px-6 py-3"><span class="sr-only">{{ __('Actions') }}</span></th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-line">
+                    <tbody class="divide-y divide-line" data-stagger>
                         @foreach ($this->communes as $commune)
                             <tr wire:key="commune-{{ $commune->uuid }}" class="transition-colors duration-200 hover:bg-ink/[0.02]">
                                 <td class="px-6 py-3.5">

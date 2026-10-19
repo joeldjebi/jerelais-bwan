@@ -1,5 +1,5 @@
 <div class="space-y-8">
-    <x-console.page-header :eyebrow="__('Compte')" :title="__('Mon compte')" :subtitle="__('Vos informations et la sécurité de votre accès à la console.')" />
+    <x-console.page-header index="—" :eyebrow="__('Compte')" :title="__('Mon compte')" :subtitle="__('Vos informations et la sécurité de votre accès à la console.')" />
 
     <div class="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <div class="space-y-6">

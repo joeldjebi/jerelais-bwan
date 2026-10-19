@@ -86,7 +86,30 @@ class Dashboard extends Component
     }
 
     /**
-     * @return list<array{label: string, value: string, icon: string, hint: string, tone: string, route: ?string}>
+     * Anneaux d'activité (façon app Forme) : progression de la mise en service et couverture du réseau.
+     *
+     * @return list<array{label: string, value: string, ratio: float, color: string}>
+     */
+    #[Computed]
+    public function rings(): array
+    {
+        $setup = $this->setup();
+        $done = count(array_filter($setup, fn (array $step): bool => $step['done']));
+        $total = max(1, Commune::query()->count());
+        $open = Commune::query()->active()->count();
+        $covered = Commune::query()->whereHas('coordinators')->count();
+
+        return [
+            ['label' => __('Mise en service'), 'value' => $done.'/'.max(1, count($setup)), 'ratio' => $setup === [] ? 1.0 : $done / count($setup), 'color' => '#ff9f0a'],
+            ['label' => __('Communes ouvertes'), 'value' => $open.'/'.$total, 'ratio' => $open / $total, 'color' => '#30d158'],
+            ['label' => __('Communes coordonnées'), 'value' => $covered.'/'.$total, 'ratio' => $covered / $total, 'color' => '#0a84ff'],
+        ];
+    }
+
+    /**
+     * Indicateurs de l'accueil ; « count » est animé à l'affichage, « suffix » le complète.
+     *
+     * @return list<array{label: string, count: ?int, suffix: string, value: string, icon: string, hint: string, tone: string, route: ?string}>
      */
     #[Computed]
     public function stats(): array
@@ -95,10 +118,10 @@ class Dashboard extends Component
 
         if ($this->isCoordination) {
             return [
-                ['label' => __('Relais à valider'), 'value' => '0', 'icon' => 'inbox', 'hint' => __('File de validation de votre commune'), 'tone' => 'accent', 'route' => null],
-                ['label' => __('Candidatures à examiner'), 'value' => '0', 'icon' => 'users', 'hint' => __('Nouveaux Relais en attente'), 'tone' => 'default', 'route' => null],
-                ['label' => __('Relais actifs'), 'value' => (string) User::role(Role::Relais->value)->count(), 'icon' => 'signal', 'hint' => __('Au moins un envoi sur 30 jours'), 'tone' => 'success', 'route' => null],
-                ['label' => __('Délai cible urgent'), 'value' => app(Settings::class)->integer('validation.sla_urgent_minutes').' min', 'icon' => 'clock', 'hint' => __('Au-delà, escalade au suppléant'), 'tone' => 'default', 'route' => null],
+                ['label' => __('Relais à valider'), 'count' => 0, 'suffix' => '', 'value' => '', 'icon' => 'inbox', 'hint' => __('File de validation de votre commune'), 'tone' => 'accent', 'route' => null],
+                ['label' => __('Candidatures'), 'count' => 0, 'suffix' => '', 'value' => '', 'icon' => 'users', 'hint' => __('Nouveaux Relais à examiner'), 'tone' => 'default', 'route' => null],
+                ['label' => __('Relais actifs'), 'count' => User::role(Role::Relais->value)->count(), 'suffix' => '', 'value' => '', 'icon' => 'signal', 'hint' => __('Au moins un envoi sur 30 jours'), 'tone' => 'success', 'route' => null],
+                ['label' => __('Délai urgent'), 'count' => app(Settings::class)->integer('validation.sla_urgent_minutes'), 'suffix' => ' min', 'value' => '', 'icon' => 'clock', 'hint' => __('Au-delà, escalade au suppléant'), 'tone' => 'default', 'route' => null],
             ];
         }
 
@@ -107,7 +130,9 @@ class Dashboard extends Component
         return [
             [
                 'label' => __('Communes ouvertes'),
-                'value' => Commune::query()->active()->count().' / '.Commune::query()->count(),
+                'count' => Commune::query()->active()->count(),
+                'suffix' => ' / '.Commune::query()->count(),
+                'value' => '',
                 'icon' => 'map-pin',
                 'hint' => __('Ouvertes aux inscriptions de Relais'),
                 'tone' => 'accent',
@@ -115,7 +140,9 @@ class Dashboard extends Component
             ],
             [
                 'label' => __('Équipe'),
-                'value' => (string) User::role($staffRoles)->count(),
+                'count' => User::role($staffRoles)->count(),
+                'suffix' => '',
+                'value' => '',
                 'icon' => 'users',
                 'hint' => __('Rédaction, coordination, administration'),
                 'tone' => 'default',
@@ -123,7 +150,9 @@ class Dashboard extends Component
             ],
             [
                 'label' => __('Relais et candidats'),
-                'value' => (string) User::role([Role::Relais->value, Role::Candidat->value])->count(),
+                'count' => User::role([Role::Relais->value, Role::Candidat->value])->count(),
+                'suffix' => '',
+                'value' => '',
                 'icon' => 'signal',
                 'hint' => __('Comptes créés depuis l’application'),
                 'tone' => 'success',
@@ -131,7 +160,9 @@ class Dashboard extends Component
             ],
             [
                 'label' => __('Événements · 24 h'),
-                'value' => $canAudit ? (string) AuditLog::query()->where('occurred_at', '>=', now()->subDay())->count() : '—',
+                'count' => $canAudit ? AuditLog::query()->where('occurred_at', '>=', now()->subDay())->count() : null,
+                'suffix' => '',
+                'value' => '—',
                 'icon' => 'shield',
                 'hint' => __('Actions tracées dans le journal'),
                 'tone' => 'default',

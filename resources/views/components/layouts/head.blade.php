@@ -2,6 +2,7 @@
     'title' => null,
     'description' => null,
     'forceLight' => false,
+    'defaultTheme' => 'system',
     'scripts' => ['resources/js/app.js'],
 ])
 
@@ -28,7 +29,9 @@
         @else
             let theme = null;
             try { theme = localStorage.getItem('jerelais.theme'); } catch {}
-            root.classList.toggle('dark', theme ? theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches);
+            theme = theme || '{{ $defaultTheme }}';
+            root.dataset.defaultTheme = '{{ $defaultTheme }}';
+            root.classList.toggle('dark', theme === 'system' ? matchMedia('(prefers-color-scheme: dark)').matches : theme === 'dark');
         @endif
     })();
 </script>

@@ -4,6 +4,7 @@
 
 <div class="space-y-8">
     <x-console.page-header
+        index="02"
         :eyebrow="__('Réseau')"
         :title="__('Équipe')"
         :subtitle="__('Rédaction, coordination et administration. Chaque membre active sa double authentification à sa première connexion.')"
@@ -36,7 +37,7 @@
                 <x-ui.button size="sm" wire:click="openCreate">{{ __('Ajouter un membre') }}</x-ui.button>
             </x-console.empty>
         @else
-            <ul class="divide-y divide-line" wire:loading.class="opacity-60" wire:target="search,role">
+            <ul class="divide-y divide-line" wire:loading.class="opacity-60" wire:target="search,role" data-stagger>
                 @foreach ($this->members as $member)
                     @php
                         $memberRole = $member->roles->first()?->name;

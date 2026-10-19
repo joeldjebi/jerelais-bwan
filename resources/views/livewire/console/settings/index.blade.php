@@ -4,6 +4,7 @@
 
 <div class="space-y-8">
     <x-console.page-header
+        index="03"
         :eyebrow="__('Administration')"
         :title="__('Paramètres')"
         :subtitle="__('Règles de fonctionnement de la plateforme. Chaque modification est enregistrée dans le journal d’audit.')"

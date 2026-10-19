@@ -13,6 +13,7 @@
 
 <div class="space-y-8">
     <x-console.page-header
+        index="03"
         :eyebrow="__('Administration')"
         :title="__('Journal d’audit')"
         :subtitle="__('Toutes les actions sensibles, horodatées et chaînées. Le journal ne peut être ni modifié ni effacé.')"
@@ -66,7 +67,7 @@
         @if ($this->entries->isEmpty())
             <x-console.empty icon="shield" :title="__('Aucune entrée sur cette période')" :text="__('Élargissez la période ou retirez le filtre.')" />
         @else
-            <ul class="divide-y divide-line" wire:loading.class="opacity-60" wire:target="action,period">
+            <ul class="divide-y divide-line" wire:loading.class="opacity-60" wire:target="action,period" data-stagger>
                 @foreach ($this->entries as $entry)
                     <li wire:key="audit-{{ $entry->uuid }}">
                         <button type="button" wire:click="show('{{ $entry->uuid }}')" class="group flex w-full items-center gap-4 px-6 py-3.5 text-left transition-colors duration-200 hover:bg-ink/[0.02]">

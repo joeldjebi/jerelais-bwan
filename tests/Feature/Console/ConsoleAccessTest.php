@@ -39,7 +39,7 @@ it('affiche le périmètre communal d’un coordonnateur', function () {
     $this->actingAs(User::factory()->withTwoFactor()->coordonnateurOf($commune)->create())
         ->get(route('console.home'))
         ->assertOk()
-        ->assertSee('Coordination')
+        ->assertSee('Ma commune')
         ->assertSee('Yopougon');
 });
 
