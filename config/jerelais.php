@@ -71,6 +71,22 @@ return [
     |--------------------------------------------------------------------------
     */
 
+    /*
+    | Sauvegardes de la base (jerelais:backup, jerelais:restore-test). Les médias restent sur Wasabi :
+    | versionnement du compartiment et réplication sont configurés côté Wasabi (voir docs/exploitation).
+    */
+    'backup' => [
+        'disk' => env('BACKUP_DISK', 'local'),
+        'path' => 'backups',
+        'keep_days' => (int) env('BACKUP_KEEP_DAYS', 30),
+        'command_prefix' => env('BACKUP_COMMAND_PREFIX', ''),
+    ],
+
+    'api' => [
+        'per_user_per_minute' => (int) env('API_PER_USER_PER_MINUTE', 120),
+        'anonymous_per_ip_per_minute' => (int) env('API_ANONYMOUS_PER_IP_PER_MINUTE', 1200),
+    ],
+
     'contact_email' => env('JERELAIS_CONTACT_EMAIL', 'contact@jerelais.test'),
 
     'media' => [

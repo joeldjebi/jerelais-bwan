@@ -2,6 +2,9 @@
 
 use App\Domain\Access\Enums\Role;
 use App\Domain\Audit\Models\AuditLog;
+use App\Domain\Auth\Actions\IssueDeviceToken;
+use App\Domain\Auth\Data\DeviceInfo;
+use App\Domain\Auth\Enums\DevicePlatform;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\Validated;
@@ -111,4 +114,19 @@ it('affiche le tableau de bord de la commune avec ses vrais chiffres [COO-22]', 
         ->assertSee('En attente à Yopougon')
         ->assertSee('Couverture par quartier')
         ->assertSet('communeStats', fn (array $stats) => $stats['to_validate'] === 1 && $stats['active_relais'] === 1);
+});
+
+it('déconnecte à distance le téléphone perdu d’un Relais depuis sa fiche [MOB-31]', function () {
+    $issued = app(IssueDeviceToken::class)->handle($this->profile->user, new DeviceInfo('Tecno Spark 10', DevicePlatform::Android), 'otp');
+
+    Livewire::actingAs($this->coordo)->test(Show::class, ['profile' => $this->profile])
+        ->assertSee('Tecno Spark 10')
+        ->call('revokeDevice', $issued->device->uuid)
+        ->assertDispatched('toast')
+        ->assertDontSee('Tecno Spark 10');
+
+    // La session du coordonnateur ne doit pas servir à authentifier l'appel de l'application.
+    $this->app['auth']->forgetGuards();
+    $this->withToken($issued->plainTextToken)->getJson(route('api.v1.me.show'))->assertUnauthorized();
+    $this->assertDatabaseHas('audit_logs', ['action' => 'auth.device.revoked', 'actor_id' => $this->coordo->id]);
 });

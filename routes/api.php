@@ -29,14 +29,17 @@ Route::name('api.v1.')->group(function () {
         Route::post('login', PasswordLoginController::class)->middleware('throttle:password-login')->name('login');
     });
 
-    Route::get('communes', [ReferentielController::class, 'communes'])->name('communes.index');
-    Route::get('categories', [ReferentielController::class, 'categories'])->name('categories.index');
-    Route::get('settings', [ReferentielController::class, 'settings'])->name('settings.index');
-    Route::get('communes/{commune}/localites', [CandidatureController::class, 'localites'])->name('communes.localites');
-    Route::get('legal', [LegalController::class, 'index'])->name('legal.index');
-    Route::get('formation', [FormationController::class, 'modules'])->name('formation.index');
-    Route::get('diffusions', DiffusionController::class)->name('diffusions.index');
-    Route::get('candidature/options', [CandidatureController::class, 'options'])->name('candidature.options');
+    // Référentiels publics : mis en cache 5 minutes par l'application et les proxys (ETag pour revalider).
+    Route::middleware('cache.headers:public;max_age=300;etag')->group(function () {
+        Route::get('communes', [ReferentielController::class, 'communes'])->name('communes.index');
+        Route::get('categories', [ReferentielController::class, 'categories'])->name('categories.index');
+        Route::get('settings', [ReferentielController::class, 'settings'])->name('settings.index');
+        Route::get('communes/{commune}/localites', [CandidatureController::class, 'localites'])->name('communes.localites');
+        Route::get('legal', [LegalController::class, 'index'])->name('legal.index');
+        Route::get('formation', [FormationController::class, 'modules'])->name('formation.index');
+        Route::get('diffusions', DiffusionController::class)->name('diffusions.index');
+        Route::get('candidature/options', [CandidatureController::class, 'options'])->name('candidature.options');
+    });
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('auth/logout', LogoutController::class)->name('auth.logout');

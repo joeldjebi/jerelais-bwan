@@ -59,6 +59,27 @@
         @endif
     </x-console.group>
 
+    @can(\App\Domain\Access\Enums\Permission::RelaisProfilesSuspend->value)
+        <x-console.group :title="__('Appareils connectés')" :footer="__('Téléphone perdu ou volé : déconnectez-le, l’application devra se reconnecter par code SMS (MOB-31).')">
+            @if ($this->devices->isEmpty())
+                <x-console.empty icon="shield" tint="gray" :title="__('Aucun appareil connecté')" :text="__('Le Relais n’est connecté sur aucun téléphone.')" />
+            @else
+                <ul>
+                    @foreach ($this->devices as $device)
+                        <li wire:key="device-{{ $device->uuid }}" class="flex items-center gap-3.5 px-4 py-3">
+                            <x-console.tile icon="signal" tint="blue" />
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-[0.9375rem] font-medium">{{ $device->name }}</p>
+                                <p class="truncate text-[0.75rem] text-mute">{{ $device->platform->value }}{{ $device->app_version ? ' · v'.$device->app_version : '' }} · {{ $device->last_seen_at ? __('vu :date', ['date' => $device->last_seen_at->diffForHumans()]) : __('jamais vu') }}</p>
+                            </div>
+                            <button type="button" wire:click="revokeDevice('{{ $device->uuid }}')" wire:confirm="{{ __('Déconnecter cet appareil ?') }}" class="text-[0.8125rem] font-semibold text-status-rejected hover:opacity-80">{{ __('Déconnecter') }}</button>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </x-console.group>
+    @endcan
+
     <x-console.slide-over model="acting"
         :title="match ($action) { 'suspended' => __('Suspendre le Relais'), 'struck_off' => __('Radier le Relais'), 'active' => __('Réintégrer le Relais'), 'transfer' => __('Transférer de commune'), default => '' }"
         :description="$action === 'transfer' ? __('Le Relais rejoint la file du coordonnateur de sa nouvelle commune.') : __('Le motif est inscrit au journal d’audit ; l’administration est informée si la décision vient d’un coordonnateur.')">

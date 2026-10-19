@@ -4,6 +4,8 @@ namespace App\Livewire\Console\Relais;
 
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Support\CommuneAccess;
+use App\Domain\Auth\Actions\RevokeDevice;
+use App\Domain\Auth\Models\Device;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Relais\Actions\ChangeRelaisStatus;
 use App\Domain\Relais\Enums\RelaisStatus;
@@ -23,6 +25,7 @@ use Livewire\Component;
  * réintégration et transfert de commune.
  *
  * @property-read Collection<int, RelaisItem> $history
+ * @property-read Collection<int, Device> $devices
  * @property-read array<string, int> $stats
  * @property-read Collection<int, Commune> $communes
  */
@@ -83,6 +86,29 @@ class Show extends Component
         $this->acting = false;
         $this->profile->refresh();
         $this->dispatch('toast', message: __('Statut mis à jour.'));
+    }
+
+    /**
+     * Déconnexion à distance d'un appareil perdu ou volé (MOB-31) : le jeton est détruit immédiatement.
+     */
+    public function revokeDevice(string $uuid, RevokeDevice $revoke): void
+    {
+        abort_unless($this->user()->hasPermissionTo(Permission::RelaisProfilesSuspend->value), 403);
+
+        $device = Device::query()->where('user_id', $this->profile->user_id)->where('uuid', $uuid)->firstOrFail();
+        $revoke->handle($device, $this->user(), 'lost');
+
+        unset($this->devices);
+        $this->dispatch('toast', message: __(':name est déconnecté.', ['name' => $device->name]));
+    }
+
+    /**
+     * @return Collection<int, Device>
+     */
+    #[Computed]
+    public function devices(): Collection
+    {
+        return Device::query()->where('user_id', $this->profile->user_id)->whereNull('revoked_at')->latest('last_seen_at')->get();
     }
 
     /**

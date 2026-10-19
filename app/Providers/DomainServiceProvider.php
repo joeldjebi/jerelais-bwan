@@ -104,6 +104,10 @@ class DomainServiceProvider extends ServiceProvider
 
         RateLimiter::for('quiz', fn (Request $request) => Limit::perHour(10)->by('quiz:'.($request->user()?->getAuthIdentifier() ?? $request->ip()))->response($tooMany));
 
-        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->id ?: $request->ip()));
+        // Par compte quand l'appel est authentifié ; sinon par adresse IP, avec un plafond plus haut : les opérateurs mobiles
+        // partagent une même adresse publique entre de nombreux abonnés (CGNAT, test de charge de l'étape 6).
+        RateLimiter::for('api', fn (Request $request) => $request->user() !== null
+            ? Limit::perMinute((int) config('jerelais.api.per_user_per_minute'))->by('api-user:'.$request->user()->getAuthIdentifier())
+            : Limit::perMinute((int) config('jerelais.api.anonymous_per_ip_per_minute'))->by('api-ip:'.$request->ip()));
     }
 }
