@@ -163,7 +163,7 @@ Artisan::command('jerelais:check-production', function () {
         'Clé HMAC des téléphones distincte de APP_KEY' => filled(config('jerelais.phone.hash_key')) && config('jerelais.phone.hash_key') !== config('app.key'),
         'Cookies de session sécurisés' => (bool) config('session.secure'),
         'Session chiffrée' => (bool) config('session.encrypt'),
-        'Passerelle SMS réelle (pas « log »)' => config('jerelais.sms.driver') !== 'log',
+        'Passerelle SMS réelle (ni « log » ni « mailpit »)' => ! in_array(config('jerelais.sms.driver'), ['log', 'mailpit'], true),
         'Antivirus ClamAV' => config('jerelais.antivirus.driver') === 'clamav',
         'Code 2FA de démonstration désactivé' => blank(config('jerelais.demo.two_factor_code')),
         'Stockage Wasabi configuré' => filled(config('filesystems.disks.medias.key')) && filled(config('filesystems.disks.medias.bucket')),

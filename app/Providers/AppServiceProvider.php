@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureTwoFactorIsEnabled;
 use App\Http\Middleware\EnsureUserIsStaff;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -32,6 +33,28 @@ class AppServiceProvider extends ServiceProvider
         $this->configureModels();
         $this->configureDefaults();
         $this->configureLivewire();
+        $this->configureDevCommands();
+    }
+
+    /**
+     * « php artisan dev » lance toute la plateforme pour la recette locale, avec le même binaire PHP
+     * (8.4) que la commande : serveur, files (médias puis défaut), temps réel, tâches planifiées, journaux.
+     */
+    private function configureDevCommands(): void
+    {
+        if (! $this->app->runningInConsole() || ! $this->app->isLocal()) {
+            return;
+        }
+
+        $php = escapeshellarg(PHP_BINARY).' artisan';
+
+        DevCommands::withoutDefaultCommands();
+        DevCommands::register("PHP_CLI_SERVER_WORKERS=4 {$php} serve --port=8000 --no-reload", 'server');
+        // Horizon (files « default » et « medias ») comme en production ; remplace sa commande par défaut lancée avec « php ».
+        DevCommands::register("{$php} horizon", 'horizon');
+        DevCommands::register("{$php} reverb:start", 'reverb');
+        DevCommands::register("{$php} schedule:work", 'scheduler');
+        DevCommands::register("{$php} pail --timeout=0", 'logs');
     }
 
     /**

@@ -42,6 +42,7 @@ return [
     |
     */
 
+    // « log » : journal local ; « mailpit » : chaque SMS arrive dans Mailpit (recette locale). Jamais en production.
     'sms' => [
         'driver' => env('SMS_DRIVER', 'log'),
         'sender' => env('SMS_SENDER', 'JE RELAIS'),
