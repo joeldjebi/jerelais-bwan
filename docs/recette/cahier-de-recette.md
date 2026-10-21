@@ -1,6 +1,6 @@
 # Cahier de recette — JE RELAIS
 
-> Généré par `php artisan recette:matrice` le 19/10/2026 à 22:41. Ne pas modifier à la main : éditer `docs/recette/exigences.json` ou les tests, puis régénérer.
+> Généré par `php artisan recette:matrice` le 21/10/2026 à 14:23. Ne pas modifier à la main : éditer `docs/recette/exigences.json` ou les tests, puis régénérer.
 
 **Critère de sortie de l’étape 6** : aucune anomalie bloquante ni majeure ouverte. Chaque exigence est recettée sur la préproduction par le scénario manuel ; les tests automatisés en garantissent la non-régression.
 
@@ -560,7 +560,9 @@
 
 > Téléversement de fichiers volumineux fractionné et reprenable, avec barre de progression.
 
-**Scénario manuel** : Envoyer une vidéo de 300 Mo depuis le navigateur, recharger la page à mi-parcours : reprise avec barre de progression.
+**Scénario manuel** : Envoyer une vidéo de 300 Mo depuis le navigateur, couper le réseau à mi-parcours puis le rétablir et cliquer « Réessayer » : seuls les morceaux manquants repartent, barre de progression comprise.
+
+**Note** : Après un rechargement de page, le navigateur ne garde pas le fichier : il faut le choisir de nouveau (reprise automatique après rechargement : piste d’amélioration).
 
 **Tests automatisés**
 

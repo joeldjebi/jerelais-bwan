@@ -93,7 +93,7 @@ Fais chaque parcours avec deux fenêtres côte à côte (ou une fenêtre de navi
 ### B. Envoyer et valider un relais
 
 1. Espace Relais avec **Awa** (07 00 00 00 01) > Envoyer : ajoute une photo et une courte vidéo, remplis le formulaire et réponds aux questions de protection.
-2. Recharge la page pendant l'envoi d'une vidéo : l'envoi **reprend** là où il en était.
+2. Pendant l'envoi d'une vidéo de plus de 20 Mo, coupe le réseau (outils de développement → Réseau → Hors connexion), puis rétablis-le et clique **Réessayer** : seuls les morceaux manquants repartent. Un rechargement de page, lui, oblige à choisir de nouveau le fichier, car le navigateur ne le garde pas.
 3. Console avec **coordinateur@** > Validation : le relais arrive **sans recharger la page**. S'il est urgent, un signal sonore retentit.
 4. Ouvre-le : il est réservé 10 min (essaie de l'ouvrir avec **suppleant@** en même temps). Vérifie la carte, les dates et le lecteur (zoom, image par image, vitesse), puis décide.
 5. Côté Awa : le statut change dans « Mes relais » et un SMS arrive.

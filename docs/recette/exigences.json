@@ -252,8 +252,8 @@
         "titre": "Téléversement de fichiers volumineux fractionné et reprenable, avec barre de progression.",
         "priorite": "Indispensable",
         "perimetre": "serveur",
-        "scenario": "Envoyer une vidéo de 300 Mo depuis le navigateur, recharger la page à mi-parcours : reprise avec barre de progression.",
-        "note": ""
+        "scenario": "Envoyer une vidéo de 300 Mo depuis le navigateur, couper le réseau à mi-parcours puis le rétablir et cliquer « Réessayer » : seuls les morceaux manquants repartent, barre de progression comprise.",
+        "note": "Après un rechargement de page, le navigateur ne garde pas le fichier : il faut le choisir de nouveau (reprise automatique après rechargement : piste d’amélioration)."
     },
     {
         "id": "WEB-05",
