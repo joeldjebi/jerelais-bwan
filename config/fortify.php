@@ -147,7 +147,8 @@ return [
         // Pas d'inscription libre : les comptes de la console sont créés par un administrateur.
         Features::resetPasswords(),
         // Features::emailVerification(),
-        Features::updateProfileInformation(),
+        // Désactivé (revue sécurité) : le changement d’e-mail sans mot de passe permettait de prendre un compte ; la page Compte suffit.
+        // Features::updateProfileInformation(),
         Features::updatePasswords(),
         Features::twoFactorAuthentication([
             'confirm' => true,

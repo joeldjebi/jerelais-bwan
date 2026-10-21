@@ -146,6 +146,12 @@ Artisan::command('data:purge', function (PurgeExpiredData $purge) {
 Schedule::command('data:purge')->dailyAt('03:00')->timezone('Africa/Abidjan')->withoutOverlapping();
 
 /*
+| Sauvegarde quotidienne de la base, puis test de restauration hebdomadaire (une sauvegarde non restaurée n'est pas une sauvegarde).
+*/
+Schedule::command('jerelais:backup')->dailyAt('02:00')->timezone('Africa/Abidjan')->withoutOverlapping()->onOneServer();
+Schedule::command('jerelais:restore-test')->weeklyOn(0, '04:00')->timezone('Africa/Abidjan')->withoutOverlapping()->onOneServer();
+
+/*
  * Vérification avant mise en production (durcissement, §10) : refuse de valider une configuration dangereuse.
  */
 Artisan::command('jerelais:check-production', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Access\Actions;
 
+use App\Domain\Access\Enums\CommuneAssignment;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Audit\AuditLogger;
 use App\Models\User;
@@ -22,19 +23,19 @@ class CreateStaffMember
      * @param  list<int>  $communeIds  communes coordonnées (coordonnateur)
      * @param  list<int>  $regionIds  régions supervisées (superviseur)
      */
-    public function handle(string $name, string $email, Role $role, User $actor, array $communeIds = [], array $regionIds = []): User
+    public function handle(string $name, string $email, Role $role, User $actor, array $communeIds = [], array $regionIds = [], CommuneAssignment $assignment = CommuneAssignment::Titulaire): User
     {
         if (in_array($role, [Role::Relais, Role::Candidat], true)) {
             throw new InvalidArgumentException('Ce rôle ne correspond pas à un membre de l’équipe.');
         }
 
-        $user = DB::transaction(function () use ($name, $email, $role, $actor, $communeIds, $regionIds): User {
+        $user = DB::transaction(function () use ($name, $email, $role, $actor, $communeIds, $regionIds, $assignment): User {
             $user = new User(['name' => $name, 'email' => Str::lower($email)]);
             $user->save();
             $user->assignRole($role->value);
 
             if ($role === Role::Coordonnateur) {
-                $user->communes()->sync($communeIds);
+                $user->communes()->syncWithPivotValues($communeIds, ['assignment' => $assignment->value]);
             }
 
             if ($role === Role::Superviseur) {
@@ -45,6 +46,7 @@ class CreateStaffMember
                 'role' => $role->value,
                 'communes' => $communeIds,
                 'regions' => $regionIds,
+                'assignment' => $role === Role::Coordonnateur ? $assignment->value : null,
             ], $actor);
 
             return $user;

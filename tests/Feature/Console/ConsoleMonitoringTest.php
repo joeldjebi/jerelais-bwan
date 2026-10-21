@@ -116,3 +116,17 @@ it('affiche un relais verrouillé par un autre membre dans toutes les listes, sa
     Livewire::actingAs($coordo)->test(Dashboard::class)->assertSee('Relais réservé');
     Livewire::actingAs($coordo)->test(Index::class)->assertSee('Suppléant Yop');
 });
+
+it('ignore sans erreur des filtres invalides saisis dans l’URL [ADM-04]', function () {
+    RelaisItem::factory()->create(['commune_id' => $this->yopougon->id, 'title' => 'Marché inondé']);
+
+    $this->actingAs($this->journaliste)
+        ->get(route('console.flux', ['filters' => ['from' => 'hier', 'to' => '2026-13-45']]))
+        ->assertOk()
+        ->assertSee('Marché inondé');
+
+    $this->actingAs($this->journaliste)
+        ->get(route('console.flux', ['filters' => ['commune' => 'pas-un-uuid', 'coordinator' => "1' or 1=1"]]))
+        ->assertOk()
+        ->assertDontSee('Marché inondé');
+});

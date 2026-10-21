@@ -33,6 +33,7 @@ use App\Livewire\Console\Map\Index as MapPage;
 use App\Livewire\Console\Messagerie\Index as MessageriePage;
 use App\Livewire\Console\Newsroom\Index as NewsroomPage;
 use App\Livewire\Console\Privacy\Index as PrivacyPage;
+use App\Livewire\Console\Referentiels\Index as ReferentielsPage;
 use App\Livewire\Console\Relais\Index as RelaisPage;
 use App\Livewire\Console\Relais\Show as RelaisProfilePage;
 use App\Livewire\Console\Reports\Index as ReportsPage;
@@ -102,6 +103,7 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::livewire('compte', AccountPage::class)->name('account');
         Route::livewire('communes', CommunesPage::class)->middleware('permission:'.Permission::TerritoireManage->value)->name('communes');
         Route::livewire('equipe', TeamPage::class)->middleware('permission:'.Permission::UsersManage->value)->name('team');
+        Route::livewire('referentiels', ReferentielsPage::class)->middleware('permission:'.Permission::TerritoireManage->value.'|'.Permission::SettingsManage->value)->name('referentiels');
         Route::livewire('parametres', SettingsPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('settings');
         Route::livewire('candidatures', CandidaturesPage::class)->middleware('permission:'.Permission::CandidaturesValidate->value)->name('candidatures');
         Route::livewire('candidatures/{candidature}', CandidaturePage::class)->middleware('permission:'.Permission::CandidaturesValidate->value)->name('candidatures.show');

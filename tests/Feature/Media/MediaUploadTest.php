@@ -4,6 +4,7 @@ use App\Domain\Audit\Models\AuditLog;
 use App\Domain\Contribution\Models\Category;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Media\Contracts\VirusScanner;
+use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Models\Media;
 use App\Domain\Media\Storage\FakeMultipartStorage;
 use App\Domain\Media\Support\PerceptualHash;
@@ -236,4 +237,15 @@ it('n’accepte les médias que sur ses propres relais', function () {
 
     announce(jpeg())->assertForbidden();
     $this->getJson(route('api.v1.medias.show', attachReadyMedia(RelaisItem::query()->sole())))->assertNotFound();
+});
+
+it('refuse un fichier plus gros que la taille annoncée, avant tout téléchargement (revue sécurité)', function () {
+    $uuid = announce('petit')->assertCreated()->json('data.uuid');
+    $media = Media::query()->sole();
+    $etag = $this->storage->putPart((string) $media->upload_id, 1, str_repeat('x', 4096));
+
+    $this->postJson(route('api.v1.medias.complete', $uuid), ['parts' => [['number' => 1, 'etag' => $etag]]])
+        ->assertJsonValidationErrors(['size' => 'La taille du fichier reçu ne correspond pas à celle annoncée : recommencez l’envoi.']);
+
+    expect($media->fresh())->status->toBe(MediaStatus::Rejected)->upload_id->toBeNull();
 });

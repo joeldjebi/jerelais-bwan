@@ -5,6 +5,7 @@ namespace App\Domain\Auth\Actions;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Auth\Data\DeviceInfo;
 use App\Domain\Auth\Data\IssuedToken;
+use App\Domain\Auth\Exceptions\AuthenticationRefused;
 use App\Domain\Auth\Models\Device;
 use App\Models\User;
 
@@ -17,6 +18,10 @@ class IssueDeviceToken
 
     public function handle(User $user, DeviceInfo $info, string $method, bool $isNewUser = false): IssuedToken
     {
+        if ($user->isStaff()) {
+            throw AuthenticationRefused::staffUseConsole();
+        }
+
         $device = new Device([
             'name' => $info->name,
             'platform' => $info->platform,

@@ -93,3 +93,18 @@ it('transmet le formulaire de contact, avec limite et piège à robots [WEB-01]'
     }
     Livewire::test(Contact::class)->set('name', 'X')->set('email', 'x@example.com')->set('message', 'Encore un message.')->call('send')->assertHasErrors('message');
 });
+
+it('expose le fil « Diffusé sur REFLET TV » à l’application, sans donnée interne [MOB-25]', function () {
+    $relais = broadcastRelais(['title' => 'Titre interne', 'showcased_at' => now(), 'showcase_title' => 'Le marché renaît', 'showcase_with_image' => true]);
+    broadcastRelais(['title' => 'Diffusé non publié']);
+
+    $this->getJson(route('api.v1.diffusions.index'))
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.uuid', $relais->uuid)
+        ->assertJsonPath('data.0.title', 'Le marché renaît')
+        ->assertJsonPath('data.0.commune', 'Yopougon')
+        ->assertJsonPath('data.0.programme', 'Journal de 20 h')
+        ->assertJsonMissingPath('data.0.location')
+        ->assertDontSee('Titre interne');
+});

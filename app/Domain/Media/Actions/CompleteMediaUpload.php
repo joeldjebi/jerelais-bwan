@@ -2,6 +2,7 @@
 
 namespace App\Domain\Media\Actions;
 
+use App\Domain\Contribution\Support\RelaisSender;
 use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Exceptions\MediaRefused;
 use App\Domain\Media\Jobs\ProcessMedia;
@@ -26,11 +27,26 @@ class CompleteMediaUpload
             return $media;
         }
 
+        RelaisSender::ensureCanSend($media->relaisItem->user);
+
         $numbers = array_map(fn (array $part): int => $part['number'], $parts);
         sort($numbers);
 
         if ($numbers !== range(1, $media->partCount())) {
             throw new MediaRefused('parts', __('media.parts_incomplete', ['count' => $media->partCount()]));
+        }
+
+        // La taille réellement déposée doit correspondre à celle annoncée (et donc à la limite autorisée) :
+        // sans ce contrôle, une URL de morceau pourrait recevoir des gigaoctets avant le traitement.
+        $stored = $this->storage->listParts($media->path, (string) $media->upload_id);
+        $storedSize = array_sum(array_map(fn (array $part): int => $part['size'], $stored));
+        $oversized = array_filter($stored, fn (array $part): bool => $part['size'] > $media->part_size);
+
+        if ($storedSize !== $media->size || $oversized !== [] || count($stored) !== $media->partCount()) {
+            $this->storage->abort($media->path, (string) $media->upload_id);
+            $media->forceFill(['status' => MediaStatus::Rejected, 'upload_id' => null, 'rejection' => 'size_mismatch', 'processed_at' => now()])->save();
+
+            throw new MediaRefused('size', __('media.size_mismatch'));
         }
 
         try {

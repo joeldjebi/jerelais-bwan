@@ -1,11 +1,12 @@
 @php
     use App\Livewire\Console\Settings\Index as SettingsPage;
 
-    $groupTint = ['media' => 'orange', 'validation' => 'blue', 'appels' => 'purple', 'alerts' => 'pink', 'candidature' => 'green', 'retention' => 'gray'];
+    $groupTint = ['media' => 'orange', 'validation' => 'blue', 'appels' => 'purple', 'alerts' => 'pink', 'levels' => 'orange', 'candidature' => 'green', 'retention' => 'gray'];
     $icons = [
         'media.video_max_seconds' => 'video', 'media.audio_max_seconds' => 'mic', 'media.max_medias_per_relais' => 'photo', 'media.max_file_size_mb' => 'layers',
         'validation.sla_urgent_minutes' => 'bolt', 'validation.sla_normal_minutes' => 'clock', 'validation.lock_minutes' => 'shield',
         'appels.local_requires_approval' => 'bell',
+        'levels.silver_validated' => 'signal', 'levels.gold_validated' => 'signal',
         'alerts.surge_threshold' => 'chart', 'alerts.surge_window_minutes' => 'clock',
         'candidature.quiz_min_score' => 'book', 'candidature.minimum_age' => 'users', 'candidature.minors_allowed' => 'users',
     ];

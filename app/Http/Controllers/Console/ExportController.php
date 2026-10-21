@@ -7,6 +7,7 @@ use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Editorial\Actions\ExportRelaisMedias;
 use App\Domain\Editorial\Exceptions\EditorialRefused;
 use App\Domain\Editorial\Models\RelaisCollection;
+use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Models\Media;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -56,6 +57,7 @@ class ExportController extends Controller
         $relais = RelaisItem::query()->find($media->relais_item_id);
         abort_if($relais === null, 404);
         Gate::authorize('view', $relais);
+        abort_unless($media->status === MediaStatus::Ready, 404);
 
         try {
             $export->original($media, $user, $request->string('derogation')->toString() ?: null);

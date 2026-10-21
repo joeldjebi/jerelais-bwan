@@ -14,7 +14,10 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | Erreur | Code HTTP correct + `{ "message": "…", "errors": { "champ": ["…"] } }`, messages en français |
 | Authentification | `Authorization: Bearer <jeton Sanctum>`, un jeton par appareil |
 | Version de l'app | En-tête `X-App-Version` ; `426` si une mise à jour est obligatoire |
-| Limitation | `429` avec en-tête `Retry-After` |
+| Limitation | `429` avec en-tête `Retry-After`. Appels authentifiés : 120/min par compte ; appels anonymes : 1 200/min par adresse IP (adresses partagées par les opérateurs) ; codes SMS : 3 par numéro et par 15 min, quota commun au site et à l'application |
+| Cache | Référentiels publics : `Cache-Control: public, max-age=300` et `ETag` — l'application peut revalider avec `If-None-Match` (304) |
+| Relais suspendu ou radié | `403` à chaque étape d'envoi (création, médias, clôture, envoi, complément), même sur un brouillon existant ; la radiation révoque les jetons (`401` ensuite) |
+| Comptes de l'équipe | Aucun jeton d'API (422 à la connexion) : la console impose la double authentification |
 | Idempotence | `client_uuid` généré par l'app pour chaque relais ; renvoi = relais existant (200) |
 
 ## Codes HTTP
@@ -31,7 +34,7 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | POST ✅ | `/auth/verify` | Vérifier le code, obtenir un jeton | 1 | MOB-01 |
 | POST ✅ | `/auth/login` · `/auth/logout` | Connexion mot de passe, révocation du jeton | 1 | MOB-01 |
 | PUT ✅ | `/devices/current` | Jeton FCM et version de l'application de l'appareil courant | 1 | MOB-21 |
-| GET ✅ | `/communes` · `/categories` · `/settings` | Référentiels | 1 | MOB-13, MOB-14 |
+| GET ✅ | `/communes` · `/categories` · `/settings` | Référentiels (`settings` expose aussi `levels.silver_validated` et `levels.gold_validated`) | 1 | MOB-13, MOB-14, MOB-24 |
 | GET ✅ / PUT ✅ | `/candidature` · `/candidature/steps/{identite\|territoire\|profil}` | Dossier en étapes, sauvegarde automatique (champs facultatifs, 409 si dossier verrouillé) | 2 | MOB-02, MOB-06 |
 | POST ✅ | `/candidature/submit` | Dépôt (422 avec la liste des éléments manquants) | 2 | MOB-06 |
 | GET ✅ | `/candidature/options` · `/communes/{uuid}/localites` | Listes du formulaire, quartiers d'une commune | 2 | MOB-02 |
@@ -44,17 +47,18 @@ Ce document fixe ce que les deux équipes s'engagent à respecter avant que les 
 | POST ✅ | `/relais/{uuid}/submit` | Envoi : 422 avec les champs manquants ; routage GPS puis commune déclarée ; idempotent | 3 | MOB-15, §8.2 |
 | POST ✅ | `/relais/{uuid}/medias` | Annoncer un média (`client_uuid`, `kind` photo/video/audio, `mime`, `size`, `sha256`, `filename`, `is_imported`, `device_captured_at`) ; renvoie `part_size` et les URL signées (30 min) des morceaux | 3 | MOB-11, MOB-12, MOB-16 |
 | PUT | *URL signée Wasabi* | Déposer un morceau (5 Mo minimum sauf le dernier) ; noter l'en-tête `ETag` de la réponse | 3 | MOB-16 |
-| GET ✅ / POST ✅ | `/medias/{uuid}` · `/medias/{uuid}/complete` | Reprise (morceaux reçus et URL des manquants) ; clôture avec `parts[{number, etag}]` ; statut `pending → uploaded → processing → ready` ou `rejected` (motif) | 3 | MOB-16 |
+| GET ✅ / POST ✅ | `/medias/{uuid}` · `/medias/{uuid}/complete` | Reprise (morceaux reçus et URL des manquants) ; clôture avec `parts[{number, etag}]` (422 `size` et média rejeté si la taille déposée diffère de `size` annoncée) ; statut `pending → uploaded → processing → ready` ou `rejected` (motif) | 3 | MOB-16 |
 | GET ✅ | `/relais` · `/relais/{uuid}` | Mes relais et statut public (`uploading`, `received`, `complement_requested`, `validated`, `rejected`, `selected`, `broadcast`, `archived`) | 3 | MOB-20 |
 | POST ✅ | `/relais/{uuid}/complement` | Répondre à un complément : `message` (facultatif si un média a été ajouté) ; le relais revient dans la file | 3 | COO-14, MOB-22 |
 | GET ✅ | `/appels` · `/appels/{uuid}` | Appels à relais ouverts de ma zone ; répondre avec `POST /relais` et `appel` = uuid (422 si l'appel ne me concerne pas ou est clos) | 4 | MOB-23 |
 | GET ✅ / POST ✅ | `/conversations` · `/conversations/{uuid}/messages` | Messagerie avec l'équipe de la commune : conversation générale ou liée à un relais (`relais`), lecture (marque lu), réponse ; `unread` dans la liste | 4 | MOB-22 |
 | GET ✅ / PUT ✅ | `/me` · `/me/password` | Profil, définition du mot de passe | 1 | MOB-01 |
 | GET ✅ | `/me/badge` | Badge : numéro, prénom + initiale, commune, statut, photo (lien signé 15 min), `qr_payload` à encoder en QR ; 404 avant acceptation | 2 | MOB-07 |
-| GET | `/me/stats` | Statistiques | 4 | MOB-24 |
+| GET ✅ | `/me/stats` | Tableau de bord : `sent`, `validated`, `broadcast`, `validation_rate` (null avant la première décision), `level{key: debutant\|bronze\|argent\|or, label, next{key, label, remaining}}`, `badges[{key, label, earned}]` | 6 | MOB-24 |
+| GET ✅ | `/diffusions` | Fil « Diffusé sur REFLET TV », public et paginé : `title`, `text` (rédigés par la rédaction), `commune`, `category`, `credit`, `programme`, `broadcast_url`, `broadcast_at`, `image_url` (vignette sans EXIF ou null) | 6 | MOB-25 |
 | GET ✅ / DELETE ✅ | `/me/export` · `/me` | Droits des personnes : export JSON de mes données ; suppression du compte (`confirm` = `SUPPRIMER`, pseudonymisation) | 5 | §9.4 |
-| GET | `/coordination/queue` | File du coordonnateur (mode mobile) | 3 | §4.5 |
-| POST | `/relais/{uuid}/lock` · `/relais/{uuid}/decision` | Verrou, décision | 3 | COO-14 |
+| GET | `/coordination/queue` | File du coordonnateur (mode mobile) — **non livré au lot 1** | — | §4.5 |
+| POST | `/relais/{uuid}/lock` · `/relais/{uuid}/decision` | Verrou, décision — **non livré** ; exigera une double authentification côté API avant ouverture aux comptes de l'équipe | — | COO-14 |
 
 ## Notifications push (FCM, Android et iOS)
 

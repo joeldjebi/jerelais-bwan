@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1\Relais;
 
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Contribution\Support\RelaisSender;
 use App\Domain\Media\Enums\MediaKind;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
@@ -17,7 +18,7 @@ class StoreMediaRequest extends FormRequest
     {
         $relais = $this->route('relais');
 
-        return $this->user() instanceof User && $relais instanceof RelaisItem && $relais->user_id === $this->user()->id;
+        return $this->user() instanceof User && $relais instanceof RelaisItem && $relais->user_id === $this->user()->id && RelaisSender::canSend($this->user());
     }
 
     /**

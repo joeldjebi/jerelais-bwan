@@ -99,6 +99,25 @@ it('ajoute un coordonnateur rattaché à sa commune et lui envoie un lien d’ac
     $this->assertDatabaseHas('audit_logs', ['action' => 'users.created']);
 });
 
+it('désigne un coordonnateur suppléant d’une commune [ADM-21]', function () {
+    Notification::fake();
+    $commune = Commune::factory()->create();
+
+    Livewire::actingAs(admin())->test(TeamPage::class)
+        ->call('openCreate')
+        ->set('name', 'Aya Suppléante')
+        ->set('email', 'aya@reflet.tv')
+        ->set('newRole', Role::Coordonnateur->value)
+        ->set('assignment', 'suppleant')
+        ->set('communeUuids', [$commune->uuid])
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $this->assertDatabaseHas('commune_user', ['commune_id' => $commune->id, 'assignment' => 'suppleant']);
+
+    $this->actingAs(admin())->get(route('console.team'))->assertSee('(suppléant)');
+});
+
 it('exige au moins une commune pour un coordonnateur', function () {
     Livewire::actingAs(admin())->test(TeamPage::class)
         ->set('name', 'Sans commune')

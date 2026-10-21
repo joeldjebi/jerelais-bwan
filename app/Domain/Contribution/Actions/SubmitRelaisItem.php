@@ -9,6 +9,7 @@ use App\Domain\Contribution\Exceptions\RelaisNotEditable;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\Received;
 use App\Domain\Contribution\States\Uploading;
+use App\Domain\Contribution\Support\RelaisSender;
 use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Settings\Settings;
 use App\Domain\Territoire\Actions\ResolveCommuneFromPoint;
@@ -30,6 +31,8 @@ class SubmitRelaisItem
 
     public function handle(RelaisItem $relais): RelaisItem
     {
+        RelaisSender::ensureCanSend($relais->user);
+
         if (! $relais->state instanceof Uploading) {
             // Envoi déjà fait : l'application peut réessayer sans risque (idempotence).
             if ($relais->submitted_at !== null) {

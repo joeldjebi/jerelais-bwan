@@ -8,6 +8,7 @@ use App\Domain\Contribution\Exceptions\RelaisNotEditable;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\ComplementRequested;
 use App\Domain\Contribution\States\Received;
+use App\Domain\Contribution\Support\RelaisSender;
 use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Settings\Settings;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,8 @@ class RespondToComplement
 
     public function handle(RelaisItem $relais, ?string $message): RelaisItem
     {
+        RelaisSender::ensureCanSend($relais->user);
+
         if (! $relais->state instanceof ComplementRequested) {
             throw RelaisNotEditable::make();
         }

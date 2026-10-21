@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Console;
 
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Models\Media;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +24,8 @@ class MediaController extends Controller
         abort_if($relais === null, 404);
         Gate::authorize('view', $relais);
         abort_if($media->purged_at !== null, 410, __('Fichier supprimé à l’échéance de la durée de conservation.'));
+        // Jamais avant le contrôle (type réel, antivirus) : un fichier en cours de traitement n'est pas servi.
+        abort_unless($media->status === MediaStatus::Ready, 404);
 
         $file = $variant === null ? $media : $media->variants()->where('kind', $variant)->firstOrFail();
         $disk = Storage::disk($file->disk);

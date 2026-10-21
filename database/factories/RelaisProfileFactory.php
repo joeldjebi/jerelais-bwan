@@ -36,7 +36,7 @@ class RelaisProfileFactory extends Factory
     {
         return $this->afterMaking(function (RelaisProfile $profile): void {
             if ($profile->getAttribute('candidature_id') === null) {
-                $candidature = Candidature::factory()->completed()->create(['status' => CandidatureStatus::Accepted]);
+                $candidature = Candidature::factory()->completed()->create(['status' => CandidatureStatus::Accepted, ...($profile->getAttribute('commune_id') !== null ? ['commune_id' => $profile->getAttribute('commune_id')] : [])]);
                 $candidature->user->syncRoles([Role::Relais->value]);
                 $profile->candidature()->associate($candidature);
                 $profile->user()->associate($candidature->user);

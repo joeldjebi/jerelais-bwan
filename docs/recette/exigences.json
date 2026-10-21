@@ -1,0 +1,586 @@
+[
+    {
+        "id": "MOB-01",
+        "titre": "Création de compte par numéro de téléphone avec code de vérification SMS (OTP). Connexion ultérieure par code SMS ou mot de passe, et déverrouillage biométrique si l'appareil le permet.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Demander un code pour un numéro inconnu, le saisir : compte candidat créé. Se reconnecter par code puis par mot de passe. Biométrie : côté application.",
+        "note": ""
+    },
+    {
+        "id": "MOB-02",
+        "titre": "Formulaire de candidature en plusieurs étapes, avec sauvegarde automatique : nom, prénoms, date de naissance, genre, téléphone, e-mail (facultatif), photo de profil, commune, localité, lieu type (école, université…), profession ou statut (élève, étudiant, commerçant…), langues parlées, centres d'intérêt, motivation.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Remplir les 3 étapes (identité, territoire, profil), quitter puis revenir : les réponses sont conservées.",
+        "note": ""
+    },
+    {
+        "id": "MOB-03",
+        "titre": "Téléversement de la pièce d'identité (recto/verso) et d'un selfie de contrôle. Les candidats mineurs sont soumis à une règle spécifique (voir section 9).",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Déposer recto, verso et selfie ; tenter un PDF renommé en .jpg (refusé). Candidat de 16 ans : refusé tant que les mineurs ne sont pas admis.",
+        "note": ""
+    },
+    {
+        "id": "MOB-04",
+        "titre": "Acceptation obligatoire et horodatée de la charte du Relais, des conditions d'utilisation et de la politique de confidentialité ; version acceptée conservée.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Accepter charte, CGU et confidentialité ; publier une nouvelle version depuis la console : une nouvelle acceptation est exigée.",
+        "note": ""
+    },
+    {
+        "id": "MOB-05",
+        "titre": "Module de formation intégré (vidéos courtes ou fiches) suivi d'un quiz ; score minimal paramétrable pour que la candidature soit transmise.",
+        "priorite": "Souhaitable",
+        "perimetre": "mixte",
+        "scenario": "Suivre les modules, échouer au quiz (< score minimal) puis réussir : la candidature devient transmissible.",
+        "note": ""
+    },
+    {
+        "id": "MOB-06",
+        "titre": "Suivi de l'état de la candidature (reçue, en cours d'examen, complément demandé, acceptée, refusée avec motif).",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Suivre la candidature à chaque décision du coordonnateur (examen, complément, acceptée, refusée avec motif).",
+        "note": ""
+    },
+    {
+        "id": "MOB-07",
+        "titre": "Badge numérique du Relais (carte avec photo, numéro de Relais, commune, QR code de vérification) consultable dans l'application.",
+        "priorite": "Souhaitable",
+        "perimetre": "mixte",
+        "scenario": "Afficher le badge après acceptation ; scanner le QR : page publique de vérification du badge.",
+        "note": ""
+    },
+    {
+        "id": "MOB-10",
+        "titre": "Bouton central « Relayer » accessible depuis tous les écrans, ouvrant la capture en un geste.",
+        "priorite": "Indispensable",
+        "perimetre": "mobile",
+        "scenario": "Bouton « Relayer » visible sur tous les écrans de l’application.",
+        "note": "Interface de l’application : recette par l’équipe mobile."
+    },
+    {
+        "id": "MOB-11",
+        "titre": "Capture intégrée : photo, vidéo (durée maximale paramétrable, par défaut 3 minutes), enregistrement audio (par défaut 10 minutes). Plusieurs médias par relais (par défaut jusqu'à 10).",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Envoyer photo, vidéo de 3 min et audio ; tenter 11 médias ou une vidéo trop longue : refus avec message.",
+        "note": ""
+    },
+    {
+        "id": "MOB-12",
+        "titre": "Import depuis la galerie, avec lecture des métadonnées d'origine (date de prise de vue, GPS si présent) et signalement « média importé » pour le coordonnateur.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Importer une photo de la galerie avec EXIF : le coordonnateur voit « média importé » et la date de prise de vue.",
+        "note": ""
+    },
+    {
+        "id": "MOB-13",
+        "titre": "Ajout automatique des métadonnées : position GPS et précision, date et heure (heure du serveur à la réception et heure de l'appareil), modèle d'appareil, orientation, durée ; déduction automatique de la commune.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Envoyer avec GPS : commune déduite du lieu de capture, précision et modèle d’appareil visibles en console.",
+        "note": ""
+    },
+    {
+        "id": "MOB-14",
+        "titre": "Formulaire d'accompagnement court : catégorie (liste paramétrable), titre, description en texte ou en note vocale, niveau d'urgence (normal, important, urgent), lieu modifiable si le GPS est imprécis.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Choisir catégorie, urgence, titre ; corriger le lieu quand le GPS est imprécis.",
+        "note": ""
+    },
+    {
+        "id": "MOB-15",
+        "titre": "Questions de protection obligatoires : présence de mineurs identifiables ; accord des personnes filmées ; souhait du Relais d'être crédité ou de rester anonyme à l'antenne.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Tenter d’envoyer sans répondre aux questions de protection : refusé. Choisir pseudonyme : crédit affiché à l’antenne.",
+        "note": ""
+    },
+    {
+        "id": "MOB-16",
+        "titre": "Envoi fractionné et reprenable : en cas de coupure, l'envoi reprend là où il s'est arrêté, sans tout renvoyer.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Couper le réseau à 50 % d’une vidéo, le rétablir : l’envoi reprend aux morceaux manquants.",
+        "note": "Voir docs/recette/reseau-degrade.md."
+    },
+    {
+        "id": "MOB-17",
+        "titre": "Mode hors ligne : le relais est préparé et stocké chiffré sur le téléphone, puis envoyé automatiquement au retour du réseau ; choix « envoyer uniquement en Wi-Fi » pour les vidéos lourdes.",
+        "priorite": "Indispensable",
+        "perimetre": "mobile",
+        "scenario": "Préparer un relais en mode avion, rétablir le réseau : envoi automatique ; option « Wi-Fi seulement ».",
+        "note": "Stockage chiffré local : équipe mobile. Le serveur garantit l’idempotence (client_uuid)."
+    },
+    {
+        "id": "MOB-18",
+        "titre": "Compression intelligente avant envoi (aperçu rapide envoyé en premier, fichier d'origine en second), avec option « qualité d'origine » pour les relais urgents.",
+        "priorite": "Souhaitable",
+        "perimetre": "mobile",
+        "scenario": "Vérifier la compression avant envoi et l’option « qualité d’origine » pour un relais urgent.",
+        "note": "Compression côté application ; le serveur accepte plusieurs médias par relais."
+    },
+    {
+        "id": "MOB-19",
+        "titre": "Brouillons : un relais peut être commencé puis terminé plus tard.",
+        "priorite": "Souhaitable",
+        "perimetre": "mixte",
+        "scenario": "Commencer un relais, fermer l’application, le reprendre et l’envoyer.",
+        "note": ""
+    },
+    {
+        "id": "MOB-20",
+        "titre": "Liste « Mes relais » avec statut en temps réel : envoi en cours, reçu, en validation, complément demandé, validé, rejeté (avec motif), sélectionné par la rédaction, diffusé.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Suivre un relais de l’envoi à la diffusion dans « Mes relais » ; motif visible en cas de rejet.",
+        "note": ""
+    },
+    {
+        "id": "MOB-21",
+        "titre": "Notifications push (et SMS de secours pour les messages importants) à chaque changement de statut, pour les appels à relais et les messages du coordonnateur.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Valider un relais en console : le Relais reçoit la notification (SMS de secours).",
+        "note": "Push FCM : jeton enregistré par l’API, envoi à brancher avec l’équipe mobile."
+    },
+    {
+        "id": "MOB-22",
+        "titre": "Messagerie entre le Relais et son coordonnateur, rattachée à un relais ou générale ; possibilité de joindre un média complémentaire.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Échanger avec le coordonnateur sur un relais et en conversation générale.",
+        "note": ""
+    },
+    {
+        "id": "MOB-23",
+        "titre": "Réception et consultation des appels à relais de sa zone, avec réponse directe.",
+        "priorite": "Indispensable",
+        "perimetre": "mixte",
+        "scenario": "Publier un appel ciblant la commune : le Relais le voit et y répond ; un Relais hors zone ne le voit pas.",
+        "note": ""
+    },
+    {
+        "id": "MOB-24",
+        "titre": "Tableau de bord personnel : nombre de relais envoyés, validés, diffusés ; taux de validation ; niveau et badges (ex. : Relais Bronze, Argent, Or).",
+        "priorite": "Souhaitable",
+        "perimetre": "mixte",
+        "scenario": "Consulter le tableau de bord : envoyés, validés, diffusés, taux, niveau Bronze/Argent/Or et badges.",
+        "note": "API GET /api/v1/me/stats ; seuils dans Paramètres > Niveaux."
+    },
+    {
+        "id": "MOB-25",
+        "titre": "Fil « Diffusé sur REFLET TV » montrant les relais du réseau passés à l'antenne (extraits validés par la rédaction), pour valoriser les Relais.",
+        "priorite": "Souhaitable",
+        "perimetre": "mixte",
+        "scenario": "Publier un relais diffusé sur la vitrine : il apparaît dans le fil « Diffusé sur REFLET TV ».",
+        "note": "API GET /api/v1/diffusions."
+    },
+    {
+        "id": "MOB-26",
+        "titre": "Programme de récompenses (points, primes, dotations) avec versement éventuel par Mobile Money.",
+        "priorite": "Optionnel",
+        "perimetre": "hors-lot",
+        "scenario": "—",
+        "note": "Optionnel : non retenu au lot 1 (règles de récompense à définir, Annexe C)."
+    },
+    {
+        "id": "MOB-30",
+        "titre": "Les médias capturés dans l'application ne sont pas copiés dans la galerie publique du téléphone (option), et sont effacés du téléphone après envoi confirmé.",
+        "priorite": "Indispensable",
+        "perimetre": "mobile",
+        "scenario": "Vérifier que les médias capturés n’apparaissent pas dans la galerie et sont effacés après envoi confirmé (statut « ready »).",
+        "note": ""
+    },
+    {
+        "id": "MOB-31",
+        "titre": "Verrouillage de l'application par code ou biométrie ; déconnexion à distance par l'administrateur en cas de perte ou de vol déclaré.",
+        "priorite": "Souhaitable",
+        "perimetre": "mixte",
+        "scenario": "Déconnecter un appareil à distance depuis la console : le jeton est refusé à l’appel suivant. Verrouillage par code : application.",
+        "note": ""
+    },
+    {
+        "id": "MOB-32",
+        "titre": "Rappel de sécurité avant la capture sur les sujets sensibles (manifestations, accidents, incendies) : ne pas se mettre en danger, ne pas gêner les secours.",
+        "priorite": "Souhaitable",
+        "perimetre": "mobile",
+        "scenario": "Choisir « Manifestation » : le rappel de sécurité s’affiche avant la capture.",
+        "note": ""
+    },
+    {
+        "id": "MOB-33",
+        "titre": "Bouton d'alerte discret permettant au Relais en difÏculté de prévenir son coordonnateur avec sa position.",
+        "priorite": "Optionnel",
+        "perimetre": "hors-lot",
+        "scenario": "—",
+        "note": "Optionnel : non retenu au lot 1."
+    },
+    {
+        "id": "WEB-01",
+        "titre": "Pages de présentation : le principe, comment devenir Relais, la charte, questions fréquentes, contact, liens de téléchargement de l'application.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Parcourir accueil, principe, devenir Relais, charte, FAQ, contact, liens de téléchargement.",
+        "note": ""
+    },
+    {
+        "id": "WEB-02",
+        "titre": "Candidature en ligne identique à celle de l'application (MOB-02 à MOB-06), avec vérification par code SMS.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Candidater depuis le site avec vérification par SMS, jusqu’à la soumission.",
+        "note": ""
+    },
+    {
+        "id": "WEB-03",
+        "titre": "Espace Relais : connexion, envoi d'un relais par téléversement de fichiers (photos, vidéos, audio) avec formulaire d'accompagnement, suivi des statuts, messagerie, profil.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Se connecter à l’espace Relais, envoyer un relais, suivre son statut, échanger avec le coordonnateur, consulter ses données.",
+        "note": ""
+    },
+    {
+        "id": "WEB-04",
+        "titre": "Téléversement de fichiers volumineux fractionné et reprenable, avec barre de progression.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Envoyer une vidéo de 300 Mo depuis le navigateur, recharger la page à mi-parcours : reprise avec barre de progression.",
+        "note": ""
+    },
+    {
+        "id": "WEB-05",
+        "titre": "Vitrine « Vu sur REFLET TV » : sélection de relais diffusés, publiée par la rédaction, avec crédit du Relais ou mention anonyme selon son choix.",
+        "priorite": "Souhaitable",
+        "perimetre": "serveur",
+        "scenario": "Publier un relais diffusé sur la vitrine avec crédit nominatif puis anonyme.",
+        "note": ""
+    },
+    {
+        "id": "WEB-06",
+        "titre": "Carte publique du réseau : nombre de Relais par commune (sans aucune donnée personnelle).",
+        "priorite": "Optionnel",
+        "perimetre": "serveur",
+        "scenario": "Ouvrir la carte publique : nombre de Relais par commune, aucune donnée personnelle.",
+        "note": ""
+    },
+    {
+        "id": "WEB-07",
+        "titre": "Pages légales : conditions d'utilisation, politique de confidentialité, mentions légales, gestion des cookies.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Ouvrir CGU, confidentialité, mentions légales et cookies.",
+        "note": ""
+    },
+    {
+        "id": "WEB-08",
+        "titre": "Référencement naturel de base (titres, descriptions, partage sur les réseaux sociaux).",
+        "priorite": "Souhaitable",
+        "perimetre": "serveur",
+        "scenario": "Vérifier titres, descriptions, Open Graph, sitemap.xml et robots.txt.",
+        "note": ""
+    },
+    {
+        "id": "COO-01",
+        "titre": "File des candidatures de la commune, triée par date, avec dossier complet : identité, pièce d'identité, selfie, localité, motivation, score au quiz.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Ouvrir la file des candidatures de sa commune et un dossier complet (pièces, selfie, quiz).",
+        "note": ""
+    },
+    {
+        "id": "COO-02",
+        "titre": "Décision : accepter, refuser (motif obligatoire choisi dans une liste et commentaire), mettre en attente, demander un complément. Chaque décision est notifiée au candidat.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Accepter, refuser avec motif, mettre en attente, demander un complément : le candidat est notifié.",
+        "note": ""
+    },
+    {
+        "id": "COO-03",
+        "titre": "Aide à la vérification : comparaison visuelle photo / pièce d'identité, alerte en cas de doublon (même numéro de téléphone, même pièce, même appareil).",
+        "priorite": "Souhaitable",
+        "perimetre": "serveur",
+        "scenario": "Comparer selfie et pièce ; créer un doublon de téléphone ou d’appareil : alerte affichée.",
+        "note": ""
+    },
+    {
+        "id": "COO-04",
+        "titre": "Gestion des Relais de la commune : liste, fiche, historique, statistiques, suspension ou radiation motivée (avec information de l'administrateur).",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Ouvrir la fiche d’un Relais, suspendre puis réactiver avec motif : l’administration est informée.",
+        "note": ""
+    },
+    {
+        "id": "COO-10",
+        "titre": "File de validation en temps réel, avec tri par urgence puis par ancienneté ; signal sonore et notification pour les relais urgents.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Recevoir un relais urgent : il passe en tête de file, signal sonore et notification.",
+        "note": ""
+    },
+    {
+        "id": "COO-11",
+        "titre": "Lecteur intégré pour photos, vidéos et audio, avec zoom, lecture image par image et vitesse réglable.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Lire photo (zoom), vidéo (image par image, vitesse) et audio dans la console.",
+        "note": ""
+    },
+    {
+        "id": "COO-12",
+        "titre": "Panneau de vérification : position sur une carte, écart entre lieu déclaré et GPS, date de prise de vue et date d'envoi, média importé ou capturé en direct, historique et taux de fiabilité du Relais.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Contrôler la carte, l’écart lieu déclaré / GPS, les dates, l’origine du média et la fiabilité du Relais.",
+        "note": ""
+    },
+    {
+        "id": "COO-13",
+        "titre": "Détection de doublons : alerte si un média identique ou très proche a déjà été envoyé (par le même Relais ou un autre).",
+        "priorite": "Souhaitable",
+        "perimetre": "serveur",
+        "scenario": "Renvoyer la même photo depuis un autre Relais : alerte de doublon.",
+        "note": ""
+    },
+    {
+        "id": "COO-14",
+        "titre": "Décisions : valider ; valider avec corrections (titre, description, catégorie, lieu) ; demander un complément au Relais ; rejeter avec motif ; signaler comme sensible pour arbitrage de la rédaction.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Valider, valider avec corrections, demander un complément, rejeter avec motif, signaler comme sensible.",
+        "note": ""
+    },
+    {
+        "id": "COO-15",
+        "titre": "Motifs de rejet paramétrables : hors sujet, qualité insufÏsante, information non vérifiable, contenu ancien, contenu déjà publié ailleurs, atteinte à la dignité, mineurs identifiables, contenu dangereux ou illicite, doublon.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Ajouter ou désactiver un motif de rejet dans Référentiels : la liste du coordonnateur est à jour.",
+        "note": ""
+    },
+    {
+        "id": "COO-16",
+        "titre": "Indication obligatoire pour valider un relais contenant des mineurs ou des personnes identifiables : floutage nécessaire oui / non.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Valider un relais avec mineurs sans répondre « floutage » : refusé.",
+        "note": ""
+    },
+    {
+        "id": "COO-17",
+        "titre": "Délai de traitement cible paramétrable (par défaut 30 minutes pour un relais urgent, 4 heures pour un relais normal). Au-delà, le relais est signalé en retard et remonte au suppléant, au superviseur régional ou à l'administrateur.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Laisser un relais urgent 31 min sans décision : signalé en retard et remonté au suppléant.",
+        "note": ""
+    },
+    {
+        "id": "COO-18",
+        "titre": "Note interne attachée au relais, visible par la rédaction et non par le Relais.",
+        "priorite": "Souhaitable",
+        "perimetre": "serveur",
+        "scenario": "Ajouter une note interne : visible par la rédaction, jamais par le Relais (API et web).",
+        "note": ""
+    },
+    {
+        "id": "COO-20",
+        "titre": "Messagerie avec chaque Relais et message groupé à tous les Relais de la commune.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Répondre à un Relais et envoyer un message groupé à la commune.",
+        "note": ""
+    },
+    {
+        "id": "COO-21",
+        "titre": "Relais des appels à relais de la rédaction vers sa commune, et création d'appels locaux (soumis à l'accord de l'administrateur si paramétré).",
+        "priorite": "Souhaitable",
+        "perimetre": "serveur",
+        "scenario": "Créer un appel local (avec accord de l’administrateur si paramétré) et relayer un appel de la rédaction.",
+        "note": ""
+    },
+    {
+        "id": "COO-22",
+        "titre": "Tableau de bord de la commune : Relais actifs, relais reçus, validés, rejetés, diffusés ; délai moyen de validation ; carte de couverture par quartier.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Contrôler les chiffres du tableau de bord de la commune et la couverture par quartier.",
+        "note": ""
+    },
+    {
+        "id": "ADM-01",
+        "titre": "Flux en direct de tous les relais dès leur envoi, avec leur statut (en attente, validé, rejeté…), mis à jour sans recharger la page.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Garder le flux ouvert pendant qu’un Relais envoie : le relais apparaît sans recharger.",
+        "note": ""
+    },
+    {
+        "id": "ADM-02",
+        "titre": "Carte interactive de la Côte d'Ivoire : relais par commune, regroupements, filtres par période, catégorie, urgence et statut ; zoom jusqu'au quartier.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Filtrer la carte par période, catégorie, urgence et statut ; zoomer jusqu’au quartier.",
+        "note": ""
+    },
+    {
+        "id": "ADM-03",
+        "titre": "Alertes : relais urgents, afÒux inhabituel de relais sur une même zone (signal d'un événement), relais en retard de validation.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Envoyer 5 relais en 30 min sur une commune : alerte d’afflux ; alertes urgents et retards.",
+        "note": ""
+    },
+    {
+        "id": "ADM-04",
+        "titre": "Filtres et recherche : texte, commune, région, catégorie, Relais, coordonnateur, période, type de média, appel à relais.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Combiner les filtres texte, commune, région, catégorie, Relais, coordonnateur, période, média, appel.",
+        "note": ""
+    },
+    {
+        "id": "ADM-05",
+        "titre": "Vue « salle de rédaction » plein écran pour afÏchage sur un grand écran.",
+        "priorite": "Souhaitable",
+        "perimetre": "serveur",
+        "scenario": "Afficher la salle de rédaction en plein écran sur un grand écran.",
+        "note": ""
+    },
+    {
+        "id": "ADM-10",
+        "titre": "Sélection d'un relais validé par un membre de la rédaction, avec affectation à un journaliste ou à une émission.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Sélectionner un relais validé et l’affecter à un journaliste et une émission.",
+        "note": ""
+    },
+    {
+        "id": "ADM-11",
+        "titre": "Téléchargement des médias en qualité d'origine, individuellement ou par lot, avec fiche d'accompagnement (titre, description, lieu, date, heure, Relais, crédit à afÏcher, consignes de floutage).",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Télécharger un original puis un lot ZIP avec fiche PDF d’accompagnement.",
+        "note": ""
+    },
+    {
+        "id": "ADM-12",
+        "titre": "Blocage de l'export des relais non validés ; dérogation possible par un administrateur, avec motif obligatoire et trace dans le journal d'audit.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Tenter d’exporter un relais non validé : bloqué ; dérogation administrateur avec motif tracée dans l’audit.",
+        "note": ""
+    },
+    {
+        "id": "ADM-13",
+        "titre": "Marquage « diffusé » avec date, émission et lien éventuel ; notification automatique du Relais.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Marquer diffusé (date, émission, lien) : le Relais est notifié.",
+        "note": ""
+    },
+    {
+        "id": "ADM-14",
+        "titre": "Création et suivi des appels à relais : zone ciblée (communes, régions, rayon), type de lieu, sujet, consignes, date limite ; statistiques de réponse.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Créer un appel ciblant communes, région ou rayon, avec type de lieu et date limite ; suivre ses réponses.",
+        "note": ""
+    },
+    {
+        "id": "ADM-15",
+        "titre": "Collections : regroupement de relais par sujet ou par événement (ex. : « Inondations juin »).",
+        "priorite": "Souhaitable",
+        "perimetre": "serveur",
+        "scenario": "Créer la collection « Inondations juin », y ajouter puis retirer des relais.",
+        "note": ""
+    },
+    {
+        "id": "ADM-16",
+        "titre": "Export vers le système de gestion des médias ou la régie de REFLET TV (dossier partagé, FTP/SFTP ou API) [ À COMPLÉTER ].",
+        "priorite": "Souhaitable",
+        "perimetre": "hors-lot",
+        "scenario": "Export par lot ZIP disponible ; connecteur régie à définir.",
+        "note": "Point ouvert [À COMPLÉTER] : protocole de la régie REFLET TV (dossier partagé, SFTP ou API) à fournir."
+    },
+    {
+        "id": "ADM-17",
+        "titre": "Publication sur la vitrine web « Vu sur REFLET TV » et préparation de publications pour les réseaux sociaux de la chaîne.",
+        "priorite": "Optionnel",
+        "perimetre": "serveur",
+        "scenario": "Publier sur la vitrine ; la préparation de publications réseaux sociaux reste manuelle.",
+        "note": "Optionnel : vitrine livrée, réseaux sociaux non retenus."
+    },
+    {
+        "id": "ADM-20",
+        "titre": "Gestion du référentiel géographique : districts, régions, communes, localités, lieux types.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Importer les contours, ouvrir une commune, ajouter une localité et un type de lieu dans Référentiels.",
+        "note": "Districts et régions : par l’import GeoJSON officiel."
+    },
+    {
+        "id": "ADM-21",
+        "titre": "Gestion des coordonnateurs et superviseurs : création, rattachement à une ou plusieurs communes, suppléance, suspension.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Créer un coordonnateur titulaire et un suppléant, un superviseur régional ; suspendre un membre.",
+        "note": ""
+    },
+    {
+        "id": "ADM-22",
+        "titre": "Gestion des Relais au niveau national : recherche, fiche, historique, suspension, radiation, réintégration, transfert de commune.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Rechercher un Relais national, le suspendre, le radier, le réintégrer, le transférer de commune.",
+        "note": ""
+    },
+    {
+        "id": "ADM-23",
+        "titre": "Paramétrage : catégories, motifs de rejet, délais de validation, durées et tailles maximales des médias, textes de la charte et des conditions, niveaux et badges.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Modifier catégories, motifs, délais, limites des médias, textes juridiques, niveaux : chaque changement est audité.",
+        "note": ""
+    },
+    {
+        "id": "ADM-24",
+        "titre": "Gestion des utilisateurs de la console et de leurs rôles (administrateur, rédacteur en chef, journaliste, lecture seule) avec double authentification obligatoire.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Créer un compte par rôle ; vérifier que la 2FA est imposée avant toute page.",
+        "note": ""
+    },
+    {
+        "id": "ADM-25",
+        "titre": "Journal d'audit non modifiable : connexions, décisions de validation, exports, dérogations, modifications de paramètres.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Vérifier l’intégrité du journal (console et audit:verify) ; tenter un UPDATE SQL : refusé par le trigger.",
+        "note": ""
+    },
+    {
+        "id": "ADM-26",
+        "titre": "Tableaux de bord et rapports exportables (Excel, PDF) : voir section 13.",
+        "priorite": "Indispensable",
+        "perimetre": "serveur",
+        "scenario": "Exporter chaque famille de rapports en Excel et PDF ; vérifier l’envoi périodique.",
+        "note": ""
+    },
+    {
+        "id": "ADM-27",
+        "titre": "Gestion des récompenses : règles de points, validation des primes, suivi des paiements.",
+        "priorite": "Optionnel",
+        "perimetre": "hors-lot",
+        "scenario": "—",
+        "note": "Optionnel : dépend de MOB-26."
+    }
+]

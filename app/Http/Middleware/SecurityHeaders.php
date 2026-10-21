@@ -30,6 +30,10 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self), payment=()');
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
+        $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+        // Ne pas annoncer la version de PHP (scan ZAP 10037) ; à doubler par expose_php=Off en production.
+        $response->headers->remove('X-Powered-By');
+        header_remove('X-Powered-By');
 
         if ($request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

@@ -227,3 +227,31 @@ it('garde les médias et leurs vignettes chargés entre deux actions (vidéo com
         ->call('decide', 'validate')
         ->assertHasNoErrors();
 });
+
+it('affiche le lecteur intégré : zoom photo, image par image et vitesse réglable [COO-11]', function () {
+    attachReadyMedia($this->relais, 'video');
+
+    Livewire::actingAs($this->coordo)->test(Show::class, ['relais' => $this->relais])
+        ->assertSeeHtml('cursor-zoom-in')
+        ->assertSee('+1 img')
+        ->assertSee('2×');
+
+    $this->actingAs($this->coordo)->get(route('console.medias.show', $this->relais->medias()->first()))->assertRedirect();
+});
+
+it('alerte sur un média importé, une commune déclarée et un GPS imprécis [COO-12]', function () {
+    $this->relais->forceFill(['routed_by' => 'declared', 'location_accuracy_m' => 850])->save();
+    $this->relais->medias()->update(['is_imported' => true]);
+
+    Livewire::actingAs($this->coordo)->test(Show::class, ['relais' => $this->relais])
+        ->assertSee('importé de la galerie')
+        ->assertSee('Commune déclarée par le Relais')
+        ->assertSee('Position GPS imprécise (± 850 m)');
+});
+
+it('ne sert jamais un média encore en cours de contrôle antivirus (revue sécurité)', function () {
+    $media = attachReadyMedia($this->relais);
+    $media->forceFill(['status' => MediaStatus::Processing])->save();
+
+    $this->actingAs($this->coordo)->get(route('console.medias.show', $media))->assertNotFound();
+});

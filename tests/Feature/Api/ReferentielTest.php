@@ -37,3 +37,14 @@ it('seed les motifs de rejet des relais (COO-15) et des candidatures', function 
     $this->assertDatabaseCount('rejection_reasons', 16);
     $this->assertDatabaseHas('rejection_reasons', ['applies_to' => 'relais', 'label' => 'Mineurs identifiables']);
 });
+
+it('rend les référentiels publics cachables et ne bride pas une adresse IP partagée par un opérateur (CGNAT)', function () {
+    $response = $this->getJson(route('api.v1.settings.index'))->assertOk();
+
+    expect($response->headers->get('Cache-Control'))->toContain('public')->toContain('max-age=300')
+        ->and($response->headers->get('ETag'))->not->toBeNull();
+
+    foreach (range(1, 150) as $attempt) {
+        $this->getJson(route('api.v1.categories.index'))->assertOk();
+    }
+});

@@ -6,7 +6,10 @@ it('ajoute les en-têtes de sécurité à chaque réponse [§10 Sécurité]', fu
     $response->assertHeader('X-Content-Type-Options', 'nosniff')
         ->assertHeader('X-Frame-Options', 'DENY')
         ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-        ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin')
+        ->assertHeader('Cross-Origin-Resource-Policy', 'same-origin')
+        ->assertHeader('Permissions-Policy')
+        ->assertHeaderMissing('X-Powered-By');
 
     $response->assertHeaderMissing('Content-Security-Policy-Report-Only');
 
