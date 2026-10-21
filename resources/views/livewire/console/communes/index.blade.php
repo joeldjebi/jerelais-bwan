@@ -3,7 +3,11 @@
         :eyebrow="__('Réseau')"
         :title="__('Communes')"
         :subtitle="__('Ouvrez les communes aux Relais au rythme du déploiement : pilote à Abidjan, puis lancement national.')"
-    />
+    >
+        <x-slot:actions>
+            <x-ui.button wire:click="openCreate">{{ __('Ajouter une commune') }}</x-ui.button>
+        </x-slot:actions>
+    </x-console.page-header>
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3" data-bento>
         <x-console.stat :label="__('Communes')" value="" :count="$this->counts['total']" icon="map-pin" tint="blue" :hint="__('Dans le référentiel')" />
@@ -39,13 +43,32 @@
                 @foreach ($this->communes as $commune)
                     <li wire:key="commune-{{ $commune->uuid }}" class="flex items-center gap-3.5 px-4 py-3 transition-colors duration-200 hover:bg-black/[0.02] dark:hover:bg-white/[0.03]">
                         <x-console.tile icon="map-pin" :tint="$commune->is_active ? 'green' : 'blue'" />
-                        <div class="min-w-0 flex-1">
-                            <p class="truncate text-[0.9375rem] font-semibold">{{ $commune->name }}</p>
-                            <p class="truncate text-[0.8125rem] text-mute">
-                                {{ $commune->region?->name ?? __('Sans région') }}
-                                · {{ $commune->coordinators_count > 0 ? trans_choice(':count coordonnateur|:count coordonnateurs', $commune->coordinators_count) : __('aucun coordonnateur') }}
-                            </p>
-                        </div>
+                        @if ($editing === $commune->uuid)
+                            <form wire:submit="saveEdit" class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                                <div class="min-w-40 flex-1">
+                                    <input type="text" wire:model="editName" aria-label="{{ __('Nom de la commune') }}" maxlength="120" autofocus
+                                        class="h-9 w-full rounded-[0.6rem] border-0 bg-black/[0.055] px-3 text-[0.9375rem] focus:bg-surface focus:shadow-[0_0_0_3px_rgb(10_132_255/0.3)] focus:outline-none dark:bg-white/[0.08]">
+                                    @error('editName') <p class="mt-1 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
+                                </div>
+                                <select wire:model="editRegion" aria-label="{{ __('Région') }}" class="h-9 rounded-[0.6rem] border-0 bg-black/[0.055] px-3 text-[0.875rem] dark:bg-white/[0.08]">
+                                    <option value="">{{ __('Sans région') }}</option>
+                                    @foreach ($this->regions as $region)
+                                        <option value="{{ $region->uuid }}">{{ $region->name }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="submit" class="text-[0.875rem] font-semibold text-tile-blue hover:opacity-80">{{ __('Enregistrer') }}</button>
+                                <button type="button" wire:click="cancelEdit" class="text-[0.875rem] text-mute hover:text-ink">{{ __('Annuler') }}</button>
+                            </form>
+                        @else
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-[0.9375rem] font-semibold">{{ $commune->name }}</p>
+                                <p class="truncate text-[0.8125rem] text-mute">
+                                    {{ $commune->region?->name ?? __('Sans région') }}
+                                    · {{ $commune->coordinators_count > 0 ? trans_choice(':count coordonnateur|:count coordonnateurs', $commune->coordinators_count) : __('aucun coordonnateur') }}
+                                </p>
+                            </div>
+                            <button type="button" wire:click="startEdit('{{ $commune->uuid }}')" class="text-[0.8125rem] font-medium text-tile-blue hover:opacity-80">{{ __('Modifier') }}</button>
+                        @endif
                         <div class="hidden md:block">
                             @if ($commune->has_contour)
                                 <x-console.badge tone="success">{{ __('Contour importé') }}</x-console.badge>
@@ -91,4 +114,26 @@
             : __('Les habitants pourront candidater pour devenir Relais. Pensez à désigner un coordonnateur.')"
         :confirm-label="$this->pending?->is_active ? __('Fermer') : __('Ouvrir')"
     />
+    {{-- Création d'une commune (ADM-20) --}}
+    <x-console.slide-over model="creating" :title="__('Nouvelle commune')" :description="__('Elle reste fermée aux Relais tant que vous ne l’ouvrez pas. Importez ensuite son contour pour le routage par GPS.')">
+        <form id="create-commune" wire:submit="create" class="space-y-6">
+            <x-console.group>
+                <div class="space-y-4 p-4">
+                    <x-console.input :label="__('Nom de la commune')" name="newName" wire:model="newName" maxlength="120" autocomplete="off" />
+                    <x-console.select :label="__('Région')" name="newRegion" wire:model="newRegion">
+                        <option value="">{{ __('Sans région') }}</option>
+                        @foreach ($this->regions as $region)
+                            <option value="{{ $region->uuid }}">{{ $region->name }}</option>
+                        @endforeach
+                    </x-console.select>
+                    <x-console.input :label="__('Code officiel (facultatif)')" name="newCode" wire:model="newCode" maxlength="20" autocomplete="off" :hint="__('Code INS ou de l’administration, s’il existe.')" />
+                </div>
+            </x-console.group>
+        </form>
+
+        <x-slot:footer>
+            <x-ui.button variant="secondary" x-on:click="open = false">{{ __('Annuler') }}</x-ui.button>
+            <x-ui.button type="submit" form="create-commune" wire:loading.attr="disabled" wire:target="create">{{ __('Créer la commune') }}</x-ui.button>
+        </x-slot:footer>
+    </x-console.slide-over>
 </div>

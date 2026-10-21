@@ -524,8 +524,8 @@
         "titre": "Gestion du référentiel géographique : districts, régions, communes, localités, lieux types.",
         "priorite": "Indispensable",
         "perimetre": "serveur",
-        "scenario": "Importer les contours, ouvrir une commune, ajouter une localité et un type de lieu dans Référentiels.",
-        "note": "Districts et régions : par l’import GeoJSON officiel."
+        "scenario": "Créer une région (Référentiels › Régions) et une commune (Communes › Ajouter une commune), renommer une commune, importer les contours, ouvrir une commune, ajouter une localité et un type de lieu.",
+        "note": "Les contours restent importés depuis le fichier officiel (GeoJSON) ; régions, communes, localités et types de lieux se gèrent aussi depuis la console."
     },
     {
         "id": "ADM-21",

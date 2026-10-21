@@ -82,6 +82,7 @@ return [
     ],
 
     'reference_lists' => [
+        'regions' => 'Régions',
         'localites' => 'Localités',
         'lieux' => 'Types de lieux',
         'categories' => 'Catégories',

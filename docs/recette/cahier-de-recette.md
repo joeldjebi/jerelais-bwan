@@ -1,6 +1,6 @@
 # Cahier de recette — JE RELAIS
 
-> Généré par `php artisan recette:matrice` le 21/10/2026 à 14:23. Ne pas modifier à la main : éditer `docs/recette/exigences.json` ou les tests, puis régénérer.
+> Généré par `php artisan recette:matrice` le 21/10/2026 à 14:46. Ne pas modifier à la main : éditer `docs/recette/exigences.json` ou les tests, puis régénérer.
 
 **Critère de sortie de l’étape 6** : aucune anomalie bloquante ni majeure ouverte. Chaque exigence est recettée sur la préproduction par le scénario manuel ; les tests automatisés en garantissent la non-régression.
 
@@ -80,7 +80,7 @@
 | [ADM-15](#adm-15) | Souhaitable | serveur | Automatisé + manuel | 1 | ☐ |
 | [ADM-16](#adm-16) | Souhaitable | hors-lot | Hors lot | 0 | ☐ |
 | [ADM-17](#adm-17) | Optionnel | serveur | Automatisé + manuel | 1 | ☐ |
-| [ADM-20](#adm-20) | Indispensable | serveur | Automatisé + manuel | 6 | ☐ |
+| [ADM-20](#adm-20) | Indispensable | serveur | Automatisé + manuel | 9 | ☐ |
 | [ADM-21](#adm-21) | Indispensable | serveur | Automatisé + manuel | 3 | ☐ |
 | [ADM-22](#adm-22) | Indispensable | serveur | Automatisé + manuel | 3 | ☐ |
 | [ADM-23](#adm-23) | Indispensable | serveur | Automatisé + manuel | 6 | ☐ |
@@ -1055,9 +1055,9 @@
 
 > Gestion du référentiel géographique : districts, régions, communes, localités, lieux types.
 
-**Scénario manuel** : Importer les contours, ouvrir une commune, ajouter une localité et un type de lieu dans Référentiels.
+**Scénario manuel** : Créer une région (Référentiels › Régions) et une commune (Communes › Ajouter une commune), renommer une commune, importer les contours, ouvrir une commune, ajouter une localité et un type de lieu.
 
-**Note** : Districts et régions : par l’import GeoJSON officiel.
+**Note** : Les contours restent importés depuis le fichier officiel (GeoJSON) ; régions, communes, localités et types de lieux se gèrent aussi depuis la console.
 
 **Tests automatisés**
 
@@ -1065,6 +1065,9 @@
 - `Feature/Settings/ReferentielsTest.php — ajoute une localité à une commune et l’audite [ADM-20]`
 - `Feature/Settings/ReferentielsTest.php — refuse une localité en double dans la même commune [ADM-20]`
 - `Feature/Settings/ReferentielsTest.php — ajoute puis renomme un type de lieu [ADM-20]`
+- `Feature/Settings/ReferentielsTest.php — crée une commune fermée aux Relais, rattachée à sa région, et l’audite [ADM-20]`
+- `Feature/Settings/ReferentielsTest.php — refuse une commune en double et renomme une commune existante [ADM-20]`
+- `Feature/Settings/ReferentielsTest.php — ajoute une région avec son district [ADM-20]`
 - `Feature/Territoire/ImportCommunesTest.php — importe les communes, leurs régions et leurs contours PostGIS [ADM-20]`
 - `Feature/Territoire/ImportCommunesTest.php — est idempotent : un second import met à jour sans dupliquer [ADM-20]`
 

@@ -4,7 +4,9 @@ use App\Domain\Access\Enums\Role;
 use App\Domain\Contribution\Models\Category;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\LieuType;
+use App\Domain\Territoire\Models\Region;
 use App\Domain\Validation\Models\RejectionReason;
+use App\Livewire\Console\Communes\Index as CommunesPage;
 use App\Livewire\Console\Referentiels\Index as ReferentielsPage;
 use App\Models\User;
 use Livewire\Livewire;
@@ -101,4 +103,63 @@ it('affiche la page des référentiels à l’administrateur', function () {
         ->assertOk()
         ->assertSee('Référentiels')
         ->assertSee('Motifs de rejet');
+});
+
+it('crée une commune fermée aux Relais, rattachée à sa région, et l’audite [ADM-20]', function () {
+    $actor = referentielsAdmin();
+    $region = Region::factory()->create(['name' => 'Gbêkê']);
+
+    Livewire::actingAs($actor)->test(CommunesPage::class)
+        ->call('openCreate')
+        ->set('newName', 'Bouaké')
+        ->set('newRegion', $region->uuid)
+        ->set('newCode', 'BKE')
+        ->call('create')
+        ->assertHasNoErrors()
+        ->assertSet('creating', false)
+        ->assertSee('Bouaké');
+
+    $commune = Commune::query()->where('slug', 'bouake')->sole();
+
+    expect($commune->is_active)->toBeFalse()
+        ->and($commune->region_id)->toBe($region->id)
+        ->and($commune->code)->toBe('BKE');
+    $this->assertDatabaseHas('audit_logs', ['action' => 'territoire.commune.created', 'actor_id' => $actor->id, 'commune_id' => $commune->id]);
+});
+
+it('refuse une commune en double et renomme une commune existante [ADM-20]', function () {
+    $commune = Commune::factory()->create(['name' => 'Bingerville', 'slug' => 'bingerville']);
+
+    $page = Livewire::actingAs(referentielsAdmin())->test(CommunesPage::class)
+        ->set('newName', 'bingerville')
+        ->call('create')
+        ->assertHasErrors('newName');
+
+    $page->call('startEdit', $commune->uuid)
+        ->set('editName', 'Bingerville-Ville')
+        ->call('saveEdit')
+        ->assertHasNoErrors();
+
+    expect($commune->fresh()->name)->toBe('Bingerville-Ville');
+    $this->assertDatabaseHas('audit_logs', ['action' => 'territoire.commune.updated']);
+});
+
+it('ajoute une région avec son district [ADM-20]', function () {
+    Livewire::actingAs(referentielsAdmin())->test(ReferentielsPage::class)
+        ->set('list', 'regions')
+        ->set('name', 'Gbêkê')
+        ->set('district', 'Vallée du Bandama')
+        ->call('add')
+        ->assertHasNoErrors()
+        ->assertSee('Vallée du Bandama');
+
+    $this->assertDatabaseHas('regions', ['name' => 'Gbêkê', 'district' => 'Vallée du Bandama', 'slug' => 'gbeke']);
+});
+
+it('refuse la création de commune à un coordonnateur [Annexe A]', function () {
+    $commune = Commune::factory()->create();
+
+    Livewire::actingAs(User::factory()->withTwoFactor()->coordonnateurOf($commune)->create())
+        ->test(CommunesPage::class)
+        ->assertForbidden();
 });

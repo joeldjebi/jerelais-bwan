@@ -6,14 +6,16 @@ use App\Domain\Access\Enums\Permission;
 use App\Domain\Contribution\Models\Category;
 use App\Domain\Territoire\Models\LieuType;
 use App\Domain\Territoire\Models\Localite;
+use App\Domain\Territoire\Models\Region;
 use App\Domain\Validation\Models\RejectionReason;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Listes de référence gérées depuis la console (ADM-20, ADM-23, COO-15).
+ * Listes de référence gérées depuis la console (ADM-20, ADM-23, COO-15). Les communes ont leur propre page.
  */
 enum ReferenceList: string
 {
+    case Regions = 'regions';
     case Localites = 'localites';
     case LieuTypes = 'lieux';
     case Categories = 'categories';
@@ -27,7 +29,7 @@ enum ReferenceList: string
     public function permission(): Permission
     {
         return match ($this) {
-            self::Localites, self::LieuTypes => Permission::TerritoireManage,
+            self::Regions, self::Localites, self::LieuTypes => Permission::TerritoireManage,
             self::Categories, self::RejectionReasons => Permission::SettingsManage,
         };
     }
@@ -38,6 +40,7 @@ enum ReferenceList: string
     public function model(): string
     {
         return match ($this) {
+            self::Regions => Region::class,
             self::Localites => Localite::class,
             self::LieuTypes => LieuType::class,
             self::Categories => Category::class,
