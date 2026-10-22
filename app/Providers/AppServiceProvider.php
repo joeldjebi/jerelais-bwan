@@ -7,6 +7,7 @@ use App\Http\Middleware\EnsureUserIsStaff;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\DevCommands;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -34,6 +35,20 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureLivewire();
         $this->configureDevCommands();
+        $this->configureTrustedProxies();
+    }
+
+    /**
+     * Proxys de confiance (TRUSTED_PROXIES) : Nginx ou répartiteur en production, tunnel (ngrok) en recette locale.
+     * Laravel lit alors le vrai protocole (https), l'hôte public et l'adresse IP du visiteur.
+     */
+    private function configureTrustedProxies(): void
+    {
+        $proxies = config('jerelais.trusted_proxies');
+
+        if (is_string($proxies) && trim($proxies) !== '') {
+            TrustProxies::at(trim($proxies) === '*' ? '*' : array_map('trim', explode(',', $proxies)));
+        }
     }
 
     /**

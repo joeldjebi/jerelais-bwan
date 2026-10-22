@@ -88,6 +88,9 @@ return [
         'anonymous_per_ip_per_minute' => (int) env('API_ANONYMOUS_PER_IP_PER_MINUTE', 1200),
     ],
 
+    // Proxys de confiance, séparés par des virgules (ex. « 127.0.0.1 » pour un tunnel local, l'adresse du répartiteur en production).
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
     'contact_email' => env('JERELAIS_CONTACT_EMAIL', 'contact@jerelais.test'),
 
     'media' => [
