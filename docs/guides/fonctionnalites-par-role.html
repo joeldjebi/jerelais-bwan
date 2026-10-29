@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>JE RELAIS — Fonctionnalités par rôle</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root {
+    --ink: #17181c; --mute: #5f616a; --line: #e2e1dc; --soft: #f5f4f0;
+    --accent: #d9480f; --accent-soft: #fdebe2; --ok: #1f8a4c; --ok-soft: #e3f4ea; --part: #a86800; --part-soft: #fbf0d9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--ink); font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.45; }
+  h1, h2, h3 { line-height: 1.2; margin: 0; }
+  .cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; page-break-after: always; }
+  .brand { font-size: 10pt; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  .cover h1 { font-size: 34pt; letter-spacing: -.02em; margin-top: 70mm; }
+  .cover .sub { font-size: 13pt; color: var(--mute); margin-top: 8px; max-width: 140mm; }
+  .cover dl { display: grid; grid-template-columns: 38mm 1fr; gap: 4px 12px; font-size: 9.5pt; margin: 0; }
+  .cover dt { color: var(--mute); }
+  .cover dd { margin: 0; }
+
+  h2 { font-size: 17pt; letter-spacing: -.01em; margin-bottom: 4px; }
+  .lede { color: var(--mute); margin: 0 0 12px; max-width: 165mm; }
+  section.page { page-break-before: always; }
+  .section-head { display: flex; align-items: baseline; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 6px; margin-bottom: 10px; }
+  .section-head .tag { font-size: 8pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 8.1pt; line-height: 1.3; }
+  th, td { border-bottom: 1px solid var(--line); padding: 2.6px 5px; text-align: left; vertical-align: top; }
+  thead th { font-size: 7.6pt; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); border-bottom: 1.5px solid var(--ink); }
+  .matrix td:not(:first-child), .matrix th:not(:first-child) { text-align: center; width: 9%; }
+  .matrix tr.group td { background: var(--soft); font-weight: 700; font-size: 8pt; letter-spacing: .03em; text-transform: uppercase; color: var(--mute); }
+  .y { color: var(--ok); font-weight: 700; }
+  .p { color: var(--part); font-weight: 700; }
+  .n { color: #b9bbc2; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 8.4pt; color: var(--mute); margin: 8px 0 0; }
+
+  .role { page-break-before: always; }
+  .role-card { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 8px 0 12px; }
+  .role-card div { background: var(--soft); border-radius: 6px; padding: 7px 9px; }
+  .role-card b { display: block; font-size: 7.6pt; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); margin-bottom: 2px; }
+  h3 { font-size: 11pt; margin: 12px 0 4px; color: var(--ink); }
+  ul { margin: 0; padding-left: 16px; }
+  li { margin: 2px 0; }
+  li .ref { font-size: 7.6pt; color: var(--accent); white-space: nowrap; }
+  .cols { columns: 2; column-gap: 9mm; }
+  .cols > div { break-inside: avoid; }
+  .note { background: var(--accent-soft); border-radius: 6px; padding: 7px 10px; font-size: 8.6pt; margin-top: 8px; break-inside: avoid; }
+  .not { color: var(--mute); }
+  .not li::marker { content: "✕  "; color: #b9bbc2; }
+  footer.doc { margin-top: 14px; font-size: 8pt; color: var(--mute); }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="brand">REFLET TV · JE RELAIS</div>
+  <div>
+    <h1>Fonctionnalités<br>par rôle</h1>
+    <p class="sub">Ce que chaque utilisateur de la plateforme peut faire : site public, espace Relais, console de l’équipe et application mobile (via l’API).</p>
+  </div>
+  <dl>
+    <dt>Version</dt><dd>Plateforme web et API v1, état au 29 octobre 2026 (recette locale)</dd>
+    <dt>Rôles couverts</dt><dd>Administrateur · Rédacteur en chef · Journaliste · Lecture seule · Superviseur régional · Coordonnateur (titulaire, suppléant) · Relais · Candidat · Visiteur</dd>
+    <dt>Références</dt><dd>Les codes MOB, WEB, COO et ADM renvoient aux exigences du cahier des charges v1.2.</dd>
+  </dl>
+</div>
+
+<section>
+  <div class="section-head"><span class="tag">Vue d’ensemble</span><h2>Qui fait quoi</h2></div>
+  <p class="lede">Synthèse des grandes fonctionnalités. Le détail de chaque rôle suit, une page par rôle.</p>
+  <table class="matrix">
+    <thead>
+      <tr><th>Fonctionnalité</th><th>Admin</th><th>Réd. chef</th><th>Journ.</th><th>Lecture</th><th>Superv.</th><th>Coordo</th><th>Relais</th><th>Candidat</th></tr>
+    </thead>
+    <tbody>
+      <tr class="group"><td colspan="9">Recrutement</td></tr>
+      <tr><td>Déposer une candidature</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td></tr>
+      <tr><td>Examiner et décider des candidatures</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="p">◐</td><td class="p">◐</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Consulter les pièces d’identité</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="p">◐</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr class="group"><td colspan="9">Relais (contenus)</td></tr>
+      <tr><td>Envoyer un relais</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td></tr>
+      <tr><td>Suivre le flux, la carte, la salle de rédaction</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="p">◐</td><td class="p">◐</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Valider, rejeter, demander un complément</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="p">◐</td><td class="p">◐</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Arbitrer, sélectionner, marquer diffusé</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Télécharger les originaux, export ZIP + fiche</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Exporter un relais non validé (dérogation)</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Collections, vitrine « Vu sur REFLET TV »</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr class="group"><td colspan="9">Réseau</td></tr>
+      <tr><td>Appels à relais (national)</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Appels à relais (local, sa commune)</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="p">◐</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Répondre aux appels de sa zone</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td></tr>
+      <tr><td>Messagerie Relais ↔ équipe</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="p">◐</td><td class="p">◐</td><td class="y">✓</td><td class="n">—</td></tr>
+      <tr><td>Fiche Relais : historique, statistiques</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="p">◐</td><td class="p">◐</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Suspendre, radier un Relais ; déconnecter un téléphone</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="p">◐</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Réintégrer, transférer un Relais</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr class="group"><td colspan="9">Pilotage et administration</td></tr>
+      <tr><td>Rapports Excel et PDF</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Tableau de bord de commune</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="p">◐</td><td class="p">◐</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Équipe, communes, référentiels, paramètres, textes juridiques</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Journal d’audit, données personnelles</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+      <tr><td>Badge numérique, mes statistiques, mes données</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td></tr>
+    </tbody>
+  </table>
+  <div class="legend"><span><b class="y">✓</b> sur tout le réseau ou pour soi</span><span><b class="p">◐</b> limité à son périmètre (sa commune ou ses régions)</span><span><b class="n">—</b> non disponible</span></div>
+  <div class="note">Toute l’équipe se connecte à la console avec un e-mail, un mot de passe et une <b>double authentification obligatoire</b>. Chaque membre gère son compte (mot de passe, double authentification) depuis « Mon compte ». Les Relais et les candidats se connectent par <b>code SMS</b> (site) ou par code SMS / mot de passe (application mobile).</div>
+</section>
+
+<section class="role">
+  <div class="section-head"><span class="tag">Console</span><h2>Administrateur</h2></div>
+  <p class="lede">Direction de la plateforme : il paramètre, gouverne l’équipe et le réseau, et dispose de tous les pouvoirs de la console sur l’ensemble du territoire. Il n’envoie pas de relais lui-même.</p>
+  <div class="role-card"><div><b>Accès</b>Console · /login</div><div><b>Périmètre</b>Tout le réseau national</div><div><b>Compte</b>Créé en ligne de commande (premier) ou par un autre administrateur</div></div>
+  <div class="cols">
+    <div><h3>Mise en service et paramétrage</h3><ul>
+      <li>Suivre les étapes de mise en service sur l’accueil (2FA, contours, communes ouvertes, coordonnateurs, passerelle SMS).</li>
+      <li>Créer et modifier les communes, les rattacher à une région ; les ouvrir ou fermer aux Relais <span class="ref">ADM-20</span></li>
+      <li>Gérer les référentiels : régions, localités (quartiers, villages), types de lieux, catégories, motifs de rejet <span class="ref">ADM-20 · ADM-23</span></li>
+      <li>Régler les paramètres : durées et tailles des médias, délais de validation, verrou, âge minimum, mineurs, score du quiz, seuils d’alerte, niveaux des Relais, durées de conservation <span class="ref">ADM-23</span></li>
+      <li>Publier de nouvelles versions de la charte, des conditions et de la politique de confidentialité <span class="ref">ADM-23</span></li>
+    </ul></div>
+    <div><h3>Équipe</h3><ul>
+      <li>Créer les membres : administrateur, rédacteur en chef, journaliste, lecture seule, superviseur (régions), coordonnateur titulaire ou suppléant (une ou plusieurs communes) <span class="ref">ADM-21 · ADM-24</span></li>
+      <li>Suspendre ou réactiver un membre : l’accès est coupé immédiatement, même sur un onglet ouvert.</li>
+    </ul></div>
+    <div><h3>Réseau de Relais</h3><ul>
+      <li>Rechercher un Relais au niveau national, consulter sa fiche, son historique et sa fiabilité <span class="ref">ADM-22</span></li>
+      <li>Suspendre, radier, <b>réintégrer</b> un Relais, le <b>transférer</b> de commune <span class="ref">ADM-22</span></li>
+      <li>Déconnecter à distance le téléphone d’un Relais <span class="ref">MOB-31</span></li>
+      <li>Examiner et décider de toutes les candidatures, pièces d’identité comprises.</li>
+    </ul></div>
+    <div><h3>Relais et rédaction</h3><ul>
+      <li>Toutes les fonctions de validation et de rédaction (voir les rôles concernés).</li>
+      <li><b>Exporter un relais non validé par dérogation</b>, avec motif obligatoire tracé <span class="ref">ADM-12</span></li>
+      <li>Approuver les appels locaux des coordonnateurs (si le paramètre l’exige) <span class="ref">COO-21</span></li>
+    </ul></div>
+    <div><h3>Contrôle et conformité</h3><ul>
+      <li>Journal d’audit infalsifiable : connexions, décisions, exports, dérogations, paramètres ; vérification de l’intégrité <span class="ref">ADM-25</span></li>
+      <li>Données personnelles : retrouver un compte, exporter ses données, le supprimer (pseudonymisation) <span class="ref">§9.4</span></li>
+      <li>Rapports Excel et PDF, envois périodiques <span class="ref">ADM-26</span></li>
+      <li>Supervision des files de traitement (Horizon).</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="role">
+  <div class="section-head"><span class="tag">Console</span><h2>Rédacteur en chef et journaliste</h2></div>
+  <p class="lede">La rédaction de REFLET TV exploite les relais validés par les coordonnateurs. Dans la version actuelle, les deux rôles disposent des mêmes droits ; seule l’affectation des sujets les distingue en pratique.</p>
+  <div class="role-card"><div><b>Accès</b>Console · /login</div><div><b>Périmètre</b>Tout le réseau national</div><div><b>Compte</b>Créé par un administrateur</div></div>
+  <div class="cols">
+    <div><h3>Suivre le réseau</h3><ul>
+      <li>Flux des relais en temps réel, avec leur statut <span class="ref">ADM-01</span></li>
+      <li>Carte de la Côte d’Ivoire : regroupements, filtres période, catégorie, urgence, statut, zoom au quartier <span class="ref">ADM-02</span></li>
+      <li>Alertes : relais urgents, afflux sur une zone, retards de validation <span class="ref">ADM-03</span></li>
+      <li>Recherche et filtres : texte, commune, région, catégorie, Relais, coordonnateur, période, type de média, appel <span class="ref">ADM-04</span></li>
+      <li>Salle de rédaction en plein écran <span class="ref">ADM-05</span></li>
+    </ul></div>
+    <div><h3>Exploiter les relais</h3><ul>
+      <li>Arbitrer les sujets sensibles transmis par les coordonnateurs (valider avec floutage ou rejeter) <span class="ref">COO-14</span></li>
+      <li>Revenir sur une validation ou un rejet.</li>
+      <li>Sélectionner un relais et l’affecter à un journaliste et une émission ; vue « Affectés à moi » <span class="ref">ADM-10</span></li>
+      <li>Télécharger les médias en qualité d’origine, seuls ou en lot ZIP avec fiche PDF (lieu, date, crédit, consignes de floutage) <span class="ref">ADM-11</span></li>
+      <li>Marquer un relais diffusé (date, émission, lien) : le Relais est prévenu <span class="ref">ADM-13</span></li>
+    </ul></div>
+    <div><h3>Valoriser</h3><ul>
+      <li>Collections par sujet ou événement, export en lot <span class="ref">ADM-15</span></li>
+      <li>Publication sur la vitrine « Vu sur REFLET TV » avec titre et texte rédigés, crédit selon le choix du Relais <span class="ref">WEB-05 · ADM-17</span></li>
+    </ul></div>
+    <div><h3>Mobiliser</h3><ul>
+      <li>Lancer des appels à relais : communes, régions ou rayon autour d’un lieu, type de lieu, consignes, date limite ; suivre les réponses <span class="ref">ADM-14</span></li>
+      <li>Rapports Excel et PDF <span class="ref">ADM-26</span></li>
+    </ul></div>
+    <div><h3>Ne peut pas</h3><ul class="not">
+      <li>Valider en première instance (rôle des coordonnateurs).</li>
+      <li>Exporter un relais non validé.</li>
+      <li>Gérer l’équipe, les Relais, les paramètres ou les candidatures.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="role">
+  <div class="section-head"><span class="tag">Console</span><h2>Lecture seule</h2></div>
+  <p class="lede">Accès de consultation pour la direction, des partenaires ou des observateurs : voir l’activité du réseau sans pouvoir agir.</p>
+  <div class="role-card"><div><b>Accès</b>Console · /login</div><div><b>Périmètre</b>Tout le réseau national</div><div><b>Compte</b>Créé par un administrateur</div></div>
+  <div class="cols">
+    <div><h3>Peut</h3><ul>
+      <li>Consulter le flux des relais, la carte, la salle de rédaction et la file de validation.</li>
+      <li>Ouvrir le détail d’un relais (mention « Lecture seule »).</li>
+      <li>Exporter les rapports Excel et PDF <span class="ref">ADM-26</span></li>
+    </ul></div>
+    <div><h3>Ne peut pas</h3><ul class="not">
+      <li>Prendre une décision, sélectionner, télécharger des originaux.</li>
+      <li>Accéder à l’exploitation, aux collections, aux appels, à la messagerie.</li>
+      <li>Voir les candidatures ou les fiches des Relais.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="role">
+  <div class="section-head"><span class="tag">Console</span><h2>Superviseur régional</h2></div>
+  <p class="lede">Encadre les coordonnateurs d’une ou plusieurs régions et reçoit les relais qui dépassent les délais de validation.</p>
+  <div class="role-card"><div><b>Accès</b>Console · /login</div><div><b>Périmètre</b>Les communes de ses régions</div><div><b>Compte</b>Créé par un administrateur</div></div>
+  <div class="cols">
+    <div><h3>Peut</h3><ul>
+      <li>Suivre le flux, la carte et la file de validation de ses régions.</li>
+      <li>Valider, rejeter, demander un complément, transmettre à la rédaction <span class="ref">COO-14</span></li>
+      <li>Recevoir l’escalade des relais en retard (2ᵉ niveau, après le suppléant) <span class="ref">COO-17</span></li>
+      <li>Examiner et décider des candidatures de ses régions <span class="ref">COO-02</span></li>
+      <li>Consulter la liste et les fiches des Relais ; échanger avec eux par la messagerie <span class="ref">COO-20</span></li>
+      <li>Tableau de bord de son périmètre.</li>
+    </ul></div>
+    <div><h3>Ne peut pas</h3><ul class="not">
+      <li>Consulter les pièces d’identité des candidats (réservé au coordonnateur de la commune et à l’administration).</li>
+      <li>Suspendre ou radier un Relais.</li>
+      <li>Lancer des appels à relais, exporter des rapports.</li>
+      <li>Intervenir hors de ses régions.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="role">
+  <div class="section-head"><span class="tag">Console</span><h2>Coordonnateur (titulaire ou suppléant)</h2></div>
+  <p class="lede">Le relais local de REFLET TV : il recrute et anime les Relais de sa commune et valide leurs envois. Le suppléant a les mêmes droits et reçoit en plus les relais en retard du titulaire.</p>
+  <div class="role-card"><div><b>Accès</b>Console · /login</div><div><b>Périmètre</b>Sa ou ses communes uniquement</div><div><b>Compte</b>Créé par un administrateur, activé par e-mail</div></div>
+  <div class="cols">
+    <div><h3>Recruter</h3><ul>
+      <li>File des candidatures de sa commune avec le dossier complet : identité, pièces, selfie, localité, motivation, score au quiz <span class="ref">COO-01</span></li>
+      <li>Comparer selfie et pièce d’identité ; alerte en cas de doublon (téléphone, pièce, appareil) <span class="ref">COO-03</span></li>
+      <li>Accepter, refuser (motif obligatoire), mettre en attente, demander un complément ; le candidat est prévenu <span class="ref">COO-02</span></li>
+    </ul></div>
+    <div><h3>Valider les relais</h3><ul>
+      <li>File de validation en temps réel, triée par urgence puis ancienneté, signal sonore pour l’urgent <span class="ref">COO-10</span></li>
+      <li>Relais réservé 10 minutes à celui qui l’ouvre.</li>
+      <li>Lecteur intégré : zoom, image par image, vitesse <span class="ref">COO-11</span></li>
+      <li>Panneau de vérification : carte, écart lieu/GPS, dates, média capturé ou importé, doublons, fiabilité du Relais <span class="ref">COO-12 · COO-13</span></li>
+      <li>Valider (avec corrections), demander un complément, rejeter avec motif, transmettre un sujet sensible à la rédaction <span class="ref">COO-14 · COO-15</span></li>
+      <li>Indication de floutage obligatoire si mineurs ou personnes identifiables <span class="ref">COO-16</span></li>
+      <li>Note interne invisible du Relais <span class="ref">COO-18</span></li>
+    </ul></div>
+    <div><h3>Animer le réseau</h3><ul>
+      <li>Messagerie avec chaque Relais et message groupé à toute la commune <span class="ref">COO-20</span></li>
+      <li>Appels à relais locaux (avec accord de l’administration si paramétré) <span class="ref">COO-21</span></li>
+      <li>Fiche de chaque Relais : historique, statistiques, fiabilité ; suspension ou radiation motivée (l’administration est informée) ; déconnexion d’un téléphone perdu <span class="ref">COO-04 · MOB-31</span></li>
+      <li>Envoyer lui-même un relais.</li>
+    </ul></div>
+    <div><h3>Piloter sa commune</h3><ul>
+      <li>Tableau de bord : Relais actifs, relais reçus, validés, rejetés, diffusés, délai moyen, couverture par quartier <span class="ref">COO-22</span></li>
+      <li>Délais cibles : 30 min (urgent), 4 h (normal), puis escalade automatique <span class="ref">COO-17</span></li>
+    </ul></div>
+    <div><h3>Ne peut pas</h3><ul class="not">
+      <li>Voir les données d’une autre commune.</li>
+      <li>Réintégrer ou transférer un Relais (administration).</li>
+      <li>Accéder à l’exploitation rédactionnelle, aux rapports ou au paramétrage.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="role">
+  <div class="section-head"><span class="tag">Site et application</span><h2>Relais</h2></div>
+  <p class="lede">L’observateur citoyen accepté par son coordonnateur. Il utilise l’application mobile ou l’espace Relais du site ; les deux reposent sur les mêmes règles.</p>
+  <div class="role-card"><div><b>Accès</b>Site · /devenir-relais (code SMS) · application mobile</div><div><b>Périmètre</b>Ses propres relais et sa zone</div><div><b>Compte</b>Créé à la candidature, activé par l’acceptation</div></div>
+  <div class="cols">
+    <div><h3>Envoyer</h3><ul>
+      <li>Photos, vidéos (3 min max) et audio (10 min max), jusqu’à 10 médias par relais <span class="ref">MOB-11</span></li>
+      <li>Formulaire court : catégorie, titre, description, urgence, lieu (position GPS ou lieu précis) <span class="ref">MOB-14</span></li>
+      <li>Questions de protection : mineurs, accord des personnes filmées, crédit à l’antenne (nom, pseudonyme ou anonyme) <span class="ref">MOB-15</span></li>
+      <li>Envoi fractionné : en cas de coupure, seuls les morceaux manquants repartent <span class="ref">MOB-16 · WEB-04</span></li>
+      <li>Brouillons repris plus tard <span class="ref">MOB-19</span></li>
+      <li>Répondre à une demande de complément, avec un nouveau média.</li>
+    </ul></div>
+    <div><h3>Suivre</h3><ul>
+      <li>« Mes relais » avec le statut : reçu, en validation, complément demandé, validé, rejeté (motif), sélectionné, diffusé <span class="ref">MOB-20</span></li>
+      <li>SMS à chaque décision importante (notifications push : application mobile) <span class="ref">MOB-21</span></li>
+      <li>Tableau de bord personnel : envoyés, validés, diffusés, taux de validation, niveau Bronze / Argent / Or, badges <span class="ref">MOB-24</span></li>
+      <li>Fil « Diffusé sur REFLET TV » <span class="ref">MOB-25</span></li>
+    </ul></div>
+    <div><h3>Échanger</h3><ul>
+      <li>Appels à relais de sa zone, réponse directe <span class="ref">MOB-23</span></li>
+      <li>Messagerie avec son coordonnateur, générale ou liée à un relais <span class="ref">MOB-22</span></li>
+    </ul></div>
+    <div><h3>Son compte</h3><ul>
+      <li>Badge numérique : photo, numéro, commune, QR code vérifiable par tous <span class="ref">MOB-07</span></li>
+      <li>Télécharger toutes ses données ; supprimer son compte <span class="ref">§9.4</span></li>
+      <li>Mot de passe pour l’application ; un jeton par téléphone, révocable à distance <span class="ref">MOB-01 · MOB-31</span></li>
+    </ul></div>
+    <div><h3>Règles</h3><ul class="not">
+      <li>Un Relais suspendu ou radié ne peut plus rien envoyer, même un brouillon déjà commencé.</li>
+      <li>Il ne voit jamais les notes internes ni les relais des autres.</li>
+      <li>Il n’a pas accès à la console.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="role">
+  <div class="section-head"><span class="tag">Site et application</span><h2>Candidat</h2></div>
+  <p class="lede">Toute personne qui demande à devenir Relais, jusqu’à la décision de son coordonnateur.</p>
+  <div class="role-card"><div><b>Accès</b>Site · /devenir-relais · application mobile</div><div><b>Périmètre</b>Son propre dossier</div><div><b>Compte</b>Créé par la vérification du numéro (code SMS)</div></div>
+  <div class="cols">
+    <div><h3>Candidater</h3><ul>
+      <li>Création du compte par numéro de téléphone et code SMS <span class="ref">MOB-01 · WEB-02</span></li>
+      <li>Dossier en trois étapes, enregistré automatiquement : identité, territoire (commune, quartier, lieu fréquenté), profil (profession, langues, intérêts, motivation) <span class="ref">MOB-02</span></li>
+      <li>Pièces : photo de profil, recto et verso de la pièce d’identité, selfie ; autorisation parentale pour un mineur si admis <span class="ref">MOB-03</span></li>
+      <li>Acceptation horodatée de la charte, des conditions et de la confidentialité <span class="ref">MOB-04</span></li>
+      <li>Formation et quiz avec score minimal <span class="ref">MOB-05</span></li>
+    </ul></div>
+    <div><h3>Suivre</h3><ul>
+      <li>État du dossier : reçu, en examen, en attente, complément demandé, accepté, refusé avec motif <span class="ref">MOB-06</span></li>
+      <li>Compléter le dossier sur demande, puis le redéposer.</li>
+      <li>Une fois accepté : devient Relais et reçoit son badge.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="role">
+  <div class="section-head"><span class="tag">Site public</span><h2>Visiteur</h2></div>
+  <p class="lede">Le grand public, sans compte.</p>
+  <div class="cols">
+    <div><h3>Découvrir</h3><ul>
+      <li>Présentation : le principe, devenir Relais, la charte, questions fréquentes, liens vers l’application <span class="ref">WEB-01</span></li>
+      <li>Vitrine « Vu sur REFLET TV » des relais diffusés <span class="ref">WEB-05</span></li>
+      <li>Carte du réseau : nombre de Relais par commune, sans donnée personnelle <span class="ref">WEB-06</span></li>
+      <li>Vérifier l’authenticité d’un badge en scannant son QR code <span class="ref">MOB-07</span></li>
+    </ul></div>
+    <div><h3>Informations</h3><ul>
+      <li>Conditions d’utilisation, politique de confidentialité, mentions légales, cookies <span class="ref">WEB-07</span></li>
+      <li>Formulaire de contact <span class="ref">WEB-01</span></li>
+      <li>Référencement : titres, descriptions, partage sur les réseaux sociaux, plan du site <span class="ref">WEB-08</span></li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="role">
+  <div class="section-head"><span class="tag">Automatique</span><h2>Ce que la plateforme fait seule</h2></div>
+  <p class="lede">Traitements réalisés sans intervention humaine, au service de tous les rôles.</p>
+  <div class="cols">
+    <div><h3>À chaque relais</h3><ul>
+      <li>Routage vers la commune du lieu de capture (GPS), sinon vers la commune déclarée.</li>
+      <li>Contrôle de chaque fichier : type réel, antivirus, empreinte SHA-256, métadonnées, vignette sans données de localisation.</li>
+      <li>Détection des doublons par empreinte visuelle <span class="ref">COO-13</span></li>
+      <li>Diffusion en temps réel aux consoles concernées.</li>
+    </ul></div>
+    <div><h3>En continu</h3><ul>
+      <li>Libération des relais réservés depuis plus de 10 minutes.</li>
+      <li>Escalade des relais en retard : suppléant, superviseur, administration <span class="ref">COO-17</span></li>
+      <li>Alertes d’afflux sur une commune <span class="ref">ADM-03</span></li>
+      <li>Clôture des appels échus, annulation des envois abandonnés.</li>
+    </ul></div>
+    <div><h3>Chaque jour ou chaque semaine</h3><ul>
+      <li>Rapports périodiques par e-mail <span class="ref">ADM-26</span></li>
+      <li>Purge selon les durées de conservation <span class="ref">§9.4</span></li>
+      <li>Sauvegarde de la base, et test de restauration chaque semaine.</li>
+    </ul></div>
+    <div><h3>Sécurité</h3><ul>
+      <li>Cloisonnement strict par commune.</li>
+      <li>Limites d’envoi des codes SMS et de tentatives de connexion.</li>
+      <li>Journal d’audit chaîné et non modifiable <span class="ref">ADM-25</span></li>
+    </ul></div>
+  </div>
+  <footer class="doc">JE RELAIS · REFLET TV — document généré depuis les droits définis dans l’application (rôles et permissions), 29 octobre 2026.</footer>
+</section>
+
+</body>
+</html>
