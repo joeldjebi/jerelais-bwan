@@ -96,6 +96,49 @@ class ApiDocumentationServiceProvider extends ServiceProvider
     }
 
     /**
+     * Remplace récursivement les références internes (« #/components/... ») par leur contenu, pour le Swagger autonome :
+     * sans serveur, Swagger UI ne peut pas relire le document pour suivre les « $ref ». Une référence déjà en cours
+     * de résolution (schéma récursif) est laissée telle quelle.
+     *
+     * @param  array<array-key, mixed>  $root
+     * @param  list<string>  $resolving
+     */
+    public static function inlineReferences(mixed $node, array $root, array $resolving = []): mixed
+    {
+        if (! is_array($node)) {
+            return $node;
+        }
+
+        $reference = $node['$ref'] ?? null;
+
+        if (is_string($reference) && str_starts_with($reference, '#/') && ! in_array($reference, $resolving, true)) {
+            $target = $root;
+
+            foreach (explode('/', substr($reference, 2)) as $segment) {
+                $segment = str_replace(['~1', '~0'], ['/', '~'], $segment);
+
+                if (! is_array($target) || ! array_key_exists($segment, $target)) {
+                    return $node;
+                }
+
+                $target = $target[$segment];
+            }
+
+            $siblings = $node;
+            unset($siblings['$ref']);
+            $resolved = self::inlineReferences($target, $root, [...$resolving, $reference]);
+
+            return is_array($resolved) ? [...$resolved, ...$siblings] : $resolved;
+        }
+
+        foreach ($node as $key => $value) {
+            $node[$key] = self::inlineReferences($value, $root, $resolving);
+        }
+
+        return $node;
+    }
+
+    /**
      * Applique le dictionnaire des champs (resources/docs/api-fields.php) aux schémas nommés, aux réponses et aux
      * corps de requête en ligne, aux paramètres, et traduit les descriptions par défaut de Scramble.
      */

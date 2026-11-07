@@ -11,6 +11,7 @@ use App\Domain\Reporting\Exports\ReportExporter;
 use App\Domain\Reporting\Mail\PeriodicReport;
 use App\Domain\Reporting\Support\ReportBuilder;
 use App\Models\User;
+use App\Providers\ApiDocumentationServiceProvider;
 use Aws\S3\Exception\S3Exception;
 use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Generator;
@@ -200,7 +201,10 @@ Artisan::command('api:docs', function () {
 
     File::ensureDirectoryExists(base_path('docs/api'));
     File::put(base_path('docs/api/openapi.json'), $json."\n");
-    File::put(base_path('docs/api/swagger.html'), view('docs.swagger-standalone', ['spec' => $json])->render());
+    // Le fichier autonome n'a pas de serveur : Swagger UI ne peut pas relire le document pour suivre les références
+    // « $ref ». On y intègre donc une copie où chaque référence interne est remplacée par son contenu.
+    $inline = (string) json_encode(ApiDocumentationServiceProvider::inlineReferences($document, $document), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
+    File::put(base_path('docs/api/swagger.html'), view('docs.swagger-standalone', ['spec' => $inline])->render());
 
     $operations = 0;
 

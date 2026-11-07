@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Formation\StoreQuizAttemptRequest;
 use App\Models\User;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -73,8 +74,10 @@ class FormationController extends Controller
     /**
      * Envoyer mes réponses et obtenir la correction.
      *
-     * Toutes les questions doivent recevoir une réponse. La correction indique la bonne réponse et son explication.
+     * Toutes les questions doivent recevoir une réponse. La correction indique, pour chaque question, le choix envoyé,
+     * la bonne réponse et son explication. 10 tentatives par heure.
      */
+    #[Response(201, 'Tentative enregistrée : score, réussite et correction détaillée.', type: 'array{data: array{uuid: string, score: int, passing_score: int, passed: bool, correction: list<array{question: string, chosen: string|null, correct: string|null, is_correct: bool, explanation: string|null}>}}')]
     public function attempt(StoreQuizAttemptRequest $request, GradeQuizAttempt $grade): JsonResponse
     {
         /** @var User $user */

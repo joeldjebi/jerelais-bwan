@@ -2975,7 +2975,7 @@
         "/quiz/attempts": {
             "post": {
                 "operationId": "v1.quiz.attempts.store",
-                "description": "Toutes les questions doivent recevoir une réponse. La correction indique la bonne réponse et son explication.",
+                "description": "Toutes les questions doivent recevoir une réponse. La correction indique, pour chaque question, le choix envoyé,\nla bonne réponse et son explication. 10 tentatives par heure.",
                 "summary": "Envoyer mes réponses et obtenir la correction",
                 "tags": [
                     "Formation et quiz"
@@ -2992,7 +2992,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Créé.",
+                        "description": "Tentative enregistrée : score, réussite et correction détaillée.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3019,7 +3019,43 @@
                                                     "type": "boolean"
                                                 },
                                                 "correction": {
-                                                    "type": "string"
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "question": {
+                                                                "type": "string"
+                                                            },
+                                                            "chosen": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "correct": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "is_correct": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "explanation": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "question",
+                                                            "chosen",
+                                                            "correct",
+                                                            "is_correct",
+                                                            "explanation"
+                                                        ]
+                                                    }
                                                 }
                                             },
                                             "required": [

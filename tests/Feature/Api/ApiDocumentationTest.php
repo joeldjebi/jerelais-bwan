@@ -2,6 +2,7 @@
 
 use App\Domain\Access\Enums\Role;
 use App\Models\User;
+use App\Providers\ApiDocumentationServiceProvider;
 use Dedoc\Scramble\Generator;
 use Dedoc\Scramble\Scramble;
 use Illuminate\Routing\Route;
@@ -104,4 +105,20 @@ it('réserve la documentation aux administrateurs hors local, sauf ouverture exp
 
     config(['jerelais.api_docs_public' => true]);
     expect(Gate::allows('viewApiDocs'))->toBeTrue();
+});
+
+it('intègre le contenu des références dans le Swagger autonome, sans boucler sur un schéma récursif', function () {
+    $document = [
+        'paths' => ['/quiz/attempts' => ['post' => ['requestBody' => ['content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Quiz']]]]]]],
+        'components' => ['schemas' => [
+            'Quiz' => ['type' => 'object', 'properties' => ['answers' => ['type' => 'object']]],
+            'Node' => ['type' => 'object', 'properties' => ['child' => ['$ref' => '#/components/schemas/Node']]],
+        ]],
+    ];
+
+    $inline = ApiDocumentationServiceProvider::inlineReferences($document, $document);
+
+    expect($inline['paths']['/quiz/attempts']['post']['requestBody']['content']['application/json']['schema'])
+        ->toBe(['type' => 'object', 'properties' => ['answers' => ['type' => 'object']]])
+        ->and($inline['components']['schemas']['Node']['properties']['child']['properties']['child'])->toBe(['$ref' => '#/components/schemas/Node']);
 });
