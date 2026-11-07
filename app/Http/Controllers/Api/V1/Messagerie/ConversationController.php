@@ -10,6 +10,8 @@ use App\Domain\Messagerie\Models\Message;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -18,11 +20,18 @@ use InvalidArgumentException;
 /**
  * Messagerie du Relais avec l'équipe de sa commune (MOB-22).
  */
+#[Group('Messagerie', 'Échanges entre le Relais et l’équipe de sa commune, en général ou à propos d’un relais (MOB-22).', weight: 10)]
 class ConversationController extends Controller
 {
     /**
-     * Mes conversations, la plus récente d'abord.
+     * Mes conversations.
+     *
+     * La plus récente d'abord : conversation générale avec l'équipe de ma commune et conversations rattachées à un relais.
+     * `unread` indique un message de l'équipe non lu. 403 pour un compte qui n'est pas Relais.
+     *
+     * @response array{data: list<array{uuid: string, relais: array{uuid: string, title: string|null}|null, last_message: array{body: string, from_staff: bool, sent_at: string}|null, unread: bool}>}
      */
+    #[Response(403, 'Compte qui n’est pas Relais.', type: 'array{message: string}')]
     public function index(Request $request): JsonResponse
     {
         $profile = $this->profile($request);
@@ -37,8 +46,13 @@ class ConversationController extends Controller
     }
 
     /**
-     * Écrire à l'équipe : conversation générale, ou rattachée à un de mes relais (`relais`).
+     * Écrire à l'équipe.
+     *
+     * Sans `relais` : conversation générale avec l'équipe de ma commune. Avec `relais` (uuid d'un de mes relais) :
+     * conversation rattachée à ce relais. La conversation est créée au premier message, puis réutilisée. 2 000 caractères maximum.
      */
+    #[Response(201, 'Message envoyé : la conversation (créée au premier message).', type: 'array{data: array{uuid: string, relais: array{uuid: string, title: string|null}|null, last_message: array{body: string, from_staff: bool, sent_at: string}|null, unread: bool}}')]
+    #[Response(403, 'Compte qui n’est pas Relais.', type: 'array{message: string}')]
     public function store(Request $request, SendMessage $send): JsonResponse
     {
         $profile = $this->profile($request);
@@ -56,7 +70,11 @@ class ConversationController extends Controller
     }
 
     /**
-     * Messages d'une conversation (marqués comme lus).
+     * Messages d'une conversation.
+     *
+     * Du plus ancien au plus récent. L'appel marque la conversation comme lue. 404 si elle ne m'appartient pas.
+     *
+     * @response array{data: list<array{uuid: string, from_staff: bool, author: string, body: string, sent_at: string}>}
      */
     public function messages(Request $request, Conversation $conversation, SendMessage $send): JsonResponse
     {
@@ -74,7 +92,10 @@ class ConversationController extends Controller
 
     /**
      * Répondre dans une conversation.
+     *
+     * 2 000 caractères maximum. L'équipe de la commune est prévenue.
      */
+    #[Response(201, 'Message envoyé.', type: 'array{data: array{uuid: string, sent_at: string}}')]
     public function reply(Request $request, Conversation $conversation, SendMessage $send): JsonResponse
     {
         $this->authorizeOwner($request, $conversation);

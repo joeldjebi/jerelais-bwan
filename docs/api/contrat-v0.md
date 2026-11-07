@@ -1,7 +1,8 @@
 # Contrat d'API v0 — à valider avec l'équipe mobile (fin S1)
 
-La référence vivante est le schéma OpenAPI généré par Scramble depuis le code :
-`/docs/api` (local) ou `php artisan scramble:export` (artefact `openapi` de la CI).
+La référence vivante est le **Swagger** (OpenAPI 3.1) généré depuis le code et complété (guide, descriptions, exemples) :
+- en ligne : `/docs/swagger` (Swagger UI) et `/docs/api` (vue détaillée), ouverts en local, aux administrateurs, ou à tous si `API_DOCS_PUBLIC=true` (préproduction) ;
+- fichiers à partager : [openapi.json](openapi.json) et [swagger.html](swagger.html) (s’ouvre d’un double clic), régénérés par `php artisan api:docs`.
 Ce document fixe ce que les deux équipes s'engagent à respecter avant que les routes n'existent.
 
 ## Conventions

@@ -19,5 +19,6 @@ return [
         'too_large' => 'Le fichier dépasse la taille maximale.',
         'unreadable' => 'Le fichier est illisible.',
         'abandoned' => 'L’envoi n’a jamais été terminé.',
+        'size_mismatch' => 'La taille du fichier reçu ne correspond pas à celle annoncée.',
     ],
 ];

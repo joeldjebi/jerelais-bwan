@@ -28,6 +28,8 @@ use App\Http\Requests\Api\V1\Candidature\UpdateCandidatureStepRequest;
 use App\Http\Resources\V1\CandidatureDocumentResource;
 use App\Http\Resources\V1\CandidatureResource;
 use App\Models\User;
+use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response as ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -39,13 +41,19 @@ use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 /**
  * Dossier de candidature en étapes (MOB-02, MOB-06).
  */
+#[Group('Candidature', 'Dossier de candidature en trois étapes, pièces justificatives, dépôt et suivi (MOB-02 à MOB-06).', weight: 4)]
 class CandidatureController extends Controller
 {
     /**
      * Mon dossier de candidature.
      *
      * Le dossier est ouvert au premier appel. Un Relais déjà recruté retrouve son dossier accepté.
+     * Contient les réponses des trois étapes, les pièces déposées, la liste de ce qui manque (`checklist`), le statut
+     * et, le cas échéant, le motif de refus ou le complément demandé.
+     *
+     * @response CandidatureResource
      */
+    #[ApiResponse(403, 'Compte sans dossier de candidature (ni candidat ni Relais recruté).', type: 'array{message: string}')]
     public function show(Request $request, StartCandidature $start): JsonResponse
     {
         return $this->respond($this->candidatureOf($request, $start));
@@ -54,7 +62,12 @@ class CandidatureController extends Controller
     /**
      * Enregistrer une étape (sauvegarde automatique).
      *
-     * Tous les champs sont facultatifs ; seuls ceux envoyés sont modifiés.
+     * Tous les champs sont facultatifs ; seuls ceux envoyés sont modifiés. À appeler à chaque modification
+     * (sauvegarde automatique). Étapes : `identite` (nom, prénoms, naissance, genre, e-mail), `territoire` (commune,
+     * localité, type de lieu fréquenté), `profil` (profession, langues, centres d'intérêt, motivation).
+     * 409 si le dossier est déposé et n'attend pas de complément.
+     *
+     * @response CandidatureResource
      */
     public function updateStep(UpdateCandidatureStepRequest $request, CandidatureStep $step, StartCandidature $start, SaveCandidatureStep $save): JsonResponse
     {
@@ -73,8 +86,14 @@ class CandidatureController extends Controller
     /**
      * Déposer le dossier complet.
      *
-     * Renvoie 422 avec la liste des éléments manquants si le dossier est incomplet.
+     * Vérifie les trois étapes, les pièces, l'acceptation des textes en vigueur et la réussite du quiz.
+     * Renvoie 422 avec la liste des éléments manquants si le dossier est incomplet. Après le dépôt, le dossier n'est plus
+     * modifiable, sauf si le coordonnateur demande un complément.
+     *
+     * @response CandidatureResource
      */
+    #[ApiResponse(422, 'Dossier incomplet : `errors` liste chaque élément manquant (étapes, pièces, textes juridiques, quiz).', type: 'array{message: string, errors: array<string, list<string>>}')]
+    #[ApiResponse(403, 'Compte sans dossier de candidature (ni candidat ni Relais recruté).', type: 'array{message: string}')]
     public function submit(Request $request, StartCandidature $start, SubmitCandidature $submit): JsonResponse
     {
         $candidature = $this->candidatureOf($request, $start);
@@ -118,6 +137,8 @@ class CandidatureController extends Controller
 
     /**
      * Retirer une pièce.
+     *
+     * `type` : `profile_photo`, `id_front`, `id_back`, `selfie` ou `parental_authorization`. 409 si le dossier n'est plus modifiable.
      */
     public function destroyDocument(Request $request, DocumentType $type, StartCandidature $start, DeleteCandidatureDocument $delete): Response
     {
@@ -134,7 +155,12 @@ class CandidatureController extends Controller
     }
 
     /**
-     * Listes du formulaire : genres, professions, langues, centres d'intérêt, lieux types.
+     * Listes du formulaire de candidature.
+     *
+     * Étapes, genres, professions, langues parlées, centres d'intérêt (les catégories de relais) et types de lieux.
+     * Envoyer les `value` (ou `uuid` pour les types de lieux) dans `PUT /candidature/steps/{step}`.
+     *
+     * @response array{data: array{steps: list<array{key: string, label: string}>, genders: list<array{value: string, label: string}>, occupations: list<array{value: string, label: string}>, languages: list<array{value: string, label: string}>, interests: list<array{value: string, label: string}>, lieu_types: list<array{uuid: string, name: string}>}}
      *
      * @unauthenticated
      */
@@ -153,7 +179,11 @@ class CandidatureController extends Controller
     }
 
     /**
-     * Localités (quartiers, villages) d'une commune ouverte.
+     * Localités d'une commune ouverte.
+     *
+     * Quartiers, villages et sous-préfectures de la commune, triés par nom. 404 si la commune est fermée aux Relais.
+     *
+     * @response array{data: list<array{uuid: string, name: string, type: 'quartier'|'village'|'sous_prefecture'}>}
      *
      * @unauthenticated
      */

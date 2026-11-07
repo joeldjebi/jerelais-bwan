@@ -91,6 +91,9 @@ return [
     // Proxys de confiance, séparés par des virgules (ex. « 127.0.0.1 » pour un tunnel local, l'adresse du répartiteur en production).
     'trusted_proxies' => env('TRUSTED_PROXIES'),
 
+    // Documentation de l'API (/docs/api, /docs/swagger) ouverte sans compte hors local : préproduction pour l'équipe mobile.
+    'api_docs_public' => (bool) env('API_DOCS_PUBLIC', false),
+
     'contact_email' => env('JERELAIS_CONTACT_EMAIL', 'contact@jerelais.test'),
 
     'media' => [

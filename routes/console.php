@@ -13,9 +13,12 @@ use App\Domain\Reporting\Support\ReportBuilder;
 use App\Models\User;
 use Aws\S3\Exception\S3Exception;
 use Carbon\CarbonImmutable;
+use Dedoc\Scramble\Generator;
+use Dedoc\Scramble\Scramble;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
@@ -185,3 +188,26 @@ Artisan::command('jerelais:check-production', function () {
 
     return $failed === 0 ? 0 : 1;
 })->purpose('Vérifie la configuration de production (sécurité, services externes)');
+
+/*
+ * Documentation de l'API mobile à partager hors de l'application : fichier OpenAPI (Swagger) et page Swagger UI
+ * autonome, qui s'ouvre d'un double clic sans serveur. À relancer après chaque changement de l'API.
+ */
+Artisan::command('api:docs', function () {
+    $document = app(Generator::class)(Scramble::getGeneratorConfig(Scramble::DEFAULT_API));
+    $document['servers'] = [['url' => rtrim((string) config('app.url'), '/').'/api/v1', 'description' => 'Serveur configuré (APP_URL)']];
+    $json = (string) json_encode($document, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    File::ensureDirectoryExists(base_path('docs/api'));
+    File::put(base_path('docs/api/openapi.json'), $json."\n");
+    File::put(base_path('docs/api/swagger.html'), view('docs.swagger-standalone', ['spec' => $json])->render());
+
+    $operations = 0;
+
+    foreach (is_array($document['paths'] ?? null) ? $document['paths'] : [] as $methods) {
+        foreach (is_array($methods) ? $methods : [] as $operation) {
+            $operations += is_array($operation) && isset($operation['responses']) ? 1 : 0;
+        }
+    }
+    $this->components->info("Documentation exportée : {$operations} opérations → docs/api/openapi.json et docs/api/swagger.html");
+})->purpose('Exporte le Swagger de l’API mobile (OpenAPI JSON et page Swagger UI autonome)');
