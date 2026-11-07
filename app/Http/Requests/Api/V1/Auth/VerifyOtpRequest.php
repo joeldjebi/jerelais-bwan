@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use App\Domain\Auth\Support\OtpPolicy;
 use App\Http\Requests\Concerns\DescribesDevice;
 use App\Http\Requests\Concerns\ValidatesPhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,7 +23,7 @@ class VerifyOtpRequest extends FormRequest
     {
         return [
             'phone' => $this->phoneRules(),
-            'code' => ['required', 'string', 'digits:'.config('jerelais.otp.length')],
+            'code' => ['required', 'string', 'digits_between:'.implode(',', OtpPolicy::acceptedLengths())],
             ...$this->deviceRules(),
         ];
     }

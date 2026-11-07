@@ -7,6 +7,7 @@ use App\Domain\Auth\Actions\ConfirmPhoneOwnership;
 use App\Domain\Auth\Actions\RequestOtp;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Exceptions\AuthenticationRefused;
+use App\Domain\Auth\Support\OtpPolicy;
 use App\Domain\Contribution\Support\RelaisSender;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -33,6 +34,10 @@ class Rejoindre extends Component
 
     #[Locked]
     public ?string $maskedPhone = null;
+
+    /** Longueur du code attendu (celle du code fixe transitoire s'il s'applique à ce numéro). */
+    #[Locked]
+    public int $codeLength = 6;
 
     public function mount(): mixed
     {
@@ -64,6 +69,7 @@ class Rejoindre extends Component
 
         try {
             $requestOtp->handle($phone, request()->ip());
+            $this->codeLength = OtpPolicy::lengthFor($phone);
         } catch (ThrottleRequestsException) {
             $this->addError('phone', __('auth.otp_throttled'));
 
@@ -96,8 +102,8 @@ class Rejoindre extends Component
 
         RateLimiter::hit($verifyKey, 60);
 
-        if (preg_match('/^\d{6}$/', $this->code) !== 1) {
-            $this->addError('code', __('auth.otp_format'));
+        if (preg_match('/^\d{'.$this->codeLength.'}$/', $this->code) !== 1) {
+            $this->addError('code', __('auth.otp_format', ['length' => $this->codeLength]));
 
             return null;
         }

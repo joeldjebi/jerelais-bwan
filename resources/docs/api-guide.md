@@ -15,7 +15,7 @@ API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV.
 
 Un compte est identifié par son **numéro de téléphone**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu.
 
-1. `POST /auth/otp` avec le numéro : un code à 6 chiffres part par SMS, valable 5 minutes. La réponse est la même que le numéro soit inscrit ou non.
+1. `POST /auth/otp` avec le numéro : un code à 6 chiffres part par SMS, valable 5 minutes. La réponse est la même que le numéro soit inscrit ou non. **Phase de lancement :** tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et un code de test fixe (4 à 8 chiffres), communiqué par l’équipe JE RELAIS, sert de code : l’écran de saisie ne doit pas imposer 6 chiffres.
 2. `POST /auth/verify` avec le numéro, le code et la description de l’appareil : renvoie le jeton. Un numéro inconnu crée un compte **candidat** (`is_new_user: true`).
 3. Envoyer ensuite `Authorization: Bearer <jeton>` sur chaque requête protégée (bouton **Authorize** ci-dessus pour essayer).
 4. Ensuite, la connexion peut aussi se faire par mot de passe : `POST /auth/login` (après l’avoir défini avec `PUT /me/password`).

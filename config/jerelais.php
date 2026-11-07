@@ -30,6 +30,10 @@ return [
         'requests_per_phone' => 3,
         'requests_per_ip' => 10,
         'requests_window_minutes' => 15,
+        // Code fixe transitoire (ex. 1234) tant qu'aucun fournisseur de SMS n'est branché : voir App\Domain\Auth\Support\OtpPolicy.
+        'fixed_code' => env('OTP_FIXED_CODE'),
+        // Numéros autorisés à utiliser le code fixe, séparés par des virgules ; vide : tous les numéros.
+        'fixed_code_numbers' => env('OTP_FIXED_CODE_NUMBERS', ''),
     ],
 
     /*

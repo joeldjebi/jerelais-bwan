@@ -8,6 +8,7 @@ use App\Domain\Auth\Contracts\SmsGateway;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Sms\LogSmsGateway;
 use App\Domain\Auth\Sms\MailpitSmsGateway;
+use App\Domain\Auth\Sms\NullSmsGateway;
 use App\Domain\Auth\Support\DemoTwoFactorProvider;
 use App\Domain\Candidature\Events\CandidatureDecided;
 use App\Domain\Candidature\Listeners\NotifyCandidateOfDecision;
@@ -41,6 +42,7 @@ class DomainServiceProvider extends ServiceProvider
         $this->app->bind(SmsGateway::class, fn () => match (config('jerelais.sms.driver')) {
             'log' => new LogSmsGateway,
             'mailpit' => new MailpitSmsGateway,
+            'none' => new NullSmsGateway,
             default => throw new InvalidArgumentException('Passerelle SMS non configurée : '.config('jerelais.sms.driver')),
         });
 
