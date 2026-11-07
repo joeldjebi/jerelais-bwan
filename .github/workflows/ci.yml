@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualite:
+    name: Qualité, sécurité et tests
+    runs-on: ubuntu-latest
+
+    services:
+      pgsql:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: jerelais_test
+          POSTGRES_USER: jerelais
+          POSTGRES_PASSWORD: secret
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U jerelais -d jerelais_test"
+          --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: jerelais
+      DB_PASSWORD: secret
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_pgsql, pgsql, intl, zip, bcmath, exif, gd, pcntl
+          coverage: pcov
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Vérifier composer.json
+        run: composer validate --strict
+
+      - name: Dépendances PHP
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Dépendances JS
+        run: npm ci
+
+      - name: Préparer l'application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Analyse statique (Larastan niveau 8)
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      - name: Build des assets
+        run: npm run build
+
+      - name: Tests (Pest) avec couverture
+        run: php artisan test --parallel --coverage --min=70
+
+      - name: Audit des dépendances
+        run: |
+          composer audit
+          npm audit --audit-level=high
+
+      - name: Export du contrat OpenAPI
+        run: mkdir -p storage/api && php artisan scramble:export --path=storage/api/openapi.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openapi
+          path: storage/api/openapi.json
+
+  semgrep:
+    name: Analyse de sécurité du code (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep scan --config p/php --config p/owasp-top-ten --config p/secrets --error

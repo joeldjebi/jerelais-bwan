@@ -1,0 +1,235 @@
+<?php
+
+/*
+|--------------------------------------------------------------------------
+| Dictionnaire des champs de l'API mobile (documentation OpenAPI / Swagger)
+|--------------------------------------------------------------------------
+|
+| Appliqué par ApiDocumentationServiceProvider à tous les schémas générés par Scramble :
+| requêtes, ressources et réponses en ligne. Clé de recherche, de la plus précise à la plus générale :
+| « Schema.chemin » (ex. « RelaisItemResource.status »), puis « chemin » (ex. « location.lat »),
+| puis « *.nom » pour un nom de champ commun à tous les schémas (ex. « *.uuid »).
+| Chaque entrée : [description, exemple] ; l'exemple est facultatif.
+|
+*/
+
+return [
+
+    'fields' => [
+        // ------------------------------------------------------------ Communs
+        '*.uuid' => ['Identifiant public (UUID).', '01a15e8f-a96f-7286-ba6f-48930f972729'],
+        '*.client_uuid' => ['UUID généré par l’application pour rendre la création idempotente : la même valeur renvoyée ne crée jamais de doublon.', '6f1c2a40-3b7e-4d6a-9c1e-2a7d5b8e9f01'],
+        '*.created_at' => ['Date de création (ISO 8601, UTC).', '2026-10-21T07:42:10Z'],
+        '*.updated_at' => ['Date de dernière modification (ISO 8601, UTC).', '2026-10-21T08:05:33Z'],
+        '*.submitted_at' => ['Date d’envoi ou de dépôt (ISO 8601, UTC). `null` tant que ce n’est pas fait.', '2026-10-21T07:45:00Z'],
+        '*.status_label' => ['Libellé du statut, prêt à afficher.', 'Validé'],
+        '*.label' => ['Libellé prêt à afficher.'],
+        '*.name' => ['Nom.'],
+        '*.slug' => ['Identifiant lisible, stable.'],
+        '*.app_version' => ['Version de l’application installée.', '1.0.3'],
+        '*.device_name' => ['Nom de l’appareil, affiché à la coordination pour la déconnexion à distance.', 'Tecno Spark 10'],
+        '*.platform' => ['Système de l’appareil : `android`, `ios` ou `web`.', 'android'],
+        '*.phone' => ['Numéro de téléphone : ivoirien à 10 chiffres ou format international.', '0700000001'],
+        '*.commune' => ['Commune.'],
+        '*.region' => ['Région administrative.'],
+        '*.category' => ['Catégorie du relais.'],
+        '*.data' => ['Contenu de la réponse.'],
+        '*.meta' => ['Informations complémentaires.'],
+        '*.message' => ['Message prêt à afficher.'],
+
+        // ------------------------------------------------------------ Authentification
+        'RequestOtpRequest.phone' => ['Numéro à vérifier : ivoirien à 10 chiffres (`0700000001`, espaces acceptés) ou international (`+2250700000001`).', '0700000001'],
+        'VerifyOtpRequest.code' => ['Code à 6 chiffres reçu par SMS, valable 5 minutes, 5 essais.', '509418'],
+        'PasswordLoginRequest.password' => ['Mot de passe défini avec `PUT /me/password`.', 'mon-mot-de-passe'],
+        'IssuedTokenResource.token' => ['Jeton à envoyer dans `Authorization: Bearer <jeton>`. À conserver dans le stockage sécurisé du téléphone (Keychain, Keystore).', '12|Kq0nT3...'],
+        'IssuedTokenResource.token_type' => ['Toujours `Bearer`.', 'Bearer'],
+        'IssuedTokenResource.expires_at' => ['Fin de validité du jeton (60 jours). Après cette date : nouvelle connexion par code SMS.', '2026-12-20T07:42:10Z'],
+        'IssuedTokenResource.is_new_user' => ['`true` si le compte vient d’être créé (candidat) : ouvrir le parcours de candidature.', false],
+        'IssuedTokenResource.device' => ['Appareil associé au jeton.'],
+        'IssuedTokenResource.user' => ['Compte connecté.'],
+
+        // ------------------------------------------------------------ Compte et appareil
+        'UserResource.name' => ['Nom complet du compte (rempli à la candidature).', 'Awa Traoré'],
+        'UserResource.phone_masked' => ['Numéro de téléphone masqué, pour l’affichage.', '+22507 •• •• •• 01'],
+        'UserResource.email' => ['Adresse e-mail facultative.', 'awa@example.com'],
+        'UserResource.status' => ['État du compte : `active`, `suspended`, `banned` (radié) ou `deleted` (supprimé).', 'active'],
+        'UserResource.roles' => ['Rôles : `candidat` pendant la candidature, `relais` une fois accepté.', ['relais']],
+        'UserResource.has_password' => ['`true` si un mot de passe est défini : `current_password` sera alors exigé pour le changer.', true],
+        'UserResource.communes' => ['Communes rattachées au compte.'],
+        'DeviceResource.name' => ['Nom de l’appareil.', 'Tecno Spark 10'],
+        'DeviceResource.push_enabled' => ['`true` si un jeton de notifications push est enregistré.', true],
+        'DeviceResource.last_seen_at' => ['Dernière activité de l’appareil.', '2026-10-21T07:42:10Z'],
+        'UpdateCurrentDeviceRequest.fcm_token' => ['Jeton Firebase Cloud Messaging de l’appareil, pour les notifications push. `null` pour les désactiver.', 'fcm-token-de-l-appareil'],
+        'UpdatePasswordRequest.current_password' => ['Mot de passe actuel. Obligatoire pour changer un mot de passe existant, interdit pour le premier.', 'ancien-mot-de-passe'],
+        'UpdatePasswordRequest.password' => ['Nouveau mot de passe, 10 caractères minimum.', 'un-mot-de-passe-solide'],
+        'UpdatePasswordRequest.password_confirmation' => ['Répétition du nouveau mot de passe.', 'un-mot-de-passe-solide'],
+
+        // ------------------------------------------------------------ Badge
+        'BadgeResource.number' => ['Numéro de Relais, unique.', 'JR-482917'],
+        'BadgeResource.display_name' => ['Nom affiché sur le badge : prénom et initiale du nom.', 'Awa T.'],
+        'BadgeResource.status' => ['État du Relais : `active`, `suspended` ou `struck_off` (radié).', 'active'],
+        'BadgeResource.photo_url' => ['Photo du Relais, lien signé valable 15 minutes.'],
+        'BadgeResource.qr_payload' => ['Adresse publique de vérification du badge, à encoder dans le QR code.', 'https://jerelais.reflet.tv/badge/XasRLw...'],
+        'BadgeResource.activated_at' => ['Date d’activation du Relais (acceptation de la candidature).', '2026-10-20T10:00:00Z'],
+
+        // ------------------------------------------------------------ Référentiels
+        'CommuneResource.name' => ['Nom de la commune.', 'Yopougon'],
+        'CommuneResource.code' => ['Code officiel de la commune, s’il existe.', null],
+        'CommuneResource.is_virtual' => ['`true` pour la commune virtuelle de la diaspora.', false],
+        'CategoryResource.name' => ['Nom de la catégorie.', 'Météo et environnement'],
+        'CategoryResource.examples' => ['Exemples de sujets, pour aider le Relais à choisir.', 'Pluies, inondations, érosion, insalubrité, pollution'],
+
+        // ------------------------------------------------------------ Candidature
+        'CandidatureResource.status' => ['Statut : `draft`, `submitted`, `under_review`, `on_hold`, `complement_requested`, `accepted` ou `rejected`.', 'draft'],
+        'CandidatureResource.is_editable' => ['`true` si le dossier peut encore être modifié (brouillon ou complément demandé).', true],
+        'CandidatureResource.checklist' => ['Éléments du dossier et leur état (`complete`) : les trois étapes, les pièces (`documents`), les textes juridiques (`charte`) et le quiz (`formation`).'],
+        'CandidatureResource.missing' => ['Ce qui manque encore pour déposer le dossier : clé de l’élément (`identite`, `territoire`, `profil`, `documents`, `charte`, `formation`) et message à afficher. Objet vide quand tout est prêt.', ['documents' => 'Il manque : Selfie de contrôle.', 'formation' => 'Réussissez le quiz (70 % minimum).']],
+        'CandidatureResource.identite' => ['Étape 1 : identité.'],
+        'CandidatureResource.identite.last_name' => ['Nom.', 'Traoré'],
+        'CandidatureResource.identite.first_names' => ['Prénoms.', 'Awa'],
+        'CandidatureResource.identite.birth_date' => ['Date de naissance (AAAA-MM-JJ).', '2001-04-12'],
+        'CandidatureResource.identite.gender' => ['Genre : `femme`, `homme` ou `non_precise`.', 'femme'],
+        'CandidatureResource.identite.is_minor' => ['`true` si le candidat est mineur : une autorisation parentale est alors exigée, si les mineurs sont admis.', false],
+        'CandidatureResource.territoire' => ['Étape 2 : commune, quartier et lieu fréquenté.'],
+        'CandidatureResource.profil' => ['Étape 3 : profession, langues, centres d’intérêt, motivation.'],
+        'CandidatureResource.profil.occupation' => ['Profession ou statut.', 'etudiant'],
+        'CandidatureResource.profil.languages' => ['Langues parlées (codes de `GET /candidature/options`).', ['fr', 'dioula']],
+        'CandidatureResource.profil.interests' => ['Centres d’intérêt : slugs des catégories de relais.', ['vie-de-quartier']],
+        'CandidatureResource.profil.motivation' => ['Motivation du candidat (1 500 caractères maximum).', 'Je veux montrer ce qui se passe dans mon quartier.'],
+        'CandidatureResource.documents' => ['Pièces attendues pour ce dossier, et la pièce déposée pour chacune (`document`, ou `null`).'],
+        'CandidatureResource.documents[].hint' => ['Conseil affichable pour réussir la photo.'],
+        'CandidatureResource.documents[].accepted_mimes' => ['Formats acceptés pour cette pièce.', ['image/jpeg', 'image/png', 'image/heic']],
+        'CandidatureResource.decision' => ['Décision du coordonnateur : date, motif de refus et commentaire. `null` tant qu’aucune décision.'],
+        'CandidatureResource.checklist[].key' => ['Clé de l’élément : `identite`, `territoire`, `profil`, `documents`, `charte` ou `formation`.', 'documents'],
+        'CandidatureResource.identite.email' => ['Adresse e-mail, facultative.', 'awa@example.com'],
+        'CandidatureResource.territoire.localite' => ['Quartier ou village choisi.'],
+        'CandidatureResource.territoire.lieu_type' => ['Type de lieu fréquenté (école, marché…).'],
+        'CandidatureResource.documents[].type' => ['Type de pièce attendue.', 'selfie'],
+        'CandidatureResource.documents[].document' => ['Pièce déposée pour ce type, ou `null` si elle manque.'],
+        'CandidatureResource.decision.decided_at' => ['Date de la décision.', '2026-10-21T09:00:00Z'],
+        'CandidatureResource.decision.reason' => ['Motif du refus, choisi dans la liste.', 'Pièce d’identité illisible ou non valide'],
+        'CandidatureResource.decision.comment' => ['Commentaire du coordonnateur (refus ou complément demandé).', 'La photo du verso est floue, merci de la reprendre.'],
+        'CandidatureDocumentResource.type' => ['Type de pièce : `profile_photo`, `id_front`, `id_back`, `selfie` ou `parental_authorization`.', 'selfie'],
+        'CandidatureDocumentResource.mime' => ['Type réel du fichier, détecté sur son contenu.', 'image/jpeg'],
+        'CandidatureDocumentResource.size' => ['Taille en octets.', 184320],
+        'CandidatureDocumentResource.uploaded_at' => ['Date du dépôt.', '2026-10-21T07:50:00Z'],
+        'StoreCandidatureDocumentRequest.type' => ['Type de pièce : `profile_photo`, `id_front`, `id_back`, `selfie` ou `parental_authorization` (si mineur admis).', 'id_front'],
+        'StoreCandidatureDocumentRequest.file' => ['Fichier : JPEG, PNG ou HEIC (PDF accepté pour l’autorisation parentale), 10 Mo maximum. Contrôlé par l’antivirus.'],
+
+        // ------------------------------------------------------------ Textes et formation
+        'LegalDocumentResource.type' => ['Type de texte : `charte`, `conditions` ou `confidentialite`.', 'charte'],
+        'LegalDocumentResource.version' => ['Numéro de version, incrémenté à chaque publication.', 1],
+        'LegalDocumentResource.title' => ['Titre du texte.', 'Charte du Relais'],
+        'LegalDocumentResource.body_markdown' => ['Texte en Markdown.'],
+        'LegalDocumentResource.body_html' => ['Texte en HTML, prêt à afficher.'],
+        'LegalDocumentResource.published_at' => ['Date de publication de cette version.', '2026-10-20T00:00:00Z'],
+        'StoreConsentRequest.documents' => ['`uuid` de toutes les versions en vigueur (`GET /legal`). 422 si l’une a changé entre-temps.', ['01a15e8f-0001-7000-8000-000000000001', '01a15e8f-0002-7000-8000-000000000002', '01a15e8f-0003-7000-8000-000000000003']],
+
+        // ------------------------------------------------------------ Relais
+        'RelaisItemResource.status' => ['Statut public : `uploading` (brouillon), `received`, `complement_requested`, `validated`, `rejected`, `selected`, `broadcast` ou `archived`.', 'received'],
+        'RelaisItemResource.urgency' => ['Urgence : `normal`, `important` ou `urgent`.', 'urgent'],
+        'RelaisItemResource.title' => ['Titre court.', 'Inondation au carrefour Siporex'],
+        'RelaisItemResource.description' => ['Ce qui se passe : où, quand, ce que le Relais voit.', 'L’eau arrive aux genoux, les gbakas ne passent plus.'],
+        'RelaisItemResource.location' => ['Position GPS de la capture. `null` si absente.'],
+        'RelaisItemResource.commune' => ['Commune à laquelle le relais a été attribué (lieu de capture, sinon commune déclarée).'],
+        'RelaisItemResource.declared_place' => ['Lieu précis indiqué par le Relais.', 'Carrefour Siporex'],
+        'RelaisItemResource.device_captured_at' => ['Date de la capture selon le téléphone.', '2026-10-21T07:38:00Z'],
+        'RelaisItemResource.protections' => ['Réponses aux questions de protection des personnes.'],
+        'RelaisItemResource.medias' => ['Médias du relais et leur état (`pending`, `uploaded`, `processing`, `ready`, `rejected` avec la raison).'],
+        'RelaisItemResource.rejection' => ['Motif et commentaire du rejet. `null` sauf au statut `rejected`.'],
+        'RelaisItemResource.rejection.reason' => ['Motif choisi par le coordonnateur.', 'Images floues'],
+        'RelaisItemResource.rejection.comment' => ['Commentaire du coordonnateur.', 'La plaque du véhicule est illisible.'],
+        'RelaisItemResource.complement_request' => ['Question du coordonnateur, à afficher au statut `complement_requested`. Réponse par `POST /relais/{relais}/complement`.', 'Pouvez-vous envoyer une photo plus large ?'],
+        'location.lat' => ['Latitude (WGS 84).', 5.3445],
+        'location.lng' => ['Longitude (WGS 84).', -4.0702],
+        'location.accuracy_m' => ['Précision de la position, en mètres.', 12],
+        'protections.has_minors' => ['Des mineurs sont-ils reconnaissables ? Si oui, le coordonnateur décide d’un floutage.', false],
+        'protections.people_consent' => ['Les personnes filmées sont-elles d’accord : `yes`, `no` ou `not_applicable` (personne de reconnaissable).', 'not_applicable'],
+        'protections.credit_mode' => ['Crédit à l’antenne : `named` (nom), `pseudonym` (pseudonyme) ou `anonymous` (« Un Relais de REFLET TV »).', 'anonymous'],
+        'protections.credit_name' => ['Pseudonyme affiché à l’antenne, obligatoire avec `credit_mode` = `pseudonym`.', 'Fatou d’Angré'],
+        'StoreRelaisItemRequest.appel' => ['`uuid` de l’appel à relais auquel ce relais répond (facultatif).', null],
+        'UpdateRelaisItemRequest.appel' => ['`uuid` de l’appel à relais auquel ce relais répond (facultatif).', null],
+        'StoreRelaisItemRequest.category' => ['`uuid` de la catégorie (`GET /categories`). Obligatoire à l’envoi.', '01a15e8f-0b2c-7d3e-8f40-516273849abc'],
+        'UpdateRelaisItemRequest.category' => ['`uuid` de la catégorie (`GET /categories`).'],
+        'StoreRelaisItemRequest.urgency' => ['Urgence : `normal`, `important` ou `urgent` (traité en 30 minutes).', 'urgent'],
+        'StoreRelaisItemRequest.title' => ['Titre court. Obligatoire à l’envoi.', 'Inondation au carrefour Siporex'],
+        'StoreRelaisItemRequest.description' => ['Description : où, quand, ce que le Relais voit.', 'L’eau arrive aux genoux, les gbakas ne passent plus.'],
+        'StoreRelaisItemRequest.location' => ['Position GPS au moment de la capture. Elle sert à attribuer le relais à la bonne commune.'],
+        'StoreRelaisItemRequest.declared_commune' => ['`uuid` de la commune indiquée par le Relais (`GET /communes`). Utilisée si la position GPS ne permet pas de déduire la commune.', '01a15e8f-0943-73da-ba81-3632f1728111'],
+        'UpdateRelaisItemRequest.declared_commune' => ['`uuid` de la commune indiquée par le Relais.'],
+        'StoreRelaisItemRequest.declared_place' => ['Lieu précis, surtout si le GPS est imprécis.', 'Carrefour Siporex'],
+        'StoreRelaisItemRequest.device_captured_at' => ['Date de la capture selon le téléphone (pas plus de 5 minutes dans le futur).', '2026-10-21T07:38:00Z'],
+        'StoreRelaisItemRequest.device_model' => ['Modèle du téléphone, visible du coordonnateur.', 'Tecno Spark 10'],
+        'StoreRelaisItemRequest.protections' => ['Réponses aux questions de protection, obligatoires à l’envoi.'],
+
+        // ------------------------------------------------------------ Médias
+        'StoreMediaRequest.kind' => ['Nature du média : `photo`, `video` ou `audio`.', 'video'],
+        'StoreMediaRequest.mime' => ['Type du fichier annoncé (contrôlé ensuite sur le contenu réel).', 'video/mp4'],
+        'StoreMediaRequest.size' => ['Taille exacte du fichier, en octets. La taille reçue doit être identique.', 62914560],
+        'StoreMediaRequest.sha256' => ['Empreinte SHA-256 du fichier entier, en hexadécimal (64 caractères).', 'a3f1c9e2b47d...e19f'],
+        'StoreMediaRequest.filename' => ['Nom d’origine du fichier (facultatif).', 'VID_20261021_073800.mp4'],
+        'StoreMediaRequest.is_imported' => ['`true` si le fichier vient de la galerie plutôt que de la caméra de l’application (le coordonnateur en est informé).', false],
+        'StoreMediaRequest.device_captured_at' => ['Date de prise de vue selon le téléphone.', '2026-10-21T07:38:00Z'],
+        'MediaUploadResource.kind' => ['Nature du média : `photo`, `video` ou `audio`.', 'video'],
+        'MediaUploadResource.status' => ['État : `pending` (morceaux attendus), `uploaded`, `processing`, `ready` ou `rejected`.', 'pending'],
+        'MediaUploadResource.rejection' => ['Raison du rejet, prête à afficher. `null` sauf au statut `rejected`.', null],
+        'MediaUploadResource.size' => ['Taille annoncée, en octets.', 62914560],
+        'MediaUploadResource.is_imported' => ['`true` si le fichier vient de la galerie.', false],
+        'MediaUploadResource.duration_s' => ['Durée en secondes (vidéo, audio), lue sur le fichier après contrôle.', 74],
+        'MediaUploadResource.upload' => ['Informations d’envoi tant que le statut est `pending`, sinon `null`.'],
+        'upload.part_size' => ['Taille de chaque morceau en octets (le dernier peut être plus petit).', 8388608],
+        'upload.part_count' => ['Nombre total de morceaux.', 8],
+        'upload.uploaded_parts' => ['Morceaux déjà reçus par le stockage : `number`, `etag` et taille.'],
+        'upload.missing_parts' => ['Morceaux restant à envoyer, chacun avec son URL signée.'],
+        'upload.missing_parts[].number' => ['Numéro du morceau, à partir de 1.', 1],
+        'upload.missing_parts[].url' => ['URL signée : envoyer le morceau par `PUT` brut, sans en-tête `Authorization`, et garder l’`ETag` de la réponse.', 'https://s3.us-central-1.wasabisys.com/...&partNumber=1&X-Amz-Signature=...'],
+        'upload.expires_in_minutes' => ['Durée de validité des URL signées, en minutes.', 30],
+
+        // ------------------------------------------------------------ Diffusions
+        'DiffusionResource.title' => ['Titre public, rédigé par la rédaction.', 'À Wassakara, la jeunesse redonne vie au marché'],
+        'DiffusionResource.text' => ['Texte public, rédigé par la rédaction.', 'Une centaine de jeunes ont nettoyé le marché ce samedi.'],
+        'DiffusionResource.commune' => ['Commune du relais.', 'Yopougon'],
+        'DiffusionResource.category' => ['Catégorie du relais.', 'Société et solidarité'],
+        'DiffusionResource.credit' => ['Crédit du Relais selon son choix : nom, pseudonyme ou « Un Relais de REFLET TV ».', 'Awa Traoré / JE RELAIS'],
+        'DiffusionResource.programme' => ['Émission de diffusion.', 'Journal de 20 h'],
+        'DiffusionResource.broadcast_url' => ['Lien vers la diffusion, s’il existe.', null],
+        'DiffusionResource.broadcast_at' => ['Date et heure de diffusion.', '2026-10-20T20:00:00Z'],
+        'DiffusionResource.image_url' => ['Vignette publique, sans métadonnées. `null` si le relais est publié sans image (floutage demandé).'],
+    ],
+
+    // Schémas d'énumération partagés (référencés par plusieurs champs).
+    'enums' => [
+        'Urgency' => 'Urgence du relais : `normal`, `important` (traité en 4 heures) ou `urgent` (traité en 30 minutes, signal sonore chez le coordonnateur).',
+        'PeopleConsent' => 'Accord des personnes filmées : `yes`, `no` ou `not_applicable` (personne de reconnaissable).',
+        'CreditMode' => 'Crédit à l’antenne : `named` (nom du Relais), `pseudonym` (pseudonyme, avec `credit_name`) ou `anonymous` (« Un Relais de REFLET TV »).',
+        'MediaKind' => 'Nature du média : `photo`, `video` (3 minutes maximum par défaut) ou `audio` (10 minutes maximum par défaut).',
+        'DocumentType' => 'Pièce de candidature : `profile_photo`, `id_front` (recto), `id_back` (verso), `selfie` ou `parental_authorization` (mineur admis).',
+        'DevicePlatform' => 'Système de l’appareil : `android`, `ios` ou `web`.',
+        'CandidatureStep' => 'Étape du dossier de candidature : `identite`, `territoire` ou `profil`.',
+    ],
+
+    // Paramètres d'adresse et de requête.
+    'parameters' => [
+        'relais' => 'UUID d’un de mes relais.',
+        'media' => 'UUID d’un de mes médias.',
+        'appel' => 'UUID d’un appel à relais qui me concerne.',
+        'conversation' => 'UUID d’une de mes conversations.',
+        'commune' => 'UUID d’une commune ouverte (`GET /communes`).',
+        'step' => 'Étape du dossier : `identite`, `territoire` ou `profil`.',
+        'type' => 'Type de pièce : `profile_photo`, `id_front`, `id_back`, `selfie` ou `parental_authorization`.',
+        'confirm' => 'Confirmation obligatoire : la valeur exacte `SUPPRIMER`.',
+        'page' => 'Numéro de page (20 éléments par page), à partir de 1.',
+    ],
+
+    // Descriptions par défaut de Scramble, traduites.
+    'responses' => [
+        'Validation error' => 'Données invalides : `errors` contient, pour chaque champ, la liste des messages à afficher.',
+        'Not found' => 'Ressource introuvable, ou appartenant à un autre compte.',
+        'Unauthenticated' => 'Jeton absent, invalide, expiré ou révoqué : revenir à l’écran de connexion.',
+        'Authorization error' => 'Action non permise pour ce compte.',
+        'An error' => 'Action non permise pour ce compte.',
+        'Conflict' => 'Conflit d’état : la ressource n’est plus modifiable (déjà envoyée ou déposée) ou l’identifiant est déjà utilisé.',
+        'No content' => 'Succès, sans contenu.',
+        'Service unavailable' => 'Antivirus momentanément indisponible : réessayer après le délai de l’en-tête `Retry-After`.',
+    ],
+];

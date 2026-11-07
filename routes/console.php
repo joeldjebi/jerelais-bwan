@@ -1,8 +1,217 @@
 <?php
 
+use App\Domain\Access\Enums\Role;
+use App\Domain\AppelRelais\Actions\PublishAppel;
+use App\Domain\AppelRelais\Models\AppelRelais;
+use App\Domain\Contribution\Actions\EscalateOverdueRelais;
+use App\Domain\Contribution\Actions\ReleaseExpiredLocks;
+use App\Domain\Media\Actions\PurgeAbandonedUploads;
+use App\Domain\Privacy\Actions\PurgeExpiredData;
+use App\Domain\Reporting\Exports\ReportExporter;
+use App\Domain\Reporting\Mail\PeriodicReport;
+use App\Domain\Reporting\Support\ReportBuilder;
+use App\Models\User;
+use App\Providers\ApiDocumentationServiceProvider;
+use Aws\S3\Exception\S3Exception;
+use Carbon\CarbonImmutable;
+use Dedoc\Scramble\Generator;
+use Dedoc\Scramble\Scramble;
+use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Storage;
+use PragmaRX\Google2FA\Google2FA;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+/*
+ * Développement local uniquement : affiche le code de double authentification courant
+ * d'un compte de démonstration, pour se connecter à la console sans application d'authentification.
+ */
+Artisan::command('jerelais:demo-2fa {email}', function (string $email) {
+    if (! app()->isLocal()) {
+        $this->components->error('Commande réservée à l’environnement local.');
+
+        return 1;
+    }
+
+    $user = User::query()->where('email', $email)->first();
+
+    if ($user === null || $user->two_factor_secret === null) {
+        $this->components->error('Compte introuvable ou sans double authentification.');
+
+        return 1;
+    }
+
+    $code = (new Google2FA)->getCurrentOtp(decrypt($user->two_factor_secret));
+    $this->components->info("Code : {$code} (valable encore ".(30 - time() % 30).' s)');
+
+    return 0;
+})->purpose('Affiche le code de double authentification courant d’un compte de démo (local uniquement)');
+
+/*
+ * Traitements planifiés du cycle de vie des relais (§8.2, COO-17).
+ */
+Artisan::command('relais:escalate', function (EscalateOverdueRelais $escalate) {
+    $this->components->info($escalate->handle().' relais escaladé(s).');
+})->purpose('Escalade les relais non traités dans le délai cible');
+
+Artisan::command('relais:release-locks', function (ReleaseExpiredLocks $release) {
+    $this->components->info($release->handle().' verrou(s) expiré(s) libéré(s).');
+})->purpose('Remet dans la file les relais dont le verrou a expiré');
+
+Artisan::command('medias:purge-abandoned', function (PurgeAbandonedUploads $purge) {
+    $this->components->info($purge->handle().' envoi(s) abandonné(s) annulé(s).');
+})->purpose('Annule les envois de médias jamais terminés');
+
+Artisan::command('appels:close-expired', function (PublishAppel $appels) {
+    $expired = AppelRelais::query()->where('status', 'open')->where('deadline_at', '<=', now())->get();
+    $expired->each(fn ($appel) => $appels->close($appel));
+    $this->components->info($expired->count().' appel(s) clos.');
+})->purpose('Clôt les appels à relais dont la date limite est passée');
+
+Schedule::command('appels:close-expired')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('relais:release-locks')->everyMinute()->withoutOverlapping();
+Schedule::command('relais:escalate')->everyMinute()->withoutOverlapping();
+Schedule::command('medias:purge-abandoned')->hourly()->withoutOverlapping();
+
+/*
+ * Autorise le navigateur à déposer les morceaux de médias directement sur Wasabi (WEB-04).
+ * Ajoute une règle CORS pour les origines données, sans retirer les règles existantes du bucket.
+ */
+Artisan::command('medias:configure-cors {origins* : ex. http://localhost:8000 https://jerelais.reflet.tv}', function (array $origins) {
+    /** @var AwsS3V3Adapter $disk */
+    $disk = Storage::disk('medias');
+    $client = $disk->getClient();
+    $bucket = (string) config('filesystems.disks.medias.bucket');
+
+    try {
+        $rules = $client->getBucketCors(['Bucket' => $bucket])['CORSRules'] ?? [];
+    } catch (S3Exception) {
+        $rules = [];
+    }
+
+    $rules = array_values(array_filter($rules, fn (array $rule): bool => ($rule['ID'] ?? '') !== 'jerelais-upload'));
+    $rules[] = [
+        'ID' => 'jerelais-upload',
+        'AllowedOrigins' => array_values($origins),
+        'AllowedMethods' => ['PUT', 'GET', 'HEAD'],
+        'AllowedHeaders' => ['*'],
+        'ExposeHeaders' => ['ETag'],
+        'MaxAgeSeconds' => 3000,
+    ];
+
+    $client->putBucketCors(['Bucket' => $bucket, 'CORSConfiguration' => ['CORSRules' => $rules]]);
+    $this->components->info('Règle CORS « jerelais-upload » enregistrée pour : '.implode(', ', $origins));
+})->purpose('Autorise l’envoi direct des médias depuis le navigateur vers Wasabi');
+
+/*
+ * Rapports périodiques (§13) : la veille, la semaine passée ou le mois passé, pour tout le réseau.
+ */
+Artisan::command('reports:send {period=daily : daily, weekly ou monthly}', function (string $period, ReportBuilder $builder, ReportExporter $exporter) {
+    $now = CarbonImmutable::now('Africa/Abidjan');
+    [$from, $to, $label] = match ($period) {
+        'weekly' => [$now->subWeek()->startOfWeek(), $now->subWeek()->endOfWeek(), 'hebdomadaire'],
+        'monthly' => [$now->subMonthNoOverflow()->startOfMonth(), $now->subMonthNoOverflow()->endOfMonth(), 'mensuel'],
+        default => [$now->subDay()->startOfDay(), $now->subDay()->endOfDay(), 'quotidien'],
+    };
+
+    $report = $builder->build($from, $to);
+    $xlsx = $exporter->xlsx($report);
+    $recipients = User::query()->role([Role::Admin->value, Role::RedacteurEnChef->value])
+        ->where('status', 'active')->whereNotNull('email')->pluck('email')->all();
+
+    if ($recipients !== []) {
+        Mail::to($recipients)->send(new PeriodicReport($label, $exporter->period($report), $exporter->pdf($report, __('Réseau national')), $xlsx));
+    }
+
+    @unlink($xlsx);
+    $this->components->info('Rapport '.$label.' envoyé à '.count($recipients).' destinataire(s).');
+})->purpose('Envoie le rapport de pilotage périodique à l’administration et à la rédaction en chef');
+
+Schedule::command('reports:send daily')->dailyAt('07:00')->timezone('Africa/Abidjan');
+Schedule::command('reports:send weekly')->weeklyOn(1, '07:15')->timezone('Africa/Abidjan');
+Schedule::command('reports:send monthly')->monthlyOn(1, '07:30')->timezone('Africa/Abidjan');
+
+/*
+ * Durées de conservation (§9.4) : purge nocturne des données expirées.
+ */
+Artisan::command('data:purge', function (PurgeExpiredData $purge) {
+    foreach ($purge->handle() as $kind => $count) {
+        $this->line(str_pad($kind, 26).$count);
+    }
+})->purpose('Applique les durées de conservation des données personnelles et des médias');
+
+Schedule::command('data:purge')->dailyAt('03:00')->timezone('Africa/Abidjan')->withoutOverlapping();
+
+/*
+| Sauvegarde quotidienne de la base, puis test de restauration hebdomadaire (une sauvegarde non restaurée n'est pas une sauvegarde).
+*/
+Schedule::command('jerelais:backup')->dailyAt('02:00')->timezone('Africa/Abidjan')->withoutOverlapping()->onOneServer();
+Schedule::command('jerelais:restore-test')->weeklyOn(0, '04:00')->timezone('Africa/Abidjan')->withoutOverlapping()->onOneServer();
+
+/*
+ * Vérification avant mise en production (durcissement, §10) : refuse de valider une configuration dangereuse.
+ */
+Artisan::command('jerelais:check-production', function () {
+    $checks = [
+        'APP_ENV = production' => app()->isProduction(),
+        'APP_DEBUG désactivé' => ! config('app.debug'),
+        'APP_URL en HTTPS' => str_starts_with((string) config('app.url'), 'https://'),
+        'Clé d’application définie' => filled(config('app.key')),
+        'Clé HMAC des téléphones distincte de APP_KEY' => filled(config('jerelais.phone.hash_key')) && config('jerelais.phone.hash_key') !== config('app.key'),
+        'Cookies de session sécurisés' => (bool) config('session.secure'),
+        'Session chiffrée' => (bool) config('session.encrypt'),
+        'Passerelle SMS réelle (ni « log » ni « mailpit »)' => ! in_array(config('jerelais.sms.driver'), ['log', 'mailpit'], true),
+        'Antivirus ClamAV' => config('jerelais.antivirus.driver') === 'clamav',
+        'Code 2FA de démonstration désactivé' => blank(config('jerelais.demo.two_factor_code')),
+        'Stockage Wasabi configuré' => filled(config('filesystems.disks.medias.key')) && filled(config('filesystems.disks.medias.bucket')),
+        'Bucket dédié aux pièces d’identité' => config('filesystems.disks.identity.bucket') !== config('filesystems.disks.medias.bucket'),
+        'File d’attente Redis' => config('queue.default') === 'redis',
+        'Diffusion temps réel Reverb' => config('broadcasting.default') === 'reverb',
+        'Courriel sortant configuré' => ! in_array(config('mail.default'), ['log', 'array'], true),
+        'Sentry configuré' => filled(config('sentry.dsn')),
+    ];
+
+    $failed = 0;
+
+    foreach ($checks as $label => $ok) {
+        $ok ? $this->components->twoColumnDetail($label, '<fg=green>OK</>') : $this->components->twoColumnDetail($label, '<fg=red>À CORRIGER</>');
+        $failed += $ok ? 0 : 1;
+    }
+
+    $failed === 0 ? $this->components->info('Configuration prête pour la production.') : $this->components->error($failed.' point(s) à corriger avant la mise en production.');
+
+    return $failed === 0 ? 0 : 1;
+})->purpose('Vérifie la configuration de production (sécurité, services externes)');
+
+/*
+ * Documentation de l'API mobile à partager hors de l'application : fichier OpenAPI (Swagger) et page Swagger UI
+ * autonome, qui s'ouvre d'un double clic sans serveur. À relancer après chaque changement de l'API.
+ */
+Artisan::command('api:docs', function () {
+    $document = app(Generator::class)(Scramble::getGeneratorConfig(Scramble::DEFAULT_API));
+    $document['servers'] = [['url' => rtrim((string) config('app.url'), '/').'/api/v1', 'description' => 'Serveur configuré (APP_URL)']];
+    $json = (string) json_encode($document, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    File::ensureDirectoryExists(base_path('docs/api'));
+    File::put(base_path('docs/api/openapi.json'), $json."\n");
+    // Le fichier autonome n'a pas de serveur : Swagger UI ne peut pas relire le document pour suivre les références
+    // « $ref ». On y intègre donc une copie où chaque référence interne est remplacée par son contenu.
+    $inline = (string) json_encode(ApiDocumentationServiceProvider::inlineReferences($document, $document), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
+    File::put(base_path('docs/api/swagger.html'), view('docs.swagger-standalone', ['spec' => $inline])->render());
+
+    $operations = 0;
+
+    foreach (is_array($document['paths'] ?? null) ? $document['paths'] : [] as $methods) {
+        foreach (is_array($methods) ? $methods : [] as $operation) {
+            $operations += is_array($operation) && isset($operation['responses']) ? 1 : 0;
+        }
+    }
+    $this->components->info("Documentation exportée : {$operations} opérations → docs/api/openapi.json et docs/api/swagger.html");
+})->purpose('Exporte le Swagger de l’API mobile (OpenAPI JSON et page Swagger UI autonome)');

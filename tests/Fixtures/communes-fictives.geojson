@@ -1,0 +1,20 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "NOM": "Commune Alpha", "REGION": "Région Test", "CODE": "T-001" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-4.10, 5.30], [-4.00, 5.30], [-4.00, 5.40], [-4.10, 5.40], [-4.10, 5.30]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "NOM": "Commune Beta", "REGION": "Région Test", "CODE": "T-002" },
+      "geometry": { "type": "MultiPolygon", "coordinates": [[[[-4.00, 5.30], [-3.90, 5.30], [-3.90, 5.40], [-4.00, 5.40], [-4.00, 5.30]]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "NOM": "Point isolé" },
+      "geometry": { "type": "Point", "coordinates": [-4.0, 5.3] }
+    }
+  ]
+}

@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>JE RELAIS — Charte graphique</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  @page { size: A4 landscape; margin: 0; }
+  :root {
+    --orange: #F28C28; --orange-deep: #C8610C; --orange-soft: #FDEBD8;
+    --ink: #15171C; --ink-2: #2A2D35; --slate: #6B6F78; --line: #E3DED4;
+    --ivory: #FAF7F1; --sand: #EDE7DC; --green: #0E8A5C; --green-soft: #DDF0E7; --white: #FFFFFF;
+    --display: "Archivo", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    --text: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: var(--text); color: var(--ink); font-size: 11.5pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { width: 297mm; height: 210mm; padding: 16mm 18mm 14mm; position: relative; page-break-after: always; overflow: hidden; background: var(--ivory); }
+  .page:last-child { page-break-after: auto; }
+  .page.dark { background: var(--ink); color: var(--ivory); }
+  .page.orange { background: var(--orange); color: var(--ink); }
+  .folio { position: absolute; left: 18mm; right: 18mm; bottom: 8mm; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 7.5pt; color: var(--slate); letter-spacing: .04em; }
+  .dark .folio { color: #8D919B; }
+  .kicker { font-family: var(--mono); font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: var(--orange-deep); }
+  .dark .kicker { color: var(--orange); }
+  h1, h2, h3 { font-family: var(--display); margin: 0; letter-spacing: -.02em; line-height: 1.05; }
+  h2 { font-size: 36pt; font-weight: 800; margin: 3mm 0 4mm; }
+  h3 { font-size: 14pt; font-weight: 700; letter-spacing: -.01em; margin: 0 0 2mm; }
+  p { margin: 0 0 3.5mm; max-width: 132mm; }
+  .lead { font-size: 15pt; line-height: 1.45; max-width: 150mm; color: var(--ink-2); }
+  .dark .lead { color: #D9D6CF; }
+  .muted { color: var(--slate); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7mm; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6mm; }
+  .tile { border-radius: 5mm; display: grid; place-items: center; position: relative; }
+  .cap { font-family: var(--mono); font-size: 7.5pt; letter-spacing: .06em; color: var(--slate); margin-top: 2mm; text-transform: uppercase; }
+  ul.clean { list-style: none; padding: 0; margin: 0; display: grid; gap: 2.2mm; }
+  ul.clean li { padding-left: 5mm; position: relative; max-width: 120mm; }
+  ul.clean li::before { content: ""; position: absolute; left: 0; top: 2.1mm; width: 2mm; height: 2mm; border-radius: 50%; background: var(--orange); }
+
+  /* Logos */
+  .lockup { display: inline-flex; align-items: center; gap: .32em; font-family: var(--display); font-weight: 800; letter-spacing: -.01em; line-height: 1; white-space: nowrap; }
+  .lockup svg { width: 1.25em; height: 1.25em; flex: none; }
+  .lockup .je { color: var(--orange); }
+  .lockup.stack { flex-direction: column; gap: .25em; }
+  .lockup.stack svg { width: 1.9em; height: 1.9em; }
+  .lockup .tag { display: block; font-family: var(--mono); font-weight: 500; font-size: .22em; letter-spacing: .2em; text-transform: uppercase; margin-top: .55em; color: var(--slate); }
+
+  /* Cover */
+  .cover { display: flex; flex-direction: column; justify-content: space-between; }
+  .cover .title { font-size: 64pt; font-weight: 900; letter-spacing: -.035em; line-height: .95; margin-top: 18mm; }
+  .cover .waves { position: absolute; right: -70mm; top: -70mm; width: 200mm; height: 200mm; }
+
+  .toc { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm 14mm; margin-top: 6mm; }
+  .toc div { display: flex; gap: 6mm; border-bottom: 1px solid var(--line); padding: 2.4mm 0; font-size: 11.5pt; }
+  .toc b { font-family: var(--mono); font-weight: 500; color: var(--orange-deep); width: 10mm; }
+
+  .proposal { display: grid; grid-template-columns: 92mm 1fr; gap: 12mm; height: 150mm; }
+  .proposal .boards { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1.25fr 1fr; gap: 5mm; }
+  .proposal .boards .tile:first-child { grid-column: span 2; }
+  .meta { display: grid; grid-template-columns: 30mm 1fr; gap: 1.6mm 4mm; font-size: 9.5pt; margin-top: 5mm; }
+  .meta dt { font-family: var(--mono); font-size: 7.5pt; letter-spacing: .08em; text-transform: uppercase; color: var(--slate); padding-top: .6mm; }
+  .meta dd { margin: 0; }
+  .sizes { display: flex; align-items: flex-end; gap: 6mm; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
+  th, td { text-align: left; padding: 2.4mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-weight: 500; font-size: 7.5pt; letter-spacing: .08em; text-transform: uppercase; color: var(--slate); border-bottom: 1.5px solid var(--ink); }
+  .dots { letter-spacing: 1.5mm; color: var(--orange); font-size: 11pt; }
+  .dots i { color: var(--line); font-style: normal; }
+  .reco { background: var(--ink); color: var(--ivory); border-radius: 5mm; padding: 7mm 8mm; }
+  .reco h3 { color: var(--orange); }
+
+  .swatch { border-radius: 4mm; height: 78mm; padding: 5mm; display: flex; flex-direction: column; justify-content: flex-end; font-size: 8.5pt; }
+  .swatch strong { font-family: var(--display); font-size: 14pt; font-weight: 800; letter-spacing: -.01em; display: block; margin-bottom: 2mm; }
+  .swatch code { font-family: var(--mono); font-size: 7.6pt; display: block; line-height: 1.55; }
+  .status { display: flex; align-items: center; gap: 4mm; padding: 4.4mm 0; border-bottom: 1px solid var(--line); font-size: 9.5pt; }
+  .pill { display: inline-flex; align-items: center; gap: 1.6mm; border-radius: 99px; padding: 1.2mm 3.4mm; font-size: 9.5pt; font-weight: 600; }
+  .pill::before { content: ""; width: 2mm; height: 2mm; border-radius: 50%; background: currentColor; }
+
+  .type-row { display: grid; grid-template-columns: 34mm 1fr 46mm; gap: 6mm; align-items: baseline; border-bottom: 1px solid var(--line); padding: 5.5mm 0; }
+  .type-row .spec { font-family: var(--mono); font-size: 7.5pt; color: var(--slate); }
+
+  .dont { border: 1px solid var(--line); border-radius: 4mm; height: 54mm; display: grid; place-items: center; position: relative; background: var(--white); overflow: hidden; }
+  .dont::after { content: "✕"; position: absolute; top: 2mm; right: 3mm; color: #D23B2E; font-weight: 700; font-size: 11pt; }
+
+  .chyron { border-radius: 3mm; overflow: hidden; position: relative; height: 70mm; background: #3B4252; }
+  .chyron .scene { position: absolute; inset: 0; background:
+      radial-gradient(circle at 70% 35%, #8C9AAE 0 6%, transparent 7%),
+      linear-gradient(#56647A 0 55%, #3E4A5C 55% 100%); }
+  .chyron .bar { position: absolute; left: 8mm; bottom: 9mm; display: flex; align-items: stretch; box-shadow: 0 2mm 6mm rgba(0,0,0,.25); }
+  .chyron .bar .mark { background: var(--orange); display: grid; place-items: center; padding: 0 3.4mm; }
+  .chyron .bar .txt { background: var(--ivory); padding: 2.4mm 5mm; }
+  .chyron .bar .txt b { display: block; font-family: var(--display); font-weight: 800; font-size: 12pt; letter-spacing: -.01em; }
+  .chyron .bar .txt span { font-size: 8.5pt; color: var(--slate); }
+  .chyron .live { position: absolute; top: 6mm; right: 7mm; font-family: var(--display); font-weight: 800; color: #fff; font-size: 10pt; letter-spacing: .02em; opacity: .9; }
+
+  .badge { width: 62mm; height: 92mm; border-radius: 5mm; background: var(--white); border: 1px solid var(--line); overflow: hidden; display: flex; flex-direction: column; }
+  .badge .top { background: var(--ink); color: var(--ivory); padding: 5mm; }
+  .badge .photo { width: 20mm; height: 24mm; border-radius: 2.5mm; background: var(--sand); margin: -12mm auto 0; border: 1.2mm solid var(--white); }
+  .appicon { width: 30mm; height: 30mm; border-radius: 7mm; display: grid; place-items: center; }
+  .post { width: 70mm; height: 70mm; border-radius: 3mm; padding: 6mm; display: flex; flex-direction: column; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<!-- Symboles des quatre pistes : utilisés partout via <use>. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- A · Signal : le « j » de JE dont le point émet deux ondes -->
+    <symbol id="a-tile" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="24" fill="#F28C28"/>
+      <path d="M44 52 V70 A14 14 0 0 1 30 84" fill="none" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round"/>
+      <circle cx="44" cy="34" r="7.5" fill="#FFFFFF"/>
+      <path d="M44 19 A15 15 0 0 1 59 34" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+      <path d="M44 8 A26 26 0 0 1 70 34" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="a-mark" viewBox="0 0 100 100">
+      <path d="M38 57 V76 A15 15 0 0 1 23 91" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round"/>
+      <circle cx="38" cy="36" r="9" fill="currentColor"/>
+      <path d="M38 19 A17 17 0 0 1 55 36" fill="none" stroke="currentColor" stroke-width="9.5" stroke-linecap="round"/>
+      <path d="M38 7 A29 29 0 0 1 67 36" fill="none" stroke="currentColor" stroke-width="9.5" stroke-linecap="round"/>
+    </symbol>
+    <!-- B · Témoin : bulle de parole qui enregistre -->
+    <symbol id="b-tile" viewBox="0 0 100 100">
+      <path d="M30 14 H70 A18 18 0 0 1 88 32 V56 A18 18 0 0 1 70 74 H45 L26 89 L29 74 A18 18 0 0 1 12 56 V32 A18 18 0 0 1 30 14 Z" fill="#15171C"/>
+      <circle cx="50" cy="44" r="14" fill="#F28C28"/>
+    </symbol>
+    <!-- C · Relais : deux chevrons qui se passent l'information -->
+    <symbol id="c-tile" viewBox="0 0 100 100">
+      <path d="M8 20 H32 L58 50 L32 80 H8 L34 50 Z" fill="#15171C"/>
+      <path d="M40 20 H64 L90 50 L64 80 H40 L66 50 Z" fill="#F28C28"/>
+    </symbol>
+    <!-- D · Repère : le lieu (épingle) qui diffuse (lecture) -->
+    <symbol id="d-tile" viewBox="0 0 100 100">
+      <path d="M50 5 C30 5 16 20 16 39 C16 63 50 95 50 95 C50 95 84 63 84 39 C84 20 70 5 50 5 Z" fill="#F28C28"/>
+      <path d="M43 26 L64 39 L43 52 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="waves" viewBox="0 0 100 100">
+      <path d="M0 100 A100 100 0 0 1 100 0" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <path d="M0 80 A80 80 0 0 1 80 0" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <path d="M0 60 A60 60 0 0 1 60 0" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <path d="M0 40 A40 40 0 0 1 40 0" fill="none" stroke="currentColor" stroke-width="1.2"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- 1. Couverture -->
+<section class="page dark cover">
+  <svg class="waves" style="color:#F28C28;opacity:.55"><use href="#waves"/></svg>
+  <div class="kicker">REFLET TV · Identité visuelle · Version 1.0</div>
+  <div>
+    <span class="lockup" style="font-size:28pt;color:var(--ivory)"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span>
+    <h1 class="title">Charte<br>graphique</h1>
+    <p class="lead" style="margin-top:6mm">Quatre propositions de logo et les règles d’usage de la marque des observateurs citoyens de REFLET TV.</p>
+  </div>
+  <div class="folio" style="position:static"><span>Abidjan · novembre 2026</span><span>Document de travail : à valider par la direction de REFLET TV</span></div>
+</section>
+
+<!-- 2. Sommaire -->
+<section class="page">
+  <div class="kicker">Sommaire</div>
+  <h2>Ce que contient la charte</h2>
+  <div class="toc">
+    <div><b>01</b>La marque JE RELAIS</div>
+    <div><b>08</b>Usages interdits</div>
+    <div><b>02</b>Démarche et critères</div>
+    <div><b>09</b>Couleurs</div>
+    <div><b>03</b>Quatre propositions de logo</div>
+    <div><b>10</b>Typographie</div>
+    <div><b>04</b>Comparatif et recommandation</div>
+    <div><b>11</b>Éléments graphiques</div>
+    <div><b>05</b>Logo principal et versions</div>
+    <div><b>12</b>Photographie et crédit à l’antenne</div>
+    <div><b>06</b>Zone de protection et tailles</div>
+    <div><b>13</b>Applications</div>
+    <div><b>07</b>Déclinaisons de couleur</div>
+    <div><b>14</b>Co-marquage REFLET TV</div>
+  </div>
+  <p class="muted" style="margin-top:8mm;max-width:200mm">La charte est construite sur la piste recommandée (A · « Signal »). Si la direction retient une autre piste, toutes les règles s’appliquent à l’identique : seul le symbole change.</p>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>02</span></div>
+</section>
+
+<!-- 3. La marque -->
+<section class="page">
+  <div class="kicker">01 · La marque</div>
+  <h2>Votre quartier, à l’antenne.</h2>
+  <div class="grid2" style="margin-top:4mm">
+    <div>
+      <p class="lead">JE RELAIS est le réseau des observateurs citoyens de REFLET TV. Chaque Relais filme ce qui se passe près de chez lui ; un coordonnateur local vérifie ; la rédaction diffuse.</p>
+      <p>Le nom dit l’engagement à la première personne : <b>« je »</b> m’engage, <b>« relais »</b> parce que l’information passe de main en main, du quartier jusqu’au journal.</p>
+    </div>
+    <div>
+      <h3>Ce que la marque doit inspirer</h3>
+      <ul class="clean">
+        <li><b>Confiance.</b> Une information vérifiée par des personnes identifiées, jamais une rumeur.</li>
+        <li><b>Proximité.</b> Le quartier, la commune, les gens qu’on connaît.</li>
+        <li><b>Fierté.</b> Être Relais, c’est voir son travail à l’antenne, avec son nom.</li>
+        <li><b>Responsabilité.</b> Protéger les mineurs, ne pas se mettre en danger, respecter les personnes filmées.</li>
+      </ul>
+      <h3 style="margin-top:6mm">Ton</h3>
+      <p>Direct, chaleureux, sans jargon. On tutoie la mission, on vouvoie les personnes. On écrit « Envoyer le relais », pas « Soumettre le contenu ».</p>
+    </div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>03</span></div>
+</section>
+
+<!-- 4. Démarche -->
+<section class="page">
+  <div class="kicker">02 · Démarche</div>
+  <h2>Quatre idées, quatre critères</h2>
+  <p class="lead">Chaque proposition part d’une idée simple du métier de Relais. Toutes ont été dessinées pour tenir les mêmes contraintes.</p>
+  <div class="grid4" style="margin-top:8mm">
+    <div><h3>Lisible à 16 px</h3><p>Icône d’application, favicon, pastille sur une carte : le symbole doit rester net en tout petit.</p></div>
+    <div><h3>Lié à REFLET TV</h3><p>Une marque fille : elle doit pouvoir s’afficher à côté du logo de la chaîne sans le concurrencer.</p></div>
+    <div><h3>Mémorisable</h3><p>Une forme simple qu’un Relais peut décrire au téléphone et reconnaître sur un badge.</p></div>
+    <div><h3>Animable</h3><p>Le logo apparaît à l’antenne : il doit pouvoir s’animer en deux secondes dans un générique ou un bandeau.</p></div>
+  </div>
+  <div class="grid4" style="margin-top:14mm">
+    <div><svg width="38mm" height="38mm"><use href="#a-tile"/></svg><div class="cap">A · Signal</div></div>
+    <div><svg width="38mm" height="38mm"><use href="#b-tile"/></svg><div class="cap">B · Témoin</div></div>
+    <div><svg width="38mm" height="38mm"><use href="#c-tile"/></svg><div class="cap">C · Relais</div></div>
+    <div><svg width="38mm" height="38mm"><use href="#d-tile"/></svg><div class="cap">D · Repère</div></div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>04</span></div>
+</section>
+
+<!-- 5. Piste A -->
+<section class="page">
+  <div class="kicker">03 · Proposition A</div>
+  <div class="proposal">
+    <div>
+      <h2>Signal</h2>
+      <p class="lead">Le « j » de JE dont le point émet deux ondes : c’est moi qui transmets ce que je vois.</p>
+      <p>Le symbole prolonge l’idée des ondes déjà présente dans la plateforme, mais il devient propre à la marque : la lettre du « je » et le signal ne font qu’un. Les ondes évoquent la radio, la télévision et le réseau.</p>
+      <dl class="meta">
+        <dt>Forces</dt><dd>Continuité avec l’existant, très lisible en petit, s’anime naturellement (les ondes s’allument une à une).</dd>
+        <dt>Limites</dt><dd>Le « j » se lit mieux accompagné du mot-symbole les premiers mois ; seul, il devient reconnaissable avec l’usage.</dd>
+        <dt>Couleurs</dt><dd>Orange Relais, Encre, Ivoire.</dd>
+      </dl>
+    </div>
+    <div class="boards">
+      <div class="tile" style="background:var(--white);border:1px solid var(--line)"><span class="lockup" style="font-size:38pt"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span></div>
+      <div class="tile" style="background:var(--ink)"><span class="lockup" style="font-size:20pt;color:var(--ivory)"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span></div>
+      <div class="tile" style="background:var(--orange)"><span class="lockup" style="font-size:20pt;color:var(--ink)"><svg style="color:var(--ink)"><use href="#a-mark"/></svg><span>JE RELAIS</span></span></div>
+    </div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>05</span></div>
+</section>
+
+<!-- 6. Piste B -->
+<section class="page">
+  <div class="kicker">03 · Proposition B</div>
+  <div class="proposal">
+    <div>
+      <h2>Témoin</h2>
+      <p class="lead">Une bulle de parole qui enregistre : je témoigne, je filme.</p>
+      <p>La bulle dit la prise de parole citoyenne ; le point orange au centre reprend le voyant « REC » d’une caméra. C’est la proposition la plus humaine des quatre.</p>
+      <dl class="meta">
+        <dt>Forces</dt><dd>Très expressive, parle immédiatement au grand public, se distingue des logos de chaînes.</dd>
+        <dt>Limites</dt><dd>La bulle évoque aussi les messageries : le mot-symbole doit toujours l’accompagner au début.</dd>
+        <dt>Couleurs</dt><dd>Encre et Orange Relais.</dd>
+      </dl>
+    </div>
+    <div class="boards">
+      <div class="tile" style="background:var(--white);border:1px solid var(--line)"><span class="lockup" style="font-size:38pt;font-weight:900;text-transform:lowercase"><svg><use href="#b-tile"/></svg><span>je relais</span></span></div>
+      <div class="tile" style="background:var(--sand)"><span class="lockup" style="font-size:20pt;font-weight:900;text-transform:lowercase"><svg><use href="#b-tile"/></svg><span>je relais</span></span></div>
+      <div class="tile" style="background:var(--orange)"><svg width="24mm" height="24mm"><use href="#b-tile"/></svg></div>
+    </div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>06</span></div>
+</section>
+
+<!-- 7. Piste C -->
+<section class="page">
+  <div class="kicker">03 · Proposition C</div>
+  <div class="proposal">
+    <div>
+      <h2>Relais</h2>
+      <p class="lead">Deux chevrons qui se suivent : l’information passe de main en main.</p>
+      <p>Comme dans une course de relais, le Relais transmet au coordonnateur, qui transmet à la rédaction. Les deux chevrons, l’un encre, l’autre orange, montrent ce mouvement vers l’avant.</p>
+      <dl class="meta">
+        <dt>Forces</dt><dd>Forme géométrique forte, très « télévision » (avance rapide), excellente en animation.</dd>
+        <dt>Limites</dt><dd>Moins chaleureuse ; proche des symboles « suivant » ou « avance rapide ».</dd>
+        <dt>Couleurs</dt><dd>Encre et Orange Relais.</dd>
+      </dl>
+    </div>
+    <div class="boards">
+      <div class="tile" style="background:var(--white);border:1px solid var(--line)"><span class="lockup" style="font-size:36pt;font-weight:900;letter-spacing:.02em"><svg><use href="#c-tile"/></svg><span>JE RELAIS</span></span></div>
+      <div class="tile" style="background:var(--ink)"><span class="lockup" style="font-size:20pt;font-weight:900;color:var(--ivory);letter-spacing:.02em"><svg><use href="#c-tile"/></svg><span>JE RELAIS</span></span></div>
+      <div class="tile" style="background:var(--orange-soft)"><svg width="24mm" height="24mm"><use href="#c-tile"/></svg></div>
+    </div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>07</span></div>
+</section>
+
+<!-- 8. Piste D -->
+<section class="page">
+  <div class="kicker">03 · Proposition D</div>
+  <div class="proposal">
+    <div>
+      <h2>Repère</h2>
+      <p class="lead">Une épingle de carte qui diffuse : chaque quartier devient une source.</p>
+      <p>L’épingle marque le lieu, le triangle « lecture » la vidéo. La proposition met en avant l’ancrage local du réseau, commune par commune.</p>
+      <dl class="meta">
+        <dt>Forces</dt><dd>Message immédiatement compris (le local + la vidéo), cohérent avec la carte du réseau.</dd>
+        <dt>Limites</dt><dd>Les épingles sont très utilisées par les applications de cartographie et de livraison.</dd>
+        <dt>Couleurs</dt><dd>Orange Relais, Encre, Vert Lagune en accent.</dd>
+      </dl>
+    </div>
+    <div class="boards">
+      <div class="tile" style="background:var(--white);border:1px solid var(--line)"><span class="lockup stack" style="font-size:30pt"><svg><use href="#d-tile"/></svg><span>JE RELAIS<span class="tag">Un réseau REFLET TV</span></span></span></div>
+      <div class="tile" style="background:var(--green)"><span class="lockup" style="font-size:20pt;color:var(--white)"><svg><use href="#d-tile"/></svg><span>JE RELAIS</span></span></div>
+      <div class="tile" style="background:var(--ink)"><svg width="22mm" height="22mm"><use href="#d-tile"/></svg></div>
+    </div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>08</span></div>
+</section>
+
+<!-- 9. Comparatif -->
+<section class="page">
+  <div class="kicker">04 · Comparatif</div>
+  <h2>Laquelle choisir ?</h2>
+  <div style="display:grid;grid-template-columns:1fr 82mm;gap:10mm;margin-top:4mm">
+    <table>
+      <thead><tr><th>Critère</th><th>A · Signal</th><th>B · Témoin</th><th>C · Relais</th><th>D · Repère</th></tr></thead>
+      <tbody>
+        <tr><td>Lisible à 16 px</td><td class="dots">●●●●<i>●</i></td><td class="dots">●●●●<i>●</i></td><td class="dots">●●●●●</td><td class="dots">●●●<i>●●</i></td></tr>
+        <tr><td>Lien avec REFLET TV</td><td class="dots">●●●●<i>●</i></td><td class="dots">●●●<i>●●</i></td><td class="dots">●●●●<i>●</i></td><td class="dots">●●●<i>●●</i></td></tr>
+        <tr><td>Mémorisation</td><td class="dots">●●●<i>●●</i></td><td class="dots">●●●●●</td><td class="dots">●●●●<i>●</i></td><td class="dots">●●●<i>●●</i></td></tr>
+        <tr><td>Animation à l’antenne</td><td class="dots">●●●●●</td><td class="dots">●●●<i>●●</i></td><td class="dots">●●●●●</td><td class="dots">●●●<i>●●</i></td></tr>
+        <tr><td>Continuité avec la plateforme</td><td class="dots">●●●●●</td><td class="dots">●●<i>●●●</i></td><td class="dots">●●<i>●●●</i></td><td class="dots">●●<i>●●●</i></td></tr>
+        <tr><td>Originalité</td><td class="dots">●●●<i>●●</i></td><td class="dots">●●●●<i>●</i></td><td class="dots">●●●<i>●●</i></td><td class="dots">●●<i>●●●</i></td></tr>
+      </tbody>
+    </table>
+    <div class="reco">
+      <div class="kicker">Recommandation</div>
+      <h3 style="font-size:20pt;margin-top:2mm">Piste A · Signal</h3>
+      <p style="color:#D9D6CF">Elle prolonge le symbole déjà connu des Relais et des coordonnateurs, reste parfaite en petit et s’anime simplement à l’antenne.</p>
+      <p style="color:#D9D6CF;margin:0">Piste B en alternative si la direction veut une marque plus chaleureuse, tournée vers le grand public.</p>
+    </div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>09</span></div>
+</section>
+
+<!-- 10. Logo principal -->
+<section class="page">
+  <div class="kicker">05 · Logo principal</div>
+  <h2>Trois versions, un seul symbole</h2>
+  <div class="grid3" style="margin-top:8mm;height:104mm">
+    <div class="tile" style="background:var(--white);border:1px solid var(--line)"><span class="lockup" style="font-size:24pt"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span></div>
+    <div class="tile" style="background:var(--white);border:1px solid var(--line)"><span class="lockup stack" style="font-size:22pt"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS<span class="tag">Un réseau REFLET TV</span></span></span></div>
+    <div class="tile" style="background:var(--white);border:1px solid var(--line)"><svg width="34mm" height="34mm"><use href="#a-tile"/></svg></div>
+  </div>
+  <div class="grid3" style="margin-top:3mm">
+    <div><h3>Horizontal</h3><p>Version de référence : site, console, documents, signatures.</p></div>
+    <div><h3>Empilé avec signature</h3><p>Affiches, badge du Relais, écrans de démarrage, génériques. La signature « Un réseau REFLET TV » rattache la marque à la chaîne.</p></div>
+    <div><h3>Symbole seul</h3><p>Icône d’application, favicon, avatar sur les réseaux sociaux, pastille à l’antenne. Jamais seul sur un document officiel.</p></div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>10</span></div>
+</section>
+
+<!-- 11. Protection et tailles -->
+<section class="page">
+  <div class="kicker">06 · Zone de protection et tailles</div>
+  <h2>De l’air autour du logo</h2>
+  <div class="grid2" style="margin-top:6mm">
+    <div>
+      <div style="position:relative;background:var(--white);border:1px dashed #E7B48A;border-radius:3mm;padding:18mm;display:inline-block">
+        <span class="lockup" style="font-size:40pt"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span>
+        <span style="position:absolute;top:3mm;left:3mm;width:13mm;height:13mm;border:1.4px solid var(--orange);border-radius:2mm;font-family:var(--mono);font-size:7pt;color:var(--orange-deep);display:grid;place-items:center">x</span>
+      </div>
+      <p style="margin-top:5mm">La zone de protection est égale à <b>x</b>, la hauteur du « J ». Aucun texte, aucune image ni aucun bord de page n’y entre.</p>
+    </div>
+    <div>
+      <h3>Tailles minimales</h3>
+      <div class="sizes" style="margin:4mm 0 6mm">
+        <span class="lockup" style="font-size:12pt"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span>
+        <span class="lockup" style="font-size:8pt"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span>
+        <svg width="16px" height="16px"><use href="#a-tile"/></svg>
+      </div>
+      <table>
+        <thead><tr><th>Version</th><th>Écran</th><th>Impression</th></tr></thead>
+        <tbody>
+          <tr><td>Horizontal</td><td>120 px de large</td><td>30 mm de large</td></tr>
+          <tr><td>Empilé avec signature</td><td>96 px de large</td><td>25 mm de large</td></tr>
+          <tr><td>Symbole seul</td><td>16 px</td><td>6 mm</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>11</span></div>
+</section>
+
+<!-- 12. Déclinaisons -->
+<section class="page">
+  <div class="kicker">07 · Déclinaisons de couleur</div>
+  <h2>Quatre fonds autorisés</h2>
+  <div class="grid4" style="margin-top:8mm;height:100mm">
+    <div class="tile" style="background:var(--white);border:1px solid var(--line)"><span class="lockup" style="font-size:19pt"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span></div>
+    <div class="tile" style="background:var(--ink)"><span class="lockup" style="font-size:19pt;color:var(--ivory)"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span></div>
+    <div class="tile" style="background:var(--orange)"><span class="lockup" style="font-size:19pt;color:var(--ink)"><svg style="color:var(--ink)"><use href="#a-mark"/></svg><span>JE RELAIS</span></span></div>
+    <div class="tile" style="background:var(--white);border:1px solid var(--line)"><span class="lockup" style="font-size:19pt;color:var(--ink)"><svg style="color:var(--ink)"><use href="#a-mark"/></svg><span>JE RELAIS</span></span></div>
+  </div>
+  <div class="grid4" style="margin-top:3mm">
+    <div><h3>Couleur</h3><p>Sur fond blanc ou ivoire. Version à utiliser par défaut.</p></div>
+    <div><h3>Inversée</h3><p>Sur fond Encre : console, génériques, écrans sombres.</p></div>
+    <div><h3>Sur orange</h3><p>Symbole sans carré, tout en Encre. Affiches, couvertures.</p></div>
+    <div><h3>Monochrome</h3><p>Une seule encre : tampons, fax, gravure, impression noir et blanc.</p></div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>12</span></div>
+</section>
+
+<!-- 13. Interdits -->
+<section class="page">
+  <div class="kicker">08 · Usages interdits</div>
+  <h2>Ce qu’on ne fait jamais</h2>
+  <div class="grid4" style="margin-top:6mm">
+    <div><div class="dont"><span class="lockup" style="font-size:15pt;transform:scaleX(1.45)"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span></div><div class="cap">Déformer</div></div>
+    <div><div class="dont"><span class="lockup" style="font-size:15pt;color:#2E6BD6"><svg><use href="#a-tile"/></svg><span>JE RELAIS</span></span></div><div class="cap">Changer les couleurs</div></div>
+    <div><div class="dont"><span class="lockup" style="font-size:15pt;filter:drop-shadow(1.2mm 1.2mm 1mm rgba(0,0,0,.45))"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span></div><div class="cap">Ajouter une ombre ou un effet</div></div>
+    <div><div class="dont"><span class="lockup" style="font-size:15pt;transform:rotate(-12deg)"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span></div><div class="cap">Pivoter</div></div>
+    <div><div class="dont"><span class="lockup" style="font-size:15pt;font-family:Georgia,serif;font-weight:400"><svg><use href="#a-tile"/></svg><span>Je Relais</span></span></div><div class="cap">Changer la police ou la casse</div></div>
+    <div><div class="dont" style="background:repeating-linear-gradient(45deg,#E9B87F 0 4mm,#7A9C8A 4mm 8mm)"><span class="lockup" style="font-size:15pt"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span></div><div class="cap">Poser sur un fond chargé</div></div>
+    <div><div class="dont"><span class="lockup" style="font-size:15pt"><span><span class="je">JE</span> RELAIS</span><svg><use href="#a-tile"/></svg></span></div><div class="cap">Inverser l’ordre symbole / texte</div></div>
+    <div><div class="dont"><span class="lockup" style="font-size:15pt"><svg style="opacity:.35"><use href="#a-tile"/></svg><span style="opacity:.35"><span class="je">JE</span> RELAIS</span></span></div><div class="cap">Rendre transparent</div></div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>13</span></div>
+</section>
+
+<!-- 14. Couleurs -->
+<section class="page">
+  <div class="kicker">09 · Couleurs</div>
+  <h2>Une palette chaude et lisible</h2>
+  <p class="lead">L’orange porte la marque ; l’encre porte le texte. Le vert, en accent, rappelle la Côte d’Ivoire et sert aux bonnes nouvelles.</p>
+  <div class="grid4" style="margin-top:6mm;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr">
+    <div class="swatch" style="background:var(--orange)"><strong>Orange Relais</strong><code>#F28C28 · RVB 242 140 40</code><code>CMJN 0 55 90 0 · Pantone 1495 C*</code></div>
+    <div class="swatch" style="background:var(--ink);color:var(--ivory)"><strong>Encre</strong><code>#15171C · RVB 21 23 28</code><code>CMJN 75 65 55 85 · Black 6 C*</code></div>
+    <div class="swatch" style="background:var(--green);color:var(--white)"><strong>Vert Lagune</strong><code>#0E8A5C · RVB 14 138 92</code><code>CMJN 85 15 75 5 · 340 C*</code></div>
+    <div class="swatch" style="background:var(--ivory);border:1px solid var(--line)"><strong>Ivoire</strong><code>#FAF7F1 · RVB 250 247 241</code><code>CMJN 0 1 4 2</code></div>
+    <div class="swatch" style="background:var(--sand)"><strong>Sable</strong><code>#EDE7DC · RVB 237 231 220</code><code>CMJN 0 3 8 7</code></div>
+  </div>
+  <div class="grid3" style="margin-top:6mm">
+    <div><h3>Proportions</h3><div style="display:flex;height:8mm;border-radius:2mm;overflow:hidden"><span style="flex:55;background:var(--ivory);border:1px solid var(--line)"></span><span style="flex:25;background:var(--ink)"></span><span style="flex:14;background:var(--orange)"></span><span style="flex:6;background:var(--green)"></span></div><p class="muted" style="margin-top:2mm">Ivoire et blanc 55 % · Encre 25 % · Orange 14 % · Vert 6 %</p></div>
+    <div><h3>Texte orange</h3><p>L’Orange Relais n’est pas assez contrasté pour un texte courant sur fond clair : utiliser <b style="color:var(--orange-deep)">Orange profond #C8610C</b>.</p></div>
+    <div><h3>Pas de dégradé</h3><p>Les couleurs s’emploient en aplats. *Équivalences Pantone et CMJN approchantes, à valider par l’imprimeur sur épreuve.</p></div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>14</span></div>
+</section>
+
+<!-- 15. Statuts -->
+<section class="page">
+  <div class="kicker">09 · Couleurs fonctionnelles</div>
+  <h2>Les couleurs des statuts</h2>
+  <div class="grid2" style="margin-top:4mm">
+    <div>
+      <p class="lead">Dans l’application et la console, chaque étape de la vie d’un relais a sa couleur. Elles ne servent qu’à cela : jamais pour décorer.</p>
+      <p>Une couleur de statut est toujours accompagnée d’un mot (« Validé », « Rejeté »…) : l’information ne repose jamais sur la couleur seule.</p>
+    </div>
+    <div>
+      <div class="status"><span class="pill" style="background:#FDF1DD;color:#B96F00">Reçu</span><code style="font-family:var(--mono);font-size:8pt">#F5A623</code><span class="muted">en attente de vérification</span></div>
+      <div class="status"><span class="pill" style="background:#ECEBFC;color:#5E5CE6">En vérification</span><code style="font-family:var(--mono);font-size:8pt">#5E5CE6</code><span class="muted">ouvert par un coordonnateur</span></div>
+      <div class="status"><span class="pill" style="background:#E2F5E8;color:#1F8A44">Validé</span><code style="font-family:var(--mono);font-size:8pt">#30B158</code><span class="muted">vérifié, exploitable</span></div>
+      <div class="status"><span class="pill" style="background:#FDE4E2;color:#D7261C">Rejeté</span><code style="font-family:var(--mono);font-size:8pt">#FF3B30</code><span class="muted">avec un motif</span></div>
+      <div class="status"><span class="pill" style="background:#F6E8FD;color:#9B3FD1">Sensible</span><code style="font-family:var(--mono);font-size:8pt">#BF5AF2</code><span class="muted">arbitrage de la rédaction</span></div>
+      <div class="status"><span class="pill" style="background:#E1EEFE;color:#0A6CDB">Diffusé</span><code style="font-family:var(--mono);font-size:8pt">#0A84FF</code><span class="muted">passé à l’antenne</span></div>
+    </div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>15</span></div>
+</section>
+
+<!-- 16. Typographie -->
+<section class="page">
+  <div class="kicker">10 · Typographie</div>
+  <h2>Deux familles, gratuites et ouvertes</h2>
+  <div class="type-row"><span class="spec">Archivo Black · 900</span><span style="font-family:var(--display);font-weight:900;font-size:46pt;letter-spacing:-.03em;line-height:1">Votre quartier, à l’antenne.</span><span class="spec">Titres d’affiche, génériques<br>interlettrage −3 %</span></div>
+  <div class="type-row"><span class="spec">Archivo · 800</span><span style="font-family:var(--display);font-weight:800;font-size:26pt;letter-spacing:-.02em">Inondation au carrefour Siporex</span><span class="spec">Titres, logo, bandeaux<br>interlettrage −2 %</span></div>
+  <div class="type-row"><span class="spec">IBM Plex Sans · 400 / 600</span><span style="font-size:13pt;max-width:160mm">L’eau arrive aux genoux, les gbakas ne passent plus. <b>Awa, Relais à Yopougon</b>, a filmé la scène à 7 h 40, depuis le trottoir.</span><span class="spec">Textes, interface, documents<br>11 pt · interligne 1,5</span></div>
+  <div class="type-row"><span class="spec">IBM Plex Mono · 500</span><span style="font-family:var(--mono);font-size:12pt;letter-spacing:.06em">JR-482 917 · YOPOUGON · 07:40 · VALIDÉ</span><span class="spec">Numéros de Relais, codes,<br>heures, statuts</span></div>
+  <p class="muted" style="margin-top:6mm;max-width:220mm">Les deux familles sont distribuées sous licence libre (SIL Open Font License) et disponibles sur Google Fonts : utilisables sur le site, dans l’application, à l’antenne et à l’impression sans frais. Repli système : Helvetica / Arial.</p>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>16</span></div>
+</section>
+
+<!-- 17. Éléments graphiques -->
+<section class="page">
+  <div class="kicker">11 · Éléments graphiques</div>
+  <h2>Les ondes, signature visuelle</h2>
+  <div class="grid3" style="margin-top:8mm;height:96mm">
+    <div class="tile" style="background:var(--ink);overflow:hidden"><svg style="position:absolute;left:0;bottom:0;width:70mm;height:70mm;color:var(--orange)"><use href="#waves"/></svg><span class="lockup" style="font-size:13pt;color:var(--ivory);position:relative;margin-left:30mm"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span></div>
+    <div class="tile" style="background:var(--orange);overflow:hidden"><svg style="position:absolute;right:-6mm;top:-6mm;width:60mm;height:60mm;color:var(--ink);transform:rotate(180deg)"><use href="#waves"/></svg><span style="font-family:var(--display);font-weight:900;font-size:20pt;letter-spacing:-.02em;position:relative">Devenez Relais.</span></div>
+    <div class="tile" style="background:var(--white);border:1px solid var(--line)">
+      <div style="display:flex;gap:4mm;flex-wrap:wrap;justify-content:center;padding:6mm">
+        <span class="pill" style="background:var(--orange-soft);color:var(--orange-deep)">Urgent</span>
+        <span class="pill" style="background:var(--green-soft);color:var(--green)">Relais actif</span>
+        <span class="pill" style="background:var(--sand);color:var(--ink)">Yopougon</span>
+        <span style="font-family:var(--mono);font-size:9pt;background:var(--ink);color:var(--ivory);padding:1.4mm 3mm;border-radius:1.5mm">JR-482 917</span>
+      </div>
+    </div>
+  </div>
+  <div class="grid3" style="margin-top:3mm">
+    <div><h3>Motif d’ondes</h3><p>Quatre arcs concentriques issus d’un coin, en filet fin. Toujours ancrés dans un angle, jamais au centre.</p></div>
+    <div><h3>Aplats francs</h3><p>Grands aplats d’orange ou d’encre, sans dégradé ni texture. Le titre en Archivo Black suffit à l’affiche.</p></div>
+    <div><h3>Pastilles et numéros</h3><p>Les étiquettes reprennent les couleurs claires de la palette ; le numéro du Relais s’écrit en Plex Mono.</p></div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>17</span></div>
+</section>
+
+<!-- 18. Photo et crédit antenne -->
+<section class="page">
+  <div class="kicker">12 · Photographie et crédit à l’antenne</div>
+  <h2>Montrer le Relais, protéger les personnes</h2>
+  <div class="grid2" style="margin-top:4mm;grid-template-columns:1.25fr 1fr">
+    <div>
+      <div class="chyron">
+        <div class="scene"></div>
+        <span class="live">REFLET TV</span>
+        <div class="bar">
+          <span class="mark"><svg width="9mm" height="9mm" style="color:var(--ink)"><use href="#a-mark"/></svg></span>
+          <span class="txt"><b>Images : Awa T. / JE RELAIS</b><span>Yopougon · Carrefour Siporex · aujourd’hui 7 h 40</span></span>
+        </div>
+      </div>
+      <div class="cap">Bandeau de crédit à l’antenne (proposition)</div>
+    </div>
+    <div>
+      <h3>Le crédit</h3>
+      <ul class="clean">
+        <li>Toujours le choix du Relais : <b>nom</b>, <b>pseudonyme</b> ou <b>« Un Relais de REFLET TV »</b>.</li>
+        <li>Format fixe : « Images : [crédit] / JE RELAIS », la commune et l’heure dessous.</li>
+        <li>Le symbole sur carré orange, à gauche du bandeau, en Encre.</li>
+      </ul>
+      <h3 style="margin-top:6mm">Les images</h3>
+      <ul class="clean">
+        <li>Images réelles des Relais, jamais de photos d’illustration pour un fait d’actualité.</li>
+        <li>Visages de mineurs et personnes non consentantes floutés, comme indiqué par le coordonnateur.</li>
+        <li>Pas de filtre ni de recadrage qui change le sens de l’image.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>18</span></div>
+</section>
+
+<!-- 19. Applications -->
+<section class="page">
+  <div class="kicker">13 · Applications</div>
+  <h2>La marque au quotidien</h2>
+  <div style="display:grid;grid-template-columns:auto auto 1fr;gap:12mm;align-items:start;margin-top:4mm">
+    <div>
+      <div style="display:flex;gap:5mm">
+        <div class="appicon" style="background:var(--orange)"><svg width="19mm" height="19mm" style="color:var(--white)"><use href="#a-mark"/></svg></div>
+        <div class="appicon" style="background:var(--ink)"><svg width="19mm" height="19mm" style="color:var(--orange)"><use href="#a-mark"/></svg></div>
+      </div>
+      <div class="cap">Icône d’application · clair et sombre</div>
+      <div class="post" style="background:var(--ink);color:var(--ivory);margin-top:8mm">
+        <span class="lockup" style="font-size:10pt;color:var(--ivory)"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span>
+        <div><div style="font-family:var(--display);font-weight:900;font-size:17pt;line-height:1;letter-spacing:-.02em">Vu sur<br>REFLET TV</div><div style="font-size:8pt;color:#C9C5BC;margin-top:2mm">À Wassakara, la jeunesse redonne vie au marché.</div></div>
+      </div>
+      <div class="cap">Publication réseaux sociaux</div>
+    </div>
+    <div>
+      <div class="badge">
+        <div class="top"><span class="lockup" style="font-size:10pt;color:var(--ivory)"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span><div style="height:14mm"></div></div>
+        <div class="photo"></div>
+        <div style="padding:3mm 5mm 5mm;text-align:center">
+          <div style="font-family:var(--display);font-weight:800;font-size:12pt">Awa T.</div>
+          <div style="font-size:8pt;color:var(--slate)">Relais · Yopougon</div>
+          <div style="font-family:var(--mono);font-size:8pt;margin-top:2mm">JR-482 917</div>
+          <div style="width:18mm;height:18mm;margin:3mm auto 0;background:
+            conic-gradient(var(--ink) 0 25%, transparent 0 50%, var(--ink) 0 75%, transparent 0) 0 0/4.5mm 4.5mm; border:1.2mm solid var(--ink)"></div>
+        </div>
+      </div>
+      <div class="cap">Badge numérique du Relais</div>
+    </div>
+    <div>
+      <h3>Principes</h3>
+      <ul class="clean">
+        <li><b>Application et site</b> : fond Ivoire, texte Encre, actions principales en Orange Relais. Mode sombre : fond Encre.</li>
+        <li><b>Badge du Relais</b> : en-tête Encre avec le logo, photo, nom tel que choisi par le Relais, commune, numéro en Plex Mono, QR code de vérification.</li>
+        <li><b>Réseaux sociaux</b> : avatar = symbole seul sur carré orange ; publications en aplats Encre ou Orange avec le titre en Archivo Black.</li>
+        <li><b>Documents</b> : logo horizontal en haut à gauche, texte en IBM Plex Sans 11 pt, filets fins Sable.</li>
+        <li><b>Objets</b> (gilet, casquette, autocollant) : version monochrome blanche sur orange ou encre.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>19</span></div>
+</section>
+
+<!-- 20. Co-branding -->
+<section class="page dark">
+  <svg class="waves" style="position:absolute;right:-30mm;bottom:-30mm;width:150mm;height:150mm;color:#F28C28;opacity:.4;transform:rotate(180deg)"><use href="#waves"/></svg>
+  <div class="kicker">14 · Co-marquage</div>
+  <h2>JE RELAIS et REFLET TV</h2>
+  <div class="grid2" style="margin-top:4mm">
+    <div>
+      <p class="lead">JE RELAIS est une marque de REFLET TV. Quand les deux logos sont côte à côte, REFLET TV signe ; JE RELAIS présente le réseau.</p>
+      <ul class="clean" style="margin-top:4mm">
+        <li style="color:#D9D6CF">Les deux logos à la même hauteur visuelle, séparés par un filet vertical fin et une zone de protection de 2x.</li>
+        <li style="color:#D9D6CF">REFLET TV à gauche, JE RELAIS à droite.</li>
+        <li style="color:#D9D6CF">Sans logo REFLET TV, la signature « Un réseau REFLET TV » est obligatoire.</li>
+      </ul>
+    </div>
+    <div style="display:flex;align-items:center;gap:8mm;background:var(--ivory);border-radius:5mm;padding:12mm 10mm;align-self:start">
+      <span style="font-family:var(--display);font-weight:900;font-size:18pt;color:var(--ink);letter-spacing:-.01em">REFLET<span style="color:var(--slate)"> TV</span></span>
+      <span style="width:1px;height:14mm;background:var(--line)"></span>
+      <span class="lockup" style="font-size:18pt;color:var(--ink)"><svg><use href="#a-tile"/></svg><span><span class="je">JE</span> RELAIS</span></span>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:14mm;color:#8D919B;max-width:230mm">Le logo REFLET TV ci-dessus est un emplacement : il sera remplacé par le logo officiel de la chaîne. Fichiers sources des quatre propositions (SVG) fournis avec ce document. Prochaine étape : choix de la piste par la direction, puis finalisation (dessin du mot-symbole, fichiers d’exécution couleur, CMJN et monochrome, animation de 2 secondes pour l’antenne).</p>
+  <div class="folio"><span>JE RELAIS · Charte graphique</span><span>20</span></div>
+</section>
+
+</body>
+</html>

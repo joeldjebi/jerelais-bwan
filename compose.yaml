@@ -1,0 +1,53 @@
+# Services locaux JE RELAIS (développement uniquement).
+# Le stockage objet n'est pas local : on utilise Wasabi (variables WASABI_* du .env).
+# Ports décalés pour ne pas entrer en conflit avec des services déjà présents sur le poste.
+name: jerelais
+
+services:
+  pgsql:
+    image: postgis/postgis:16-3.4
+    platform: linux/amd64 # pas d'image arm64 officielle (émulation sur Apple Silicon)
+    environment:
+      POSTGRES_DB: jerelais
+      POSTGRES_USER: jerelais
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "${FORWARD_DB_PORT:-5442}:5432"
+    volumes:
+      - pgsql-data:/var/lib/postgresql/data
+      - ./docker/pgsql/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "jerelais", "-d", "jerelais"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${FORWARD_REDIS_PORT:-6390}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${FORWARD_MAILPIT_PORT:-1025}:1025"
+      - "${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025"
+
+  clamav:
+    image: clamav/clamav:stable
+    platform: linux/amd64
+    profiles: ["media"] # démarré à partir de l'étape 3 : docker compose --profile media up -d
+    ports:
+      - "${FORWARD_CLAMAV_PORT:-3310}:3310"
+    volumes:
+      - clamav-data:/var/lib/clamav
+
+volumes:
+  pgsql-data:
+  redis-data:
+  clamav-data:

@@ -47,17 +47,40 @@ return [
             'report' => false,
         ],
 
-        's3' => [
+        /*
+         * Médias des relais (photos, vidéos, audio) : Wasabi, privé, accès par URL signées.
+         */
+        'medias' => [
             'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_BUCKET'),
-            'url' => env('AWS_URL'),
-            'endpoint' => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
-            'report' => false,
+            'key' => env('WAS_ACCESS_KEY'),
+            'secret' => env('WAS_SECRET_KEY'),
+            'region' => env('WASABI_REGION'),
+            'bucket' => env('WASABI_BUCKET'),
+            'url' => env('WASABI_URL'),
+            'endpoint' => env('WASABI_ENDPOINT'),
+            'root' => 'medias',
+            'visibility' => 'private',
+            'use_path_style_endpoint' => true,
+            'throw' => true,
+            'report' => true,
+        ],
+
+        /*
+         * Pièces d'identité, selfies, autorisations parentales : séparés des médias (§9.4).
+         * Bucket dédié recommandé en production (WASABI_IDENTITY_BUCKET), sinon même bucket sous un préfixe distinct.
+         */
+        'identity' => [
+            'driver' => 's3',
+            'key' => env('WAS_ACCESS_KEY'),
+            'secret' => env('WAS_SECRET_KEY'),
+            'region' => env('WASABI_REGION'),
+            'bucket' => env('WASABI_IDENTITY_BUCKET') ?: env('WASABI_BUCKET'),
+            'endpoint' => env('WASABI_ENDPOINT'),
+            'root' => 'identity',
+            'visibility' => 'private',
+            'use_path_style_endpoint' => true,
+            'throw' => true,
+            'report' => true,
         ],
 
     ],

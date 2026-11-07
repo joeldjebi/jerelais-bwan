@@ -1,18 +1,35 @@
 <?php
 
+use App\Http\Middleware\EnsureTwoFactorIsEnabled;
+use App\Http\Middleware\EnsureUserIsStaff;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
+        apiPrefix: 'api/v1',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->append(SecurityHeaders::class);
+        $middleware->throttleApi();
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('espace-relais/*') ? route('relais.join') : route('login'));
+
+        $middleware->alias([
+            'staff' => EnsureUserIsStaff::class,
+            'two-factor' => EnsureTwoFactorIsEnabled::class,
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

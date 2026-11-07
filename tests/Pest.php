@@ -1,6 +1,16 @@
 <?php
 
+use App\Domain\Auth\Contracts\SmsGateway;
+use App\Domain\Auth\Sms\FakeSmsGateway;
+use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Media\Enums\MediaStatus;
+use App\Domain\Media\Models\Media;
+use App\Domain\Media\Storage\FakeMultipartStorage;
+use App\Domain\Media\Storage\MultipartStorage;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /*
@@ -8,43 +18,71 @@ use Tests\TestCase;
 | Test Case
 |--------------------------------------------------------------------------
 |
-| The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
-| need to change it using the "pest()" function to bind different classes or traits.
+| Tests fonctionnels : base PostgreSQL de test réinitialisée, rôles et permissions de l'Annexe A en place.
 |
 */
 
 pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
+    ->use(RefreshDatabase::class)
+    ->beforeEach(fn () => $this->seed(RolesAndPermissionsSeeder::class))
     ->in('Feature');
-
-/*
-|--------------------------------------------------------------------------
-| Expectations
-|--------------------------------------------------------------------------
-|
-| When you're writing tests, you often need to check that values meet certain conditions. The
-| "expect()" function gives you access to a set of "expectations" methods that you can use
-| to assert different things. Of course, you may extend the Expectation API at any time.
-|
-*/
-
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
 
 /*
 |--------------------------------------------------------------------------
 | Functions
 |--------------------------------------------------------------------------
-|
-| While Pest is very powerful out-of-the-box, you may have some testing code specific to your
-| project that you don't want to repeat in every file. Here you can also expose helpers as
-| global functions to help you to reduce the number of lines of code in your test files.
-|
 */
 
-function something()
+/**
+ * Remplace la passerelle SMS par une passerelle en mémoire et la retourne.
+ */
+function fakeSms(): FakeSmsGateway
 {
-    // ..
+    $gateway = new FakeSmsGateway;
+    app()->instance(SmsGateway::class, $gateway);
+
+    return $gateway;
+}
+
+/**
+ * Données d'appareil valides pour les connexions de l'application.
+ *
+ * @return array<string, string>
+ */
+function deviceFields(): array
+{
+    return ['device_name' => 'Tecno Spark 10', 'platform' => 'android', 'app_version' => '1.0.0'];
+}
+
+/**
+ * Remplace l'envoi multipart S3 par une version en mémoire et la retourne.
+ */
+function fakeMultipart(): FakeMultipartStorage
+{
+    Storage::fake('medias');
+    $storage = new FakeMultipartStorage;
+    app()->instance(MultipartStorage::class, $storage);
+
+    return $storage;
+}
+
+/**
+ * Joint au relais un média déjà reçu et contrôlé.
+ */
+function attachReadyMedia(RelaisItem $relais, string $kind = 'photo'): Media
+{
+    $media = new Media([
+        'client_uuid' => (string) Str::uuid(),
+        'kind' => $kind,
+        'status' => MediaStatus::Ready,
+        'declared_mime' => 'image/jpeg',
+        'size' => 1000,
+        'declared_sha256' => str_repeat('a', 64),
+        'disk' => 'medias',
+        'path' => 'relais/'.$relais->uuid.'/'.Str::uuid().'.jpg',
+        'part_size' => 8 * 1024 * 1024,
+    ]);
+    $relais->medias()->save($media);
+
+    return $media;
 }
