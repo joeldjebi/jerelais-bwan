@@ -69,8 +69,8 @@
 
                 <div>
                     <label for="code" class="sr-only">{{ __('Code de vérification') }}</label>
-                    <input id="code" wire:model="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" autofocus
-                        x-on:input="$el.value = $el.value.replace(/\D/g, '').slice(0, 6); if ($el.value.length === 6) { $wire.set('code', $el.value, false); $wire.verify() }"
+                    <input id="code" wire:model="code" inputmode="numeric" autocomplete="one-time-code" maxlength="{{ $codeLength }}" placeholder="{{ str_repeat('•', $codeLength) }}" autofocus
+                        x-on:input="$el.value = $el.value.replace(/\D/g, '').slice(0, {{ $codeLength }}); if ($el.value.length === {{ $codeLength }}) { $wire.set('code', $el.value, false); $wire.verify() }"
                         class="block h-16 w-full rounded-2xl border-0 bg-mist text-center font-mono text-[2rem] tracking-[0.5em] ring-1 ring-transparent transition-[box-shadow,background-color] duration-300 placeholder:text-graphite/40 focus:bg-white focus:ring-2 focus:ring-relais-500/50 focus:outline-none"
                         @error('code') aria-invalid="true" aria-describedby="code-error" @enderror>
                     @error('code') <p id="code-error" class="mt-2 text-center text-[0.8125rem] font-medium text-status-rejected">{{ $message }}</p> @enderror

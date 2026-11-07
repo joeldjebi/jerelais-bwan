@@ -173,3 +173,52 @@ it('partage le quota d’envoi par numéro entre le site et l’application (rev
 
     $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '0707070707'])->assertTooManyRequests();
 });
+
+it('accepte le code fixe transitoire sans envoyer de SMS (en attendant un fournisseur)', function () {
+    config(['jerelais.otp.fixed_code' => '1234']);
+
+    requestOtp()->assertAccepted();
+    expect($this->sms->sent)->toBe([]);
+
+    $this->postJson(route('api.v1.auth.otp.verify'), ['phone' => '0707070707', 'code' => '1234', ...deviceFields()])
+        ->assertCreated()
+        ->assertJsonPath('data.is_new_user', true);
+
+    $this->assertDatabaseHas('audit_logs', ['action' => 'auth.otp.requested']);
+    expect(AuditLog::query()->where('action', 'auth.otp.requested')->latest('id')->first()->payload['fixed_code'])->toBeTrue();
+});
+
+it('refuse un autre code que le code fixe', function () {
+    config(['jerelais.otp.fixed_code' => '1234']);
+
+    requestOtp()->assertAccepted();
+
+    $this->postJson(route('api.v1.auth.otp.verify'), ['phone' => '0707070707', 'code' => '4321', ...deviceFields()])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['code']);
+});
+
+it('réserve le code fixe aux numéros listés : les autres reçoivent un vrai code par SMS', function () {
+    config(['jerelais.otp.fixed_code' => '1234', 'jerelais.otp.fixed_code_numbers' => '0700000001, 0700000002']);
+
+    $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '0700000001'])->assertAccepted();
+    expect($this->sms->sent)->toBe([]);
+
+    requestOtp()->assertAccepted();
+    expect($this->sms->sent)->toHaveCount(1);
+
+    $this->postJson(route('api.v1.auth.otp.verify'), ['phone' => '0707070707', 'code' => '1234', ...deviceFields()])->assertUnprocessable();
+});
+
+it('connecte un candidat sur le site avec le code fixe à 4 chiffres', function () {
+    config(['jerelais.otp.fixed_code' => '1234']);
+
+    Livewire::test(Rejoindre::class)
+        ->set('phone', '0707070707')
+        ->call('sendCode')
+        ->assertSet('codeLength', 4)
+        ->set('code', '1234')
+        ->call('verify')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('relais.candidature'));
+});

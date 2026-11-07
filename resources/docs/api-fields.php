@@ -39,7 +39,7 @@ return [
 
         // ------------------------------------------------------------ Authentification
         'RequestOtpRequest.phone' => ['Numéro à vérifier : ivoirien à 10 chiffres (`0700000001`, espaces acceptés) ou international (`+2250700000001`).', '0700000001'],
-        'VerifyOtpRequest.code' => ['Code à 6 chiffres reçu par SMS, valable 5 minutes, 5 essais.', '509418'],
+        'VerifyOtpRequest.code' => ['Code reçu par SMS : 6 chiffres, valable 5 minutes, 5 essais. Tant qu’aucun fournisseur de SMS n’est branché, un code de test fixe (4 à 8 chiffres) communiqué par l’équipe le remplace : ne pas limiter la saisie à 6 chiffres.', '509418'],
         'PasswordLoginRequest.password' => ['Mot de passe défini avec `PUT /me/password`.', 'mon-mot-de-passe'],
         'IssuedTokenResource.token' => ['Jeton à envoyer dans `Authorization: Bearer <jeton>`. À conserver dans le stockage sécurisé du téléphone (Keychain, Keystore).', '12|Kq0nT3...'],
         'IssuedTokenResource.token_type' => ['Toujours `Bearer`.', 'Bearer'],
