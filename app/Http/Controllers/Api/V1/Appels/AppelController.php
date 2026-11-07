@@ -8,16 +8,23 @@ use App\Domain\Contribution\Support\RelaisSender;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
  * Appels à relais de ma zone (MOB-23). Pour y répondre : `POST /relais` avec `appel` = uuid de l'appel.
  */
+#[Group('Appels à relais', 'Demandes de la rédaction ou du coordonnateur adressées aux Relais d’une zone (MOB-23).', weight: 9)]
 class AppelController extends Controller
 {
     /**
      * Appels ouverts qui me concernent.
+     *
+     * Appels à relais encore ouverts dont la zone (tout le réseau, communes, régions ou rayon autour d'un lieu)
+     * et le type de lieu correspondent à mon profil. Liste vide pour un compte qui n'est pas Relais.
+     *
+     * @response array{data: list<array{uuid: string, title: string, instructions: string, target: 'national'|'communes'|'regions'|'radius', target_label: string, zone: list<string>, lieu_type: string|null, is_open: bool, deadline_at: string, published_at: string|null}>}
      */
     public function index(Request $request): JsonResponse
     {
@@ -28,6 +35,10 @@ class AppelController extends Controller
 
     /**
      * Un appel.
+     *
+     * Détail d'un appel qui me concerne (404 sinon). Pour y répondre : `POST /relais` avec `appel` = cet `uuid`.
+     *
+     * @response array{data: array{uuid: string, title: string, instructions: string, target: 'national'|'communes'|'regions'|'radius', target_label: string, zone: list<string>, lieu_type: string|null, is_open: bool, deadline_at: string, published_at: string|null}}
      */
     public function show(Request $request, AppelRelais $appel): JsonResponse
     {

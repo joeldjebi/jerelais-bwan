@@ -6,6 +6,7 @@ use App\Domain\Settings\Actions\ManageReferenceList;
 use App\Domain\Settings\Enums\ReferenceList;
 use App\Domain\Territoire\Enums\LocaliteType;
 use App\Domain\Territoire\Models\Commune;
+use App\Domain\Territoire\Models\Region;
 use App\Domain\Validation\Enums\RejectionTarget;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -21,7 +22,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * Référentiels de la plateforme : localités et types de lieux (ADM-20), catégories et motifs de rejet (ADM-23, COO-15).
+ * Référentiels de la plateforme : régions, localités et types de lieux (ADM-20), catégories et motifs de rejet (ADM-23, COO-15).
  *
  * @property-read list<ReferenceList> $lists
  * @property-read Collection<int, Model> $entries
@@ -41,6 +42,8 @@ class Index extends Component
     public string $localiteType = 'quartier';
 
     public string $target = 'relais';
+
+    public string $district = '';
 
     #[Locked]
     public ?string $editing = null;
@@ -64,7 +67,7 @@ class Index extends Component
     public function updatedList(): void
     {
         $this->resetErrorBag();
-        $this->reset('name', 'editing', 'editingName');
+        $this->reset('name', 'district', 'editing', 'editingName');
     }
 
     public function add(ManageReferenceList $manage): void
@@ -77,6 +80,7 @@ class Index extends Component
             'name' => ['required', 'string', 'max:120'],
             'localiteType' => [Rule::requiredIf($list === ReferenceList::Localites), Rule::enum(LocaliteType::class)],
             'target' => [Rule::requiredIf($list === ReferenceList::RejectionReasons), Rule::enum(RejectionTarget::class)],
+            'district' => ['nullable', 'string', 'max:120'],
         ]);
 
         if ($list === ReferenceList::Localites) {
@@ -95,9 +99,19 @@ class Index extends Component
             $attributes = ['applies_to' => $this->target];
         }
 
+        if ($list === ReferenceList::Regions) {
+            if (Region::query()->whereRaw('lower(name) = ?', [Str::lower($label)])->exists()) {
+                $this->addError('name', __('Cette région existe déjà.'));
+
+                return;
+            }
+
+            $attributes = ['district' => trim($this->district) ?: null];
+        }
+
         $manage->create($list, $label, $attributes, $this->actor());
 
-        $this->reset('name');
+        $this->reset('name', 'district');
         unset($this->entries);
         $this->dispatch('toast', message: __(':label ajouté.', ['label' => $label]));
     }
@@ -164,6 +178,7 @@ class Index extends Component
             ReferenceList::Localites => Str::isUuid($this->commune)
                 ? $list->model()::query()->where('commune_id', $this->selectedCommune()->id)->orderBy('name')->get()
                 : new Collection,
+            ReferenceList::Regions => $list->model()::query()->withCount('communes')->orderBy('name')->get(),
             ReferenceList::LieuTypes => $list->model()::query()->withCount('lieux')->orderBy('name')->get(),
             ReferenceList::Categories => $list->model()::query()->orderBy('position')->get(),
             ReferenceList::RejectionReasons => $list->model()::query()->orderBy('applies_to')->orderBy('position')->get(),

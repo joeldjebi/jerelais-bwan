@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureUserIsStaff;
 use App\Livewire\Console\Privacy\Index as PrivacyPage;
 use App\Models\User;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route as Router;
 use Livewire\Livewire;
 use Livewire\Mechanisms\PersistentMiddleware\PersistentMiddleware;
@@ -66,4 +67,10 @@ it('rejoue les middlewares d’accès sur les requêtes Livewire', function () {
     $middleware = app(PersistentMiddleware::class)->getPersistentMiddleware();
 
     expect($middleware)->toContain(EnsureUserIsStaff::class, EnsureTwoFactorIsEnabled::class, PermissionMiddleware::class);
+});
+
+it('réserve la supervision Horizon aux administrateurs', function () {
+    expect(Gate::forUser(User::factory()->withRole(Role::Admin)->create())->allows('viewHorizon'))->toBeTrue()
+        ->and(Gate::forUser(User::factory()->withRole(Role::Journaliste)->create())->allows('viewHorizon'))->toBeFalse()
+        ->and(Gate::allows('viewHorizon'))->toBeFalse();
 });

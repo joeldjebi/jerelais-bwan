@@ -5,9 +5,10 @@
 
     $current = $this->current();
     $labelColumn = $current->labelColumn();
-    $icons = ['localites' => 'map-pin', 'lieux' => 'layers', 'categories' => 'inbox', 'motifs' => 'shield'];
-    $tints = ['localites' => 'teal', 'lieux' => 'purple', 'categories' => 'blue', 'motifs' => 'pink'];
+    $icons = ['regions' => 'layers', 'localites' => 'map-pin', 'lieux' => 'layers', 'categories' => 'inbox', 'motifs' => 'shield'];
+    $tints = ['regions' => 'green', 'localites' => 'teal', 'lieux' => 'purple', 'categories' => 'blue', 'motifs' => 'pink'];
     $footers = [
+        'regions' => __('Régions et districts administratifs. Les communes se créent et se rattachent à une région depuis la page Communes.'),
         'localites' => __('Quartiers, villages et sous-préfectures proposés aux candidats de la commune et utilisés pour la carte de couverture.'),
         'lieux' => __('Écoles, universités, marchés… utilisés par les candidatures et le ciblage des appels à relais.'),
         'categories' => __('Une catégorie désactivée n’est plus proposée aux Relais ; les relais déjà classés la conservent.'),
@@ -42,6 +43,8 @@
                                     <option value="{{ $type->value }}">{{ $type->label() }}</option>
                                 @endforeach
                             </x-console.select>
+                        @elseif ($current === ReferenceList::Regions)
+                            <x-console.input name="district" :label="__('District (facultatif)')" wire:model="district" maxlength="120" autocomplete="off" />
                         @elseif ($current === ReferenceList::RejectionReasons)
                             <x-console.select name="target" :label="__('S’applique aux')" wire:model="target">
                                 <option value="{{ RejectionTarget::Relais->value }}">{{ __('Relais envoyés') }}</option>
@@ -80,6 +83,7 @@
                                     <p @class(['truncate text-[0.9375rem] font-medium', 'text-mute line-through decoration-1' => $current->canBeDisabled() && ! $entry->is_active])>{{ $entry->{$labelColumn} }}</p>
                                     <p class="truncate text-[0.75rem] text-mute">
                                         @switch($current)
+                                            @case(ReferenceList::Regions) {{ $entry->district ?: __('Sans district') }} · {{ trans_choice(':count commune|:count communes', $entry->communes_count) }} @break
                                             @case(ReferenceList::Localites) {{ $entry->type->label() }} @break
                                             @case(ReferenceList::LieuTypes) {{ trans_choice(':count lieu|:count lieux', $entry->lieux_count) }} @break
                                             @case(ReferenceList::Categories) {{ $entry->examples ?: $entry->slug }} @break

@@ -42,6 +42,7 @@ return [
     |
     */
 
+    // « log » : journal local ; « mailpit » : chaque SMS arrive dans Mailpit (recette locale). Jamais en production.
     'sms' => [
         'driver' => env('SMS_DRIVER', 'log'),
         'sender' => env('SMS_SENDER', 'JE RELAIS'),
@@ -86,6 +87,12 @@ return [
         'per_user_per_minute' => (int) env('API_PER_USER_PER_MINUTE', 120),
         'anonymous_per_ip_per_minute' => (int) env('API_ANONYMOUS_PER_IP_PER_MINUTE', 1200),
     ],
+
+    // Proxys de confiance, séparés par des virgules (ex. « 127.0.0.1 » pour un tunnel local, l'adresse du répartiteur en production).
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
+    // Documentation de l'API (/docs/api, /docs/swagger) ouverte sans compte hors local : préproduction pour l'équipe mobile.
+    'api_docs_public' => (bool) env('API_DOCS_PUBLIC', false),
 
     'contact_email' => env('JERELAIS_CONTACT_EMAIL', 'contact@jerelais.test'),
 

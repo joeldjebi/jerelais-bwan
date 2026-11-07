@@ -1,5 +1,8 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use Illuminate\Http\Middleware\TrustProxies;
+
 it('ajoute les en-têtes de sécurité à chaque réponse [§10 Sécurité]', function () {
     $response = $this->get('/');
 
@@ -28,4 +31,21 @@ it("n'émet HSTS qu'en HTTPS [§10 Sécurité]", function () {
 
 it('sert l’API sous le préfixe versionné /api/v1', function () {
     $this->getJson('/api/v1/me')->assertUnauthorized();
+});
+
+it('fait confiance au tunnel ou au répartiteur déclaré : https et hôte public dans les liens', function () {
+    config(['jerelais.trusted_proxies' => '127.0.0.1']);
+    (fn () => $this->configureTrustedProxies())->call(app()->getProvider(AppServiceProvider::class));
+
+    $this->get('/', ['X-Forwarded-Proto' => 'https', 'X-Forwarded-Host' => 'recette.ngrok-free.app'])
+        ->assertOk()
+        ->assertSee('https://recette.ngrok-free.app/', false);
+
+    TrustProxies::flushState();
+});
+
+it('ne fait confiance à aucun proxy par défaut', function () {
+    $this->get('/', ['X-Forwarded-Proto' => 'https', 'X-Forwarded-Host' => 'pirate.example'])
+        ->assertOk()
+        ->assertDontSee('pirate.example');
 });

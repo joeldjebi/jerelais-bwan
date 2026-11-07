@@ -39,9 +39,29 @@ class SecurityHeaders
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
 
-        $response->headers->set('Content-Security-Policy', $this->contentSecurityPolicy());
+        $response->headers->set('Content-Security-Policy', $request->is('docs', 'docs/*') ? $this->documentationPolicy() : $this->contentSecurityPolicy());
 
         return $response;
+    }
+
+    /**
+     * Pages de documentation de l'API (Scramble, Swagger UI) : leurs interfaces se chargent depuis unpkg (versions figées)
+     * avec un script d'initialisation en ligne. Ces pages n'affichent aucune donnée utilisateur ; le reste du site garde la politique stricte.
+     */
+    private function documentationPolicy(): string
+    {
+        return implode('; ', [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' https://unpkg.com",
+            "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com",
+            "font-src 'self' data: https://fonts.gstatic.com",
+            "img-src 'self' data: https:",
+            "connect-src 'self'",
+            "frame-ancestors 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "object-src 'none'",
+        ]);
     }
 
     private function contentSecurityPolicy(): string

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 /**
@@ -21,11 +22,12 @@ class UpdatePasswordRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var User $user */
-        $user = $this->user();
+        $hasPassword = fn (): bool => $this->user()?->password !== null;
 
         return [
-            'current_password' => $user->password !== null ? ['required', 'string', 'current_password:sanctum'] : ['prohibited'],
+            // Mot de passe actuel : obligatoire pour changer un mot de passe existant, interdit pour le premier.
+            'current_password' => ['nullable', 'string', Rule::requiredIf($hasPassword), Rule::prohibitedIf(fn (): bool => ! $hasPassword()), 'current_password:sanctum'],
+            // Nouveau mot de passe, 10 caractères minimum, à confirmer dans `password_confirmation`.
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
         ];
     }

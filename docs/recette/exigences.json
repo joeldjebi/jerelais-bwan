@@ -252,8 +252,8 @@
         "titre": "Téléversement de fichiers volumineux fractionné et reprenable, avec barre de progression.",
         "priorite": "Indispensable",
         "perimetre": "serveur",
-        "scenario": "Envoyer une vidéo de 300 Mo depuis le navigateur, recharger la page à mi-parcours : reprise avec barre de progression.",
-        "note": ""
+        "scenario": "Envoyer une vidéo de 300 Mo depuis le navigateur, couper le réseau à mi-parcours puis le rétablir et cliquer « Réessayer » : seuls les morceaux manquants repartent, barre de progression comprise.",
+        "note": "Après un rechargement de page, le navigateur ne garde pas le fichier : il faut le choisir de nouveau (reprise automatique après rechargement : piste d’amélioration)."
     },
     {
         "id": "WEB-05",
@@ -524,8 +524,8 @@
         "titre": "Gestion du référentiel géographique : districts, régions, communes, localités, lieux types.",
         "priorite": "Indispensable",
         "perimetre": "serveur",
-        "scenario": "Importer les contours, ouvrir une commune, ajouter une localité et un type de lieu dans Référentiels.",
-        "note": "Districts et régions : par l’import GeoJSON officiel."
+        "scenario": "Créer une région (Référentiels › Régions) et une commune (Communes › Ajouter une commune), renommer une commune, importer les contours, ouvrir une commune, ajouter une localité et un type de lieu.",
+        "note": "Les contours restent importés depuis le fichier officiel (GeoJSON) ; régions, communes, localités et types de lieux se gèrent aussi depuis la console."
     },
     {
         "id": "ADM-21",

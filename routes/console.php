@@ -11,11 +11,15 @@ use App\Domain\Reporting\Exports\ReportExporter;
 use App\Domain\Reporting\Mail\PeriodicReport;
 use App\Domain\Reporting\Support\ReportBuilder;
 use App\Models\User;
+use App\Providers\ApiDocumentationServiceProvider;
 use Aws\S3\Exception\S3Exception;
 use Carbon\CarbonImmutable;
+use Dedoc\Scramble\Generator;
+use Dedoc\Scramble\Scramble;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
@@ -163,7 +167,7 @@ Artisan::command('jerelais:check-production', function () {
         'Clé HMAC des téléphones distincte de APP_KEY' => filled(config('jerelais.phone.hash_key')) && config('jerelais.phone.hash_key') !== config('app.key'),
         'Cookies de session sécurisés' => (bool) config('session.secure'),
         'Session chiffrée' => (bool) config('session.encrypt'),
-        'Passerelle SMS réelle (pas « log »)' => config('jerelais.sms.driver') !== 'log',
+        'Passerelle SMS réelle (ni « log » ni « mailpit »)' => ! in_array(config('jerelais.sms.driver'), ['log', 'mailpit'], true),
         'Antivirus ClamAV' => config('jerelais.antivirus.driver') === 'clamav',
         'Code 2FA de démonstration désactivé' => blank(config('jerelais.demo.two_factor_code')),
         'Stockage Wasabi configuré' => filled(config('filesystems.disks.medias.key')) && filled(config('filesystems.disks.medias.bucket')),
@@ -185,3 +189,29 @@ Artisan::command('jerelais:check-production', function () {
 
     return $failed === 0 ? 0 : 1;
 })->purpose('Vérifie la configuration de production (sécurité, services externes)');
+
+/*
+ * Documentation de l'API mobile à partager hors de l'application : fichier OpenAPI (Swagger) et page Swagger UI
+ * autonome, qui s'ouvre d'un double clic sans serveur. À relancer après chaque changement de l'API.
+ */
+Artisan::command('api:docs', function () {
+    $document = app(Generator::class)(Scramble::getGeneratorConfig(Scramble::DEFAULT_API));
+    $document['servers'] = [['url' => rtrim((string) config('app.url'), '/').'/api/v1', 'description' => 'Serveur configuré (APP_URL)']];
+    $json = (string) json_encode($document, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    File::ensureDirectoryExists(base_path('docs/api'));
+    File::put(base_path('docs/api/openapi.json'), $json."\n");
+    // Le fichier autonome n'a pas de serveur : Swagger UI ne peut pas relire le document pour suivre les références
+    // « $ref ». On y intègre donc une copie où chaque référence interne est remplacée par son contenu.
+    $inline = (string) json_encode(ApiDocumentationServiceProvider::inlineReferences($document, $document), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
+    File::put(base_path('docs/api/swagger.html'), view('docs.swagger-standalone', ['spec' => $inline])->render());
+
+    $operations = 0;
+
+    foreach (is_array($document['paths'] ?? null) ? $document['paths'] : [] as $methods) {
+        foreach (is_array($methods) ? $methods : [] as $operation) {
+            $operations += is_array($operation) && isset($operation['responses']) ? 1 : 0;
+        }
+    }
+    $this->components->info("Documentation exportée : {$operations} opérations → docs/api/openapi.json et docs/api/swagger.html");
+})->purpose('Exporte le Swagger de l’API mobile (OpenAPI JSON et page Swagger UI autonome)');

@@ -3,6 +3,7 @@
 namespace App\Livewire\Console\Communes;
 
 use App\Domain\Access\Enums\Permission;
+use App\Domain\Territoire\Actions\ManageCommune;
 use App\Domain\Territoire\Actions\SetCommuneAvailability;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Region;
@@ -11,6 +12,8 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -39,6 +42,21 @@ class Index extends Component
     public ?string $pendingCommune = null;
 
     public bool $confirmingToggle = false;
+
+    public bool $creating = false;
+
+    public string $newName = '';
+
+    public string $newRegion = '';
+
+    public string $newCode = '';
+
+    #[Locked]
+    public ?string $editing = null;
+
+    public string $editName = '';
+
+    public string $editRegion = '';
 
     public function mount(): void
     {
@@ -76,6 +94,78 @@ class Index extends Component
         $this->dispatch('toast', message: $open
             ? __(':name est ouverte aux Relais.', ['name' => $commune->name])
             : __(':name est fermée aux nouvelles inscriptions.', ['name' => $commune->name]));
+    }
+
+    public function openCreate(): void
+    {
+        $this->reset('newName', 'newRegion', 'newCode');
+        $this->resetValidation();
+        $this->creating = true;
+    }
+
+    public function create(ManageCommune $manage): void
+    {
+        $this->authorizeAccess();
+
+        $this->validate([
+            'newName' => ['required', 'string', 'max:120'],
+            'newRegion' => ['nullable', 'uuid', Rule::exists('regions', 'uuid')],
+            'newCode' => ['nullable', 'string', 'max:20', Rule::unique('communes', 'code')],
+        ], attributes: ['newName' => __('nom'), 'newRegion' => __('région'), 'newCode' => __('code')]);
+
+        $name = trim($this->newName);
+
+        if (Commune::query()->whereRaw('lower(name) = ?', [Str::lower($name)])->exists()) {
+            $this->addError('newName', __('Cette commune existe déjà.'));
+
+            return;
+        }
+
+        $commune = $manage->create($name, $this->regionFor($this->newRegion), trim($this->newCode) ?: null, $this->actor());
+
+        $this->creating = false;
+        unset($this->counts);
+        $this->dispatch('toast', message: __(':name a été créée. Elle reste fermée aux Relais tant que vous ne l’ouvrez pas.', ['name' => $commune->name]));
+    }
+
+    public function startEdit(string $uuid): void
+    {
+        $this->authorizeAccess();
+        $commune = Commune::query()->with('region')->where('uuid', $uuid)->firstOrFail();
+
+        $this->resetValidation();
+        $this->editing = $commune->uuid;
+        $this->editName = $commune->name;
+        $this->editRegion = (string) $commune->region?->uuid;
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->reset('editing', 'editName', 'editRegion');
+    }
+
+    public function saveEdit(ManageCommune $manage): void
+    {
+        $this->authorizeAccess();
+        $commune = Commune::query()->where('uuid', $this->editing)->firstOrFail();
+
+        $this->validate([
+            'editName' => ['required', 'string', 'max:120'],
+            'editRegion' => ['nullable', 'uuid', Rule::exists('regions', 'uuid')],
+        ], attributes: ['editName' => __('nom'), 'editRegion' => __('région')]);
+
+        $name = trim($this->editName);
+
+        if (Commune::query()->whereKeyNot($commune->id)->whereRaw('lower(name) = ?', [Str::lower($name)])->exists()) {
+            $this->addError('editName', __('Cette commune existe déjà.'));
+
+            return;
+        }
+
+        $manage->update($commune, $name, $this->regionFor($this->editRegion), $this->actor());
+
+        $this->cancelEdit();
+        $this->dispatch('toast', message: __('Commune mise à jour.'));
     }
 
     public function resetFilters(): void
@@ -134,6 +224,19 @@ class Index extends Component
     public function render(): View
     {
         return view('livewire.console.communes.index');
+    }
+
+    private function regionFor(string $uuid): ?Region
+    {
+        return Str::isUuid($uuid) ? Region::query()->where('uuid', $uuid)->first() : null;
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        return $user;
     }
 
     private function authorizeAccess(): void

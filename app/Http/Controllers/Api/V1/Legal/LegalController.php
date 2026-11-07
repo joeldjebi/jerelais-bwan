@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Legal\StoreConsentRequest;
 use App\Http\Resources\V1\LegalDocumentResource;
 use App\Models\User;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -18,10 +19,13 @@ use InvalidArgumentException;
 /**
  * Charte, conditions d'utilisation et politique de confidentialité (MOB-04).
  */
+#[Group('Textes juridiques', 'Charte, conditions d’utilisation, politique de confidentialité et acceptations horodatées (MOB-04).', weight: 5)]
 class LegalController extends Controller
 {
     /**
      * Textes en vigueur.
+     *
+     * Charte du Relais, conditions d'utilisation et politique de confidentialité, avec leur version, en Markdown et en HTML.
      *
      * @unauthenticated
      */
@@ -31,7 +35,12 @@ class LegalController extends Controller
     }
 
     /**
-     * Mes acceptations, et si les textes en vigueur sont tous acceptés.
+     * Mes acceptations.
+     *
+     * Historique des versions acceptées. `meta.up_to_date` vaut `false` si une nouvelle version a été publiée depuis :
+     * l'application présente alors les textes (`GET /legal`) et appelle `POST /consents`.
+     *
+     * @response array{data: list<array{type: 'charte'|'conditions'|'confidentialite', version: int, accepted_at: string}>, meta: array{up_to_date: bool}}
      */
     public function consents(Request $request): JsonResponse
     {
