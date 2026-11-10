@@ -52,16 +52,16 @@ function completeRegistration(string $phone = '0707070707', array $overrides = [
         'document_type' => 'cni',
         'recto' => UploadedFile::fake()->image('cni-recto.jpg', 800, 500),
         'verso' => UploadedFile::fake()->create('cni-verso.pdf', 120, 'application/pdf'),
-        'password' => '4826',
-        'password_confirmation' => '4826',
+        'password' => 'MotDePasse2026',
+        'password_confirmation' => 'MotDePasse2026',
         ...$overrides,
     ], fn (mixed $value): bool => $value !== null), ['Accept' => 'application/json']);
 }
 
-function pinLogin(string $pin = '4826', string $phone = '0707070707', string $ip = '127.0.0.1'): TestResponse
+function passwordLogin(string $password = 'MotDePasse2026', string $phone = '0707070707', string $ip = '127.0.0.1'): TestResponse
 {
     return test()->withServerVariables(['REMOTE_ADDR' => $ip])
-        ->postJson(route('api.v1.auth.login'), ['phone' => $phone, 'password' => $pin, ...deviceFields()]);
+        ->postJson(route('api.v1.auth.login'), ['phone' => $phone, 'password' => $password]);
 }
 
 function approveRegistration(string $phone = '0707070707'): User
@@ -72,7 +72,7 @@ function approveRegistration(string $phone = '0707070707'): User
     return $user->refresh();
 }
 
-it('inscrit en trois étapes : numéro, code 1234, identité et code PIN — compte en attente, sans jeton [MOB-01]', function () {
+it('inscrit en trois étapes : numéro, code 1234, identité, pièce et mot de passe — compte en attente, sans jeton [MOB-01]', function () {
     signUp()
         ->assertCreated()
         ->assertJsonPath('data.status', 'pending')
@@ -101,13 +101,13 @@ it('inscrit en trois étapes : numéro, code 1234, identité et code PIN — com
 it('refuse la connexion tant que l’inscription n’est pas validée, puis l’accepte [MOB-01]', function () {
     signUp()->assertCreated();
 
-    pinLogin()
+    passwordLogin()
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['phone' => 'Votre inscription est en attente de validation par l’équipe JE RELAIS. Vous pourrez vous connecter dès qu’elle sera validée.']);
 
     approveRegistration();
 
-    pinLogin()->assertCreated()->assertJsonPath('data.pin_required', false);
+    passwordLogin()->assertCreated()->assertJsonPath('data.password_required', false);
 });
 
 it('refuse aussi la connexion par code SMS d’une inscription en attente', function () {
@@ -119,7 +119,7 @@ it('refuse aussi la connexion par code SMS d’une inscription en attente', func
         ->assertJsonValidationErrors(['code']);
 });
 
-it('exige toutes les informations d’identité et un code PIN de 4 chiffres confirmé', function (array $overrides, string $field) {
+it('exige toutes les informations d’identité et un mot de passe d’au moins 8 caractères confirmé', function (array $overrides, string $field) {
     signUp(overrides: $overrides)->assertUnprocessable()->assertJsonValidationErrors([$field]);
 
     expect(User::query()->count())->toBe(0);
@@ -128,9 +128,9 @@ it('exige toutes les informations d’identité et un code PIN de 4 chiffres con
     'prénoms manquants' => [['first_names' => ''], 'first_names'],
     'sexe inconnu' => [['gender' => 'x'], 'gender'],
     'date de naissance mal formée' => [['birth_date' => '17/04/2001'], 'birth_date'],
-    'PIN trop court' => [['password' => '123', 'password_confirmation' => '123'], 'password'],
-    'PIN avec lettres' => [['password' => '12a4', 'password_confirmation' => '12a4'], 'password'],
-    'confirmation différente' => [['password_confirmation' => '4827'], 'password'],
+    'mot de passe de 7 caractères' => [['password' => 'Secret7', 'password_confirmation' => 'Secret7'], 'password'],
+    'mot de passe manquant' => [['password' => null], 'password'],
+    'confirmation différente' => [['password_confirmation' => 'AutreChose2026'], 'password'],
     'type de pièce manquant' => [['document_type' => null], 'document_type'],
     'type de pièce inconnu' => [['document_type' => 'carte_vitale'], 'document_type'],
     'verso de la CNI manquant' => [['verso' => null], 'verso'],
@@ -178,7 +178,7 @@ it('refuse l’inscription d’un numéro qui a déjà un compte, sans envoyer d
 
     $this->postJson(route('api.v1.auth.register.request'), ['phone' => '07 07 07 07 07'])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['phone' => 'Ce numéro a déjà un compte. Connectez-vous avec votre code PIN.']);
+        ->assertJsonValidationErrors(['phone' => 'Ce numéro a déjà un compte. Connectez-vous avec votre mot de passe.']);
 
     $this->postJson(route('api.v1.auth.register.verify'), ['phone' => '0707070707', 'code' => '1234'])
         ->assertUnprocessable()
@@ -187,24 +187,24 @@ it('refuse l’inscription d’un numéro qui a déjà un compte, sans envoyer d
     expect($this->sms->sent)->toBe([])->and(User::query()->count())->toBe(1);
 });
 
-it('bloque le numéro après 5 codes PIN erronés, même depuis des adresses IP différentes [§10 Sécurité]', function () {
+it('bloque le numéro après 5 mots de passe erronés, même depuis des adresses IP différentes [§10 Sécurité]', function () {
     signUp()->assertCreated();
     approveRegistration();
 
     foreach (range(1, 5) as $attempt) {
-        pinLogin('0000', ip: "10.0.0.{$attempt}")->assertUnprocessable();
+        passwordLogin('mauvais-mot-de-passe', ip: "10.0.0.{$attempt}")->assertUnprocessable();
     }
 
-    pinLogin(ip: '10.0.0.99')
+    passwordLogin(ip: '10.0.0.99')
         ->assertTooManyRequests()
-        ->assertJsonPath('message', 'Trop de codes PIN erronés. Réessayez dans 15 minutes ou redéfinissez votre code PIN par SMS.');
+        ->assertJsonPath('message', 'Trop de mots de passe erronés. Réessayez dans 15 minutes ou redéfinissez votre mot de passe par SMS.');
 
     $this->travel(16)->minutes();
 
-    pinLogin(ip: '10.0.0.100')->assertCreated();
-})->after(fn () => RateLimiter::clear('pin-failures:'.PhoneNumber::parse('0707070707')->hash()));
+    passwordLogin(ip: '10.0.0.100')->assertCreated();
+})->after(fn () => RateLimiter::clear('password-failures:'.PhoneNumber::parse('0707070707')->hash()));
 
-it('redéfinit un code PIN oublié après une connexion par code SMS, sans l’ancien, pendant 15 minutes seulement [MOB-01]', function () {
+it('redéfinit un mot de passe oublié après une connexion par code SMS, sans l’ancien, pendant 15 minutes seulement [MOB-01]', function () {
     signUp()->assertCreated();
     approveRegistration();
 
@@ -217,26 +217,26 @@ it('redéfinit un code PIN oublié après une connexion par code SMS, sans l’a
     };
 
     $token = $smsLogin();
-    $this->withToken($token)->putJson(route('api.v1.me.password'), ['password' => '7351', 'password_confirmation' => '7351'])->assertNoContent();
-    pinLogin('7351')->assertCreated();
+    $this->withToken($token)->putJson(route('api.v1.me.password'), ['password' => 'NouveauSecret!8', 'password_confirmation' => 'NouveauSecret!8'])->assertNoContent();
+    passwordLogin('NouveauSecret!8')->assertCreated();
 
     $token = $smsLogin();
     $this->travel(16)->minutes();
-    $this->withToken($token)->putJson(route('api.v1.me.password'), ['password' => '1593', 'password_confirmation' => '1593'])
+    $this->withToken($token)->putJson(route('api.v1.me.password'), ['password' => 'EncoreUnAutre9', 'password_confirmation' => 'EncoreUnAutre9'])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['current_password']);
 });
 
-it('ferme l’API à un compte sans code PIN (créé sur le site) tant qu’il ne l’a pas défini', function () {
+it('ferme l’API à un compte sans mot de passe (créé sur le site) tant qu’il ne l’a pas défini', function () {
     $user = User::factory()->withRole(Role::Candidat)->create(['password' => null]);
     $token = app(IssueDeviceToken::class)->handle($user, new DeviceInfo('Itel A70', DevicePlatform::Android), 'otp')->plainTextToken;
 
     $this->withToken($token)->getJson(route('api.v1.consents.index'))
         ->assertForbidden()
-        ->assertJsonPath('code', 'pin_required');
+        ->assertJsonPath('code', 'password_required');
 
     $this->withToken($token)->getJson(route('api.v1.me.show'))->assertOk();
-    $this->withToken($token)->putJson(route('api.v1.me.password'), ['password' => '4826', 'password_confirmation' => '4826'])->assertNoContent();
+    $this->withToken($token)->putJson(route('api.v1.me.password'), ['password' => 'MotDePasse2026', 'password_confirmation' => 'MotDePasse2026'])->assertNoContent();
     $this->withToken($token)->getJson(route('api.v1.consents.index'))->assertOk();
 });
 
@@ -287,12 +287,12 @@ it('réserve la page des inscriptions à l’administration', function () {
     $this->actingAs($coordinator)->get(route('console.registrations'))->assertForbidden();
 });
 
-it('connecte avec seulement le numéro et le code PIN, sans décrire l’appareil', function () {
+it('connecte avec seulement le numéro et le mot de passe, sans décrire l’appareil', function () {
     signUp()->assertCreated();
     approveRegistration();
 
     $this->withHeader('User-Agent', 'JeRelais/1.0 (iPhone; iOS 18.1)')
-        ->postJson(route('api.v1.auth.login'), ['phone' => '0707070707', 'password' => '4826'])
+        ->postJson(route('api.v1.auth.login'), ['phone' => '0707070707', 'password' => 'MotDePasse2026'])
         ->assertCreated()
         ->assertJsonPath('data.device.name', 'Appareil mobile')
         ->assertJsonPath('data.device.platform', 'ios');

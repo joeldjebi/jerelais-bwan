@@ -16,13 +16,13 @@ use Illuminate\Validation\ValidationException;
 /**
  * Connexion par code SMS (MOB-01).
  */
-#[Group('Authentification', 'Inscription par numéro et code SMS, code PIN obligatoire, connexion par code PIN, jeton par appareil, déconnexion.', weight: 1)]
+#[Group('Authentification', 'Inscription par numéro et code SMS, connexion par numéro et mot de passe, mot de passe oublié, jeton par appareil, déconnexion.', weight: 1)]
 class OtpController extends Controller
 {
     /**
-     * Code PIN oublié : demander un code de connexion.
+     * Mot de passe oublié : demander un code de connexion.
      *
-     * Pour un compte existant (code PIN oublié, nouvel appareil). Envoie par SMS un code à 4 chiffres, valable 5 minutes ;
+     * Pour un compte existant (mot de passe oublié, nouvel appareil). Envoie par SMS un code à 4 chiffres, valable 5 minutes ;
      * chaque nouvelle demande annule le code précédent. Tant qu'aucun fournisseur de SMS n'est branché, le code est `1234`.
      * L'inscription passe par `POST /auth/register`. La réponse est identique que le numéro soit inscrit ou non.
      * Numéro ivoirien à 10 chiffres (`0700000001`) ou format international (`+2250700000001`).
@@ -40,10 +40,10 @@ class OtpController extends Controller
     }
 
     /**
-     * Code PIN oublié : valider le code et obtenir un jeton.
+     * Mot de passe oublié : valider le code et obtenir un jeton.
      *
      * Renvoie le jeton Sanctum de cet appareil, valable 60 jours (`expires_at`), à envoyer ensuite dans `Authorization: Bearer <jeton>`.
-     * Pendant 15 minutes, ce jeton peut redéfinir le code PIN avec `PUT /me/password` **sans** l'ancien (`current_password`).
+     * Pendant 15 minutes, ce jeton peut redéfinir le mot de passe avec `PUT /me/password` **sans** l'ancien (`current_password`).
      * Un numéro sans compte est refusé (422 sur `code`) : l'application propose l'inscription.
      *
      * Erreurs 422 sur `code` : code faux ou expiré ; après 5 essais le code est annulé et il faut en redemander un.

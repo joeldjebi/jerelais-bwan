@@ -23,7 +23,7 @@ class IssuedTokenResource extends JsonResource
             'token_type' => 'Bearer',
             'expires_at' => now()->addMinutes((int) config('sanctum.expiration'))->toIso8601ZuluString(),
             'is_new_user' => $this->resource->isNewUser,
-            'pin_required' => $this->resource->user->password === null,
+            'password_required' => $this->resource->user->password === null,
             'device' => new DeviceResource($this->resource->device),
             'user' => new UserResource($this->resource->user),
         ];

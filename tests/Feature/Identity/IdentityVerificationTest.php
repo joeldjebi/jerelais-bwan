@@ -39,7 +39,7 @@ function approvedAppRegistrant(string $phone = '0707070707'): User
     test()->post(route('api.v1.auth.register.complete'), [
         'phone' => $phone, 'last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme', 'birth_date' => '2001-04-17',
         'document_type' => 'cni', 'recto' => UploadedFile::fake()->image('recto.jpg'), 'verso' => UploadedFile::fake()->image('verso.jpg'),
-        'password' => '4826', 'password_confirmation' => '4826',
+        'password' => 'MotDePasse2026', 'password_confirmation' => 'MotDePasse2026',
     ], ['Accept' => 'application/json'])->assertCreated();
 
     $user = User::findByPhone(PhoneNumber::parse($phone));

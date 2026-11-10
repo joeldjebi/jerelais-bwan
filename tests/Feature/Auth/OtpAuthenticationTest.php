@@ -98,7 +98,7 @@ it('vérifie le code d’inscription sans encore créer de compte [MOB-01]', fun
         ->and(Device::query()->count())->toBe(0);
 });
 
-it('reconnecte un compte existant par code SMS sans le dupliquer (PIN oublié)', function () {
+it('reconnecte un compte existant par code SMS sans le dupliquer (mot de passe oublié)', function () {
     existingAccount();
 
     requestOtp();

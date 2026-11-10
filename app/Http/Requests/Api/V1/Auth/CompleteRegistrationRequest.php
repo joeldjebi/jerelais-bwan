@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Api\V1\Auth;
 
-use App\Domain\Auth\Support\PinPolicy;
+use App\Domain\Auth\Support\PasswordPolicy;
 use App\Domain\Candidature\Enums\CandidatureStep;
 use App\Domain\Candidature\Support\StepRules;
 use App\Domain\Identity\Enums\IdentityDocumentType;
@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Inscription, dernière étape (multipart) : numéro vérifié, identité (règles de l'étape « identité » de la candidature,
- * ici obligatoires), type de pièce et ses faces (recto et verso, ou une page ; image ou PDF), code PIN confirmé.
+ * ici obligatoires), type de pièce et ses faces (recto et verso, ou une page ; image ou PDF), mot de passe confirmé.
  */
 class CompleteRegistrationRequest extends FormRequest
 {
@@ -51,7 +51,7 @@ class CompleteRegistrationRequest extends FormRequest
             'recto' => $file(IdentityFileKind::Recto),
             'verso' => $file(IdentityFileKind::Verso),
             'page' => $file(IdentityFileKind::Page),
-            'password' => ['required', 'string', 'digits:'.PinPolicy::length(), 'confirmed'],
+            'password' => PasswordPolicy::rules(),
         ];
     }
 
@@ -60,10 +60,7 @@ class CompleteRegistrationRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
-            'password.digits' => __('auth.pin_format', ['length' => PinPolicy::length()]),
-            'password.confirmed' => __('auth.pin_confirmation'),
-        ];
+        return PasswordPolicy::messages();
     }
 
     /**
@@ -80,7 +77,7 @@ class CompleteRegistrationRequest extends FormRequest
             'recto' => __('recto de la pièce'),
             'verso' => __('verso de la pièce'),
             'page' => __('page de la pièce'),
-            'password' => __('code PIN'),
+            'password' => __('mot de passe'),
         ];
     }
 
