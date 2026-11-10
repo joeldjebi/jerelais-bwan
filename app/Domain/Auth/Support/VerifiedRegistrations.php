@@ -6,7 +6,7 @@ use App\Domain\Auth\Data\PhoneNumber;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Numéros vérifiés par code SMS pendant l'inscription (MOB-01), le temps de saisir l'identité, la pièce et le PIN.
+ * Numéros vérifiés par code SMS pendant l'inscription (MOB-01), le temps de saisir l'identité, la pièce et le mot de passe.
  * Valable 30 minutes, à usage unique : l'inscription consomme la vérification.
  */
 class VerifiedRegistrations

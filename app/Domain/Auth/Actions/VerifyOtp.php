@@ -8,7 +8,7 @@ use App\Domain\Auth\Data\PhoneNumber;
 
 /**
  * Connexion de l'application par code SMS (MOB-01) : vérifie le code puis crée le jeton de l'appareil.
- * Réservée aux comptes existants (code PIN oublié, nouvel appareil) : l'inscription passe par RegisterWithPhone.
+ * Réservée aux comptes existants (mot de passe oublié, nouvel appareil) : l'inscription passe par CompleteRegistration.
  */
 class VerifyOtp
 {

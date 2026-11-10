@@ -53,8 +53,8 @@ Route::name('api.v1.')->group(function () {
         Route::put('me/password', [MeController::class, 'updatePassword'])->name('me.password');
         Route::put('devices/current', [MeController::class, 'updateDevice'])->name('devices.current');
 
-        // Code PIN obligatoire : tout le reste répond 403 « pin_required » tant qu'il n'est pas défini.
-        Route::middleware('pin')->group(function () {
+        // Mot de passe obligatoire : tout le reste répond 403 « password_required » tant qu'il n'est pas défini.
+        Route::middleware('password.set')->group(function () {
             Route::get('me/stats', [MeController::class, 'stats'])->name('me.stats');
             Route::get('me/badge', [MeController::class, 'badge'])->name('me.badge');
             Route::get('me/export', [MeController::class, 'export'])->middleware('throttle:5,60')->name('me.export');

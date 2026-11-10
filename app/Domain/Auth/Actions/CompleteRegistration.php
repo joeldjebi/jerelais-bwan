@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Inscription depuis l'application, dernière étape (MOB-01) : identité, pièce d'identité et code PIN.
+ * Inscription depuis l'application, dernière étape (MOB-01) : identité, pièce d'identité et mot de passe.
  * Le numéro doit avoir été vérifié par code SMS dans les 30 dernières minutes (VerifyRegistrationCode).
  * Crée le compte « candidat » au statut « en attente » (aucune connexion avant validation par l'équipe),
  * pré-remplit la candidature et ouvre la vérification d'identité avec le type de pièce et ses faces.

@@ -8,14 +8,14 @@ use App\Domain\Auth\Data\IssuedToken;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Enums\UserStatus;
 use App\Domain\Auth\Exceptions\AuthenticationRefused;
-use App\Domain\Auth\Support\PinPolicy;
+use App\Domain\Auth\Support\PasswordPolicy;
 use App\Models\User;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Connexion de l'application par numéro et code PIN (MOB-01).
- * Après 5 PIN erronés sur un numéro, quelle que soit l'adresse IP, le numéro est bloqué 15 minutes.
+ * Connexion de l'application par numéro et mot de passe (MOB-01).
+ * Après 5 mots de passe erronés sur un numéro, quelle que soit l'adresse IP, le numéro est bloqué 15 minutes.
  */
 class LoginWithPassword
 {
@@ -25,24 +25,24 @@ class LoginWithPassword
     ) {}
 
     /**
-     * @throws ThrottleRequestsException numéro bloqué après trop de PIN erronés
+     * @throws ThrottleRequestsException numéro bloqué après trop de mots de passe erronés
      */
     public function handle(PhoneNumber $phone, string $password, DeviceInfo $device): IssuedToken
     {
-        if (PinPolicy::isLocked($phone)) {
-            throw new ThrottleRequestsException(__('auth.pin_locked', ['minutes' => PinPolicy::lockMinutes()]));
+        if (PasswordPolicy::isLocked($phone)) {
+            throw new ThrottleRequestsException(__('auth.password_locked', ['minutes' => PasswordPolicy::lockMinutes()]));
         }
 
         $user = User::findByPhone($phone);
 
         if ($user === null || $user->password === null || ! Hash::check($password, $user->password)) {
-            PinPolicy::recordFailure($phone);
+            PasswordPolicy::recordFailure($phone);
             $this->audit->record('auth.login.failed', payload: ['method' => 'password', 'phone_ref' => substr($phone->hash(), 0, 12)]);
 
             throw AuthenticationRefused::invalidCredentials();
         }
 
-        PinPolicy::clearFailures($phone);
+        PasswordPolicy::clearFailures($phone);
 
         if ($user->status === UserStatus::Pending) {
             throw AuthenticationRefused::accountPending();

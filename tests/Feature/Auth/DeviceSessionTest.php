@@ -58,16 +58,16 @@ it('enregistre le jeton de notifications push de l’appareil courant [MOB-21]',
 });
 
 it('connecte par mot de passe un Relais qui en a défini un [MOB-01]', function () {
-    $user = User::factory()->withRole(Role::Relais)->create(['password' => '4826']);
+    $user = User::factory()->withRole(Role::Relais)->create(['password' => 'MotDePasse2026']);
     $user->setPhoneNumber(PhoneNumber::parse('0505050505'))->save();
 
-    $this->postJson(route('api.v1.auth.login'), ['phone' => '05 05 05 05 05', 'password' => '4826', ...deviceFields()])
+    $this->postJson(route('api.v1.auth.login'), ['phone' => '05 05 05 05 05', 'password' => 'MotDePasse2026', ...deviceFields()])
         ->assertCreated()
         ->assertJsonStructure(['data' => ['token', 'device' => ['uuid'], 'user' => ['uuid']]]);
 });
 
 it('refuse un mauvais mot de passe avec un message générique', function () {
-    $user = User::factory()->create(['password' => '4826']);
+    $user = User::factory()->create(['password' => 'MotDePasse2026']);
     $user->setPhoneNumber(PhoneNumber::parse('0505050505'))->save();
 
     $this->postJson(route('api.v1.auth.login'), ['phone' => '0505050505', 'password' => 'mauvais', ...deviceFields()])
@@ -87,20 +87,20 @@ it('limite les tentatives de connexion par mot de passe [§10 Sécurité]', func
     $this->postJson(route('api.v1.auth.login'), ['phone' => '0505050505', 'password' => 'x', ...deviceFields()])->assertTooManyRequests();
 });
 
-it('permet de définir puis changer son code PIN', function () {
+it('permet de définir puis changer son mot de passe', function () {
     $issued = issueTokenFor(User::factory()->withRole(Role::Relais)->create(['password' => null]));
 
     $this->withToken($issued->plainTextToken)
-        ->putJson(route('api.v1.me.password'), ['password' => '4826', 'password_confirmation' => '4826'])
+        ->putJson(route('api.v1.me.password'), ['password' => 'MotDePasse2026', 'password_confirmation' => 'MotDePasse2026'])
         ->assertNoContent();
 
     $this->withToken($issued->plainTextToken)
-        ->putJson(route('api.v1.me.password'), ['password' => '7351', 'password_confirmation' => '7351'])
+        ->putJson(route('api.v1.me.password'), ['password' => 'NouveauSecret!8', 'password_confirmation' => 'NouveauSecret!8'])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['current_password']);
 
     $this->withToken($issued->plainTextToken)
-        ->putJson(route('api.v1.me.password'), ['current_password' => '4826', 'password' => '7351', 'password_confirmation' => '7351'])
+        ->putJson(route('api.v1.me.password'), ['current_password' => 'MotDePasse2026', 'password' => 'NouveauSecret!8', 'password_confirmation' => 'NouveauSecret!8'])
         ->assertNoContent();
 });
 

@@ -103,12 +103,12 @@ class MeController extends Controller
     }
 
     /**
-     * Définir ou changer mon code PIN.
+     * Définir ou changer mon mot de passe.
      *
-     * Code PIN de 4 chiffres dans `password`, répété dans `password_confirmation`. **Obligatoire après l'inscription** :
-     * tant qu'il n'est pas défini, les autres routes protégées répondent 403 avec `code: "pin_required"`.
-     * Pour le changer ensuite, `current_password` (l'ancien PIN) est obligatoire, sauf dans les 15 minutes qui suivent
-     * une connexion par code SMS (`POST /auth/verify`, PIN oublié). `has_password` dans `GET /me` indique si un PIN existe.
+     * Mot de passe d'au moins 8 caractères dans `password`, répété dans `password_confirmation`. Un compte sans mot de passe
+     * (créé sur le site web) doit le définir : en attendant, les autres routes protégées répondent 403 avec `code: "password_required"`.
+     * Pour le changer, `current_password` (l'ancien) est obligatoire, sauf dans les 15 minutes qui suivent une connexion
+     * par code SMS (`POST /auth/verify`, mot de passe oublié). `has_password` dans `GET /me` indique s'il en existe un.
      */
     public function updatePassword(UpdatePasswordRequest $request, AuditLogger $audit): Response
     {
