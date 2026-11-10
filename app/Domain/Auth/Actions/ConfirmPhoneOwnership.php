@@ -26,6 +26,41 @@ class ConfirmPhoneOwnership
      */
     public function handle(PhoneNumber $phone, string $code, bool $createAccount = true): User
     {
+        $this->consumeCode($phone, $code);
+
+        return DB::transaction(function () use ($phone, $createAccount): User {
+            $user = User::findByPhone($phone);
+
+            if ($user === null && ! $createAccount) {
+                throw AuthenticationRefused::unknownAccount();
+            }
+
+            if ($user === null) {
+                $user = (new User(['status' => UserStatus::Active]))->setPhoneNumber($phone);
+                $user->save();
+                $user->assignRole(Role::Candidat->value);
+                $this->audit->record('auth.account.created', $user, actor: $user);
+            }
+
+            if ($user->status === UserStatus::Pending) {
+                throw AuthenticationRefused::accountPending();
+            }
+
+            if (! $user->status->canSignIn()) {
+                throw AuthenticationRefused::accountDisabled();
+            }
+
+            return $user;
+        });
+    }
+
+    /**
+     * Vérifie et consomme le code, sans toucher au compte (inscription de l'application : le compte est créé plus tard).
+     *
+     * @throws AuthenticationRefused code faux, expiré ou bloqué après 5 essais
+     */
+    public function consumeCode(PhoneNumber $phone, string $code): void
+    {
         $phoneHash = $phone->hash();
 
         $outcome = DB::transaction(function () use ($phoneHash, $code): string {
@@ -58,26 +93,5 @@ class ConfirmPhoneOwnership
         if ($outcome !== 'valid') {
             throw AuthenticationRefused::invalidCode();
         }
-
-        return DB::transaction(function () use ($phone, $createAccount): User {
-            $user = User::findByPhone($phone);
-
-            if ($user === null && ! $createAccount) {
-                throw AuthenticationRefused::unknownAccount();
-            }
-
-            if ($user === null) {
-                $user = (new User(['status' => UserStatus::Active]))->setPhoneNumber($phone);
-                $user->save();
-                $user->assignRole(Role::Candidat->value);
-                $this->audit->record('auth.account.created', $user, actor: $user);
-            }
-
-            if (! $user->status->canSignIn()) {
-                throw AuthenticationRefused::accountDisabled();
-            }
-
-            return $user;
-        });
     }
 }

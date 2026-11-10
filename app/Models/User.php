@@ -8,6 +8,8 @@ use App\Domain\Auth\Enums\UserStatus;
 use App\Domain\Auth\Models\Device;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Formation\Models\QuizAttempt;
+use App\Domain\Identity\Enums\IdentityStatus;
+use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Legal\Models\Consent;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Territoire\Models\Commune;
@@ -127,6 +129,21 @@ class User extends Authenticatable
     public function relaisProfile(): HasOne
     {
         return $this->hasOne(RelaisProfile::class);
+    }
+
+    /**
+     * Vérification d'identité (inscription depuis l'application) : condition d'éligibilité aux gains.
+     *
+     * @return HasOne<IdentityVerification, $this>
+     */
+    public function identityVerification(): HasOne
+    {
+        return $this->hasOne(IdentityVerification::class);
+    }
+
+    public function isEligibleForGains(): bool
+    {
+        return $this->identityVerification()->where('status', IdentityStatus::Verified->value)->exists();
     }
 
     /**

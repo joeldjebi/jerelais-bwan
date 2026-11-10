@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Auth\RegistrationController;
 use App\Http\Controllers\Api\V1\Candidature\CandidatureController;
 use App\Http\Controllers\Api\V1\DiffusionController;
 use App\Http\Controllers\Api\V1\Formation\FormationController;
+use App\Http\Controllers\Api\V1\Identity\IdentityController;
 use App\Http\Controllers\Api\V1\Legal\LegalController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\Messagerie\ConversationController;
@@ -30,6 +31,7 @@ Route::name('api.v1.')->group(function () {
         Route::post('login', PasswordLoginController::class)->middleware('throttle:password-login')->name('login');
         Route::post('register', [RegistrationController::class, 'request'])->middleware('throttle:otp-request')->name('register.request');
         Route::post('register/verify', [RegistrationController::class, 'verify'])->middleware('throttle:otp-verify')->name('register.verify');
+        Route::post('register/complete', [RegistrationController::class, 'complete'])->middleware('throttle:otp-verify')->name('register.complete');
     });
 
     // Référentiels publics : mis en cache 5 minutes par l'application et les proxys (ETag pour revalider).
@@ -56,6 +58,12 @@ Route::name('api.v1.')->group(function () {
             Route::get('me/badge', [MeController::class, 'badge'])->name('me.badge');
             Route::get('me/export', [MeController::class, 'export'])->middleware('throttle:5,60')->name('me.export');
             Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
+
+            Route::get('identity', [IdentityController::class, 'show'])->name('identity.show');
+            Route::put('identity', [IdentityController::class, 'update'])->name('identity.update');
+            Route::post('identity/files', [IdentityController::class, 'storeFile'])->middleware('throttle:30,1')->name('identity.files.store');
+            Route::delete('identity/files/{kind}', [IdentityController::class, 'destroyFile'])->name('identity.files.destroy');
+            Route::post('identity/submit', [IdentityController::class, 'submit'])->name('identity.submit');
 
             Route::get('consents', [LegalController::class, 'consents'])->name('consents.index');
             Route::post('consents', [LegalController::class, 'accept'])->name('consents.store');
