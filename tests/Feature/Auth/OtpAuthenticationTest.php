@@ -33,7 +33,7 @@ function registerPhone(string $phone = '07 07 07 07 07'): TestResponse
 
 function confirmRegistration(?string $code, string $phone = '07 07 07 07 07'): TestResponse
 {
-    return test()->postJson(route('api.v1.auth.register.verify'), ['phone' => $phone, 'code' => $code, ...deviceFields()]);
+    return test()->postJson(route('api.v1.auth.register.verify'), ['phone' => $phone, 'code' => $code]);
 }
 
 function existingAccount(string $phone = '0707070707'): User
@@ -85,29 +85,17 @@ it('limite les envois par adresse IP, quel que soit le numéro [§10 Sécurité]
     requestOtp('0708080808')->assertTooManyRequests();
 });
 
-it('crée le compte candidat et un jeton d’appareil à l’inscription [MOB-01]', function () {
+it('vérifie le code d’inscription sans encore créer de compte [MOB-01]', function () {
     registerPhone()->assertAccepted();
 
-    $response = confirmRegistration($this->sms->lastCodeFor('+2250707070707'))
-        ->assertCreated()
-        ->assertJsonPath('data.token_type', 'Bearer')
-        ->assertJsonPath('data.is_new_user', true)
-        ->assertJsonPath('data.pin_required', true)
-        ->assertJsonPath('data.device.platform', 'android')
-        ->assertJsonPath('data.user.roles', [Role::Candidat->value])
-        ->assertJsonMissingPath('data.user.phone')
-        ->assertJsonMissingPath('data.user.phone_hash');
-
-    $user = User::findByPhone($this->phone);
-
-    expect($user)->not->toBeNull()
-        ->and($user->phone)->toBe('+2250707070707')
-        ->and($user->getRawOriginal('phone'))->not->toContain('0707070707')
-        ->and(Device::query()->where('user_id', $user->id)->count())->toBe(1);
-
-    $this->withToken($response->json('data.token'))->getJson(route('api.v1.me.show'))
+    confirmRegistration($this->sms->lastCodeFor('+2250707070707'))
         ->assertOk()
-        ->assertJsonPath('data.uuid', $user->uuid);
+        ->assertJsonPath('data.expires_in_seconds', 1800)
+        ->assertJsonStructure(['message', 'data' => ['registration_token']])
+        ->assertJsonMissingPath('data.token');
+
+    expect(User::query()->count())->toBe(0)
+        ->and(Device::query()->count())->toBe(0);
 });
 
 it('reconnecte un compte existant par code SMS sans le dupliquer (PIN oublié)', function () {
@@ -174,14 +162,15 @@ it('refuse la connexion d’un compte suspendu', function () {
 });
 
 it('trace les demandes et connexions dans l’audit sans jamais y écrire le code [ADM-25]', function () {
-    registerPhone();
+    existingAccount();
+    requestOtp();
     $code = $this->sms->lastCodeFor('+2250707070707');
-    confirmRegistration($code)->assertCreated();
+    verifyOtp($code)->assertCreated();
 
     $actions = AuditLog::query()->orderBy('id')->pluck('action')->all();
     $serialized = AuditLog::query()->get()->toJson();
 
-    expect($actions)->toContain('auth.otp.requested', 'auth.account.created', 'auth.login')
+    expect($actions)->toContain('auth.otp.requested', 'auth.login')
         ->and($serialized)->not->toContain($code)
         ->and($serialized)->not->toContain('0707070707');
 });
@@ -201,8 +190,8 @@ it('accepte le code fixe transitoire sans envoyer de SMS (en attendant un fourni
     expect($this->sms->sent)->toBe([]);
 
     confirmRegistration('1234')
-        ->assertCreated()
-        ->assertJsonPath('data.is_new_user', true);
+        ->assertOk()
+        ->assertJsonStructure(['data' => ['registration_token']]);
 
     $this->assertDatabaseHas('audit_logs', ['action' => 'auth.otp.requested']);
     expect(AuditLog::query()->where('action', 'auth.otp.requested')->latest('id')->first()->payload['fixed_code'])->toBeTrue();

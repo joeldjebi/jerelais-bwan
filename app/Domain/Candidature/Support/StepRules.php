@@ -80,7 +80,8 @@ class StepRules
     private function ageRule(): Closure
     {
         return function (string $attribute, mixed $value, Closure $fail): void {
-            $birthDate = is_string($value) ? CarbonImmutable::createFromFormat('Y-m-d', $value) : null;
+            // Une date mal formée est déjà refusée par « date_format » : ne pas la relire ici (exception de Carbon).
+            $birthDate = is_string($value) && CarbonImmutable::canBeCreatedFromFormat($value, 'Y-m-d') ? CarbonImmutable::createFromFormat('Y-m-d', $value) : null;
 
             if ($birthDate instanceof CarbonImmutable && ! $this->age->isEligible($birthDate)) {
                 $fail($this->age->refusalMessage());

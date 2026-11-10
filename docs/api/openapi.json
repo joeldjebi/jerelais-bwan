@@ -3,7 +3,7 @@
     "info": {
         "title": "JE RELAIS — API v1",
         "version": "0.1.0",
-        "description": "API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV. Elle est consommée par l’application mobile Android et iOS. Toutes les règles métier vivent côté serveur : l’application affiche et envoie, le serveur contrôle.\n\n## Conventions\n\n| Sujet | Règle |\n|---|---|\n| Adresse | `https://<domaine>/api/v1`. Un changement incompatible donnera `/api/v2` ; la v1 reste servie pendant la transition. |\n| Format | JSON, champs en `snake_case`, dates ISO 8601 en UTC (`2026-10-21T07:40:00Z`), identifiants UUID. |\n| En-têtes | `Accept: application/json` sur **toutes** les requêtes (sinon les erreurs reviennent en HTML). `Content-Type: application/json`, sauf l’envoi des pièces de candidature (`multipart/form-data`). |\n| Langue | Messages d’erreur et libellés en français, prêts à afficher. |\n| Enveloppe | Les ressources sont dans `data`, les informations annexes dans `meta`. |\n| Pagination | `GET /relais` et `GET /diffusions` renvoient 20 éléments par page : `data`, `links` (`first`, `last`, `prev`, `next`) et `meta` (`current_page`, `last_page`, `per_page`, `total`…). Page suivante : `?page=2`. |\n\n## Authentification\n\nUn compte est identifié par son **numéro de téléphone** et protégé par un **code PIN de 4 chiffres**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes SMS font **4 chiffres** et sont valables 5 minutes. **Phase de lancement :** tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et le code est toujours `1234`.\n\n**Inscription** (numéro seul) :\n\n1. `POST /auth/register` avec le numéro : envoie le code. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.\n2. `POST /auth/register/verify` avec le numéro, le code et la description de l’appareil : crée le compte **candidat** et renvoie le jeton, avec `is_new_user: true` et `pin_required: true`.\n3. `PUT /me/password` avec `password` et `password_confirmation` (4 chiffres) : définit le code PIN. **Étape obligatoire** : tant qu’elle n’est pas faite, les autres routes protégées répondent **403** avec `{\"code\": \"pin_required\"}`.\n\n**Connexion** : `POST /auth/login` avec le numéro et le code PIN dans `password`. Après 5 PIN erronés sur un même numéro, il est bloqué 15 minutes (**429**).\n\n**Code PIN oublié** : `POST /auth/otp`, puis `POST /auth/verify` (numéro, code, appareil) renvoie un jeton ; pendant 15 minutes, ce jeton peut redéfinir le PIN avec `PUT /me/password` **sans** `current_password`. Un numéro sans compte est refusé : proposer l’inscription.\n\nEnsuite :\n\n- Envoyer `Authorization: Bearer <jeton>` sur chaque requête protégée (bouton **Authorize** ci-dessus pour essayer).\n- `PUT /devices/current` après chaque connexion ou mise à jour de l’application : jeton de notifications push (FCM) et version installée.\n- `POST /auth/logout` détruit le jeton de l’appareil.\n\nLe jeton est valable **60 jours** (date dans `expires_at`), puis une nouvelle connexion par code PIN est nécessaire. Il devient invalide plus tôt (réponse **401**) après une déconnexion, une révocation à distance, une radiation du Relais ou la suppression du compte : l’application doit alors revenir à l’écran de connexion.\n\nLes comptes de l’équipe (coordonnateurs, rédaction, administration) n’ont pas accès à l’API : ils passent par la console web, avec double authentification.\n\nNuméros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00 01`) ou format international (`+2250700000001`).\n\n## Parcours d’un candidat\n\n1. Inscription (`POST /auth/register`, puis `POST /auth/register/verify`) : le compte est créé avec le rôle candidat ; puis code PIN obligatoire (`PUT /me/password`).\n2. Lecture des listes du formulaire : `GET /candidature/options`, `GET /communes`, `GET /communes/{commune}/localites`.\n3. Remplissage en trois étapes, enregistrées à chaque modification : `PUT /candidature/steps/identite`, `…/territoire`, `…/profil`.\n4. Pièces : `POST /candidature/documents` (photo de profil, recto, verso, selfie ; autorisation parentale si mineur admis).\n5. Textes juridiques : `GET /legal`, puis `POST /consents` avec les `uuid` des versions en vigueur.\n6. Formation et quiz : `GET /formation`, `GET /quiz`, `POST /quiz/attempts`.\n7. Dépôt : `POST /candidature/submit`. Le serveur renvoie **422** avec la liste des éléments manquants tant que le dossier est incomplet.\n8. Suivi : `GET /candidature` (statut, motif de refus, complément demandé). Une fois accepté, le compte devient **Relais** et `GET /me/badge` répond.\n\nStatuts d’une candidature : `draft` (à compléter) · `submitted` (reçue) · `under_review` (en examen) · `on_hold` (en attente) · `complement_requested` (complément demandé, dossier de nouveau modifiable) · `accepted` · `rejected` (avec motif).\n\n## Envoyer un relais\n\n1. `POST /relais` crée le brouillon. Le champ `client_uuid` est généré par l’application : renvoyer la même requête (réseau coupé, nouvel essai) rend le **même** relais (200) au lieu d’en créer un second (201).\n2. Pour chaque fichier, l’envoi se fait **directement vers le stockage**, en morceaux :\n   1. `POST /relais/{relais}/medias` annonce le fichier (`client_uuid`, `kind`, `mime`, `size` en octets, `sha256`). La réponse donne `upload.part_size` et, dans `upload.missing_parts`, une URL signée par morceau (valable 30 minutes).\n   2. Découper le fichier en morceaux de `part_size` octets (le dernier est plus petit) et envoyer chacun par `PUT` brut sur son URL, **sans** en-tête `Authorization`. Conserver l’en-tête `ETag` de chaque réponse.\n   3. Après une coupure : `GET /medias/{media}` renvoie les morceaux déjà reçus (`uploaded_parts`) et de nouvelles URL pour les manquants. Seuls ceux-là sont à renvoyer.\n   4. `POST /medias/{media}/complete` avec `parts: [{number, etag}]`. La taille totale reçue doit être exactement celle annoncée.\n   5. Le serveur contrôle ensuite le fichier (type réel, antivirus, empreinte, métadonnées, vignette) : `status` passe de `uploaded` à `processing`, puis `ready` ou `rejected` (avec la raison dans `rejection`). Interroger `GET /medias/{media}` toutes les quelques secondes jusqu’à `ready`.\n3. `POST /relais/{relais}/submit` envoie le relais. Il faut : au moins un média entièrement envoyé (clôturé, non rejeté ; son contrôle peut encore être en cours), la catégorie, le titre, une position GPS ou une commune déclarée, et les trois réponses de protection (`has_minors`, `people_consent`, `credit_mode`, plus `credit_name` si le Relais choisit un pseudonyme). Sinon **422** avec la liste des champs manquants. L’appel est idempotent.\n4. Le relais apparaît dans `GET /relais` avec son statut, mis à jour à chaque décision.\n\nStatuts d’un média : `pending` (en attente des morceaux) · `uploaded` (reçu, à contrôler) · `processing` · `ready` · `rejected`.\n\nRaisons de rejet d’un média : format non accepté, antivirus, fichier incomplet ou altéré, durée dépassée, taille dépassée, fichier illisible, envoi jamais terminé, taille différente de celle annoncée. Le texte affichable est dans `rejection`.\n\nStatuts d’un relais vus par le Relais : `uploading` (brouillon, envoi en cours) · `received` (reçu, en vérification) · `complement_requested` (le coordonnateur pose une question : `complement_request`, réponse par `POST /relais/{relais}/complement`) · `validated` · `rejected` (motif dans `rejection`) · `selected` (choisi par la rédaction) · `broadcast` (diffusé) · `archived`.\n\nLimites par défaut, modifiables par l’administration et lisibles dans `GET /settings` : vidéo de 3 minutes, audio de 10 minutes, 10 médias par relais, 500 Mo par fichier.\n\n## Erreurs\n\n| Code | Signification | Que faire |\n|---|---|---|\n| 401 | Jeton absent, invalide ou révoqué. Corps : `{\"message\": \"Unauthenticated.\"}` | Revenir à l’écran de connexion. |\n| 403 | Action non permise pour ce compte : candidat sur une route de Relais, Relais suspendu ou radié qui tente d’envoyer… Avec `\"code\": \"pin_required\"` : code PIN pas encore défini. | Afficher le message, ne pas réessayer. Si `pin_required` : ouvrir l’écran « Choisissez votre code PIN ». |\n| 404 | Ressource inexistante **ou appartenant à quelqu’un d’autre** (le serveur ne distingue pas les deux). | — |\n| 409 | Conflit d’état : dossier déjà déposé, relais déjà envoyé, `client_uuid` déjà utilisé par un autre compte. | Recharger la ressource. |\n| 422 | Données invalides. Corps : `{\"message\": \"…\", \"errors\": {\"champ\": [\"…\"]}}` | Afficher chaque message sous son champ. |\n| 429 | Trop de requêtes. En-tête `Retry-After` (secondes). | Attendre, puis réessayer. |\n| 503 | Antivirus momentanément indisponible (pièces de candidature). En-tête `Retry-After`. | Réessayer plus tard. |\n\n## Limites d’appels\n\n- 120 appels par minute et par compte connecté ; 1 200 par minute et par adresse IP sans connexion (les opérateurs partagent souvent une même adresse publique).\n- Codes SMS : 3 par numéro et par 15 minutes (quota commun au site et à l’application), 10 par adresse IP.\n- Vérification d’un code : 10 par minute et par adresse IP ; 5 essais par code.\n- Connexion par code PIN : 5 essais par minute ; après 5 PIN erronés, le numéro est bloqué 15 minutes, toutes adresses IP confondues.\n- Création de relais : 60 par minute. Annonce de médias : 120 par minute. Messages et pièces de candidature : 30 par minute. Quiz : 10 tentatives par heure. Export des données : 5 par heure.\n\n## Cache\n\nLes référentiels publics (`/communes`, `/categories`, `/settings`, `/legal`, `/formation`, `/candidature/options`, `/communes/{commune}/localites`, `/diffusions`) sont envoyés avec `Cache-Control: public, max-age=300` et un `ETag`. L’application peut les garder 5 minutes, puis les revalider avec `If-None-Match` (réponse **304** si rien n’a changé).\n\n## Notifications\n\nÀ chaque décision (relais validé, rejeté, complément demandé, sélectionné, diffusé ; candidature décidée), à chaque appel à relais de sa zone et à chaque message du coordonnateur, le Relais est prévenu par **SMS**. Les notifications push (FCM) utiliseront le jeton déclaré par `PUT /devices/current`, avec un contenu de la forme `{\"type\": \"relais.status_changed\", \"uuid\": \"…\", \"status\": \"validated\"}` (types : `relais.status_changed`, `appel.created`, `message.received`, `candidature.decided`) ; leur envoi est en cours de branchement avec l’équipe mobile.\n\n## Données personnelles\n\n`GET /me/export` renvoie toutes les données du compte (droit d’accès). `DELETE /me` supprime le compte avec `confirm: \"SUPPRIMER\"` : identité, pièces, positions et messages sont effacés ; les relais déjà diffusés restent anonymes.\n"
+        "description": "API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV. Elle est consommée par l’application mobile Android et iOS. Toutes les règles métier vivent côté serveur : l’application affiche et envoie, le serveur contrôle.\n\n## Conventions\n\n| Sujet | Règle |\n|---|---|\n| Adresse | `https://<domaine>/api/v1`. Un changement incompatible donnera `/api/v2` ; la v1 reste servie pendant la transition. |\n| Format | JSON, champs en `snake_case`, dates ISO 8601 en UTC (`2026-10-21T07:40:00Z`), identifiants UUID. |\n| En-têtes | `Accept: application/json` sur **toutes** les requêtes (sinon les erreurs reviennent en HTML). `Content-Type: application/json`, sauf l’envoi des pièces de candidature (`multipart/form-data`). |\n| Langue | Messages d’erreur et libellés en français, prêts à afficher. |\n| Enveloppe | Les ressources sont dans `data`, les informations annexes dans `meta`. |\n| Pagination | `GET /relais` et `GET /diffusions` renvoient 20 éléments par page : `data`, `links` (`first`, `last`, `prev`, `next`) et `meta` (`current_page`, `last_page`, `per_page`, `total`…). Page suivante : `?page=2`. |\n\n## Authentification\n\nUn compte est identifié par son **numéro de téléphone** et protégé par un **code PIN de 4 chiffres**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes SMS font **4 chiffres** et sont valables 5 minutes. **Phase de lancement :** tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et le code est toujours `1234`.\n\n**Inscription** (3 appels, sans connexion) :\n\n1. `POST /auth/register` avec le numéro : envoie le code. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.\n2. `POST /auth/register/verify` avec le numéro et le code : renvoie un `registration_token` (usage unique, 30 minutes). Aucun compte n’est encore créé.\n3. `POST /auth/register/complete` avec le `registration_token`, `last_name`, `first_names`, `gender`, `birth_date`, `password` et `password_confirmation` (code PIN de 4 chiffres) : crée le compte au statut **`pending`**. **Aucun jeton n’est renvoyé** : l’inscription est en attente de validation par l’équipe JE RELAIS. Afficher un écran « Inscription en attente de validation ».\n\nTant que l’inscription n’est pas validée, `POST /auth/login` répond **422** avec le message « Votre inscription est en attente de validation… ». Une fois validée, la personne est **Relais** (numéro et badge) : elle se connecte avec son numéro et son code PIN et peut tout de suite envoyer des relais.\n\n**Connexion** : `POST /auth/login` avec seulement `phone` et `password` (le code PIN). La description de l’appareil (`device_name`, `platform`, `app_version`) est facultative : sans elle, la plateforme est déduite du User-Agent. Après 5 PIN erronés sur un même numéro, il est bloqué 15 minutes (**429**).\n\n**Code PIN oublié** : `POST /auth/otp`, puis `POST /auth/verify` (numéro et code ; appareil facultatif) renvoie un jeton ; pendant 15 minutes, ce jeton peut redéfinir le PIN avec `PUT /me/password` **sans** `current_password`. Un numéro sans compte est refusé : proposer l’inscription.\n\nEnsuite :\n\n- Envoyer `Authorization: Bearer <jeton>` sur chaque requête protégée (bouton **Authorize** ci-dessus pour essayer).\n- `PUT /devices/current` après chaque connexion ou mise à jour de l’application : jeton de notifications push (FCM) et version installée.\n- `POST /auth/logout` détruit le jeton de l’appareil.\n\nLe jeton est valable **60 jours** (date dans `expires_at`), puis une nouvelle connexion par code PIN est nécessaire. Il devient invalide plus tôt (réponse **401**) après une déconnexion, une révocation à distance, une radiation du Relais ou la suppression du compte : l’application doit alors revenir à l’écran de connexion.\n\nLes comptes de l’équipe (coordonnateurs, rédaction, administration) n’ont pas accès à l’API : ils passent par la console web, avec double authentification.\n\nNuméros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00 01`) ou format international (`+2250700000001`).\n\n## Vérification d’identité et gains\n\nAprès la validation de son inscription, le Relais complète, quand il le souhaite, sa vérification d’identité. Elle est **obligatoire pour recevoir ses gains** ; l’envoi de relais n’en dépend pas.\n\n1. `GET /identity` : statut, éléments manquants (`missing`), types de pièces acceptés (`document_types`) et éligibilité aux gains (`gains_eligible`).\n2. `PUT /identity` : `commune` et/ou `localite` (une localité suffit), et `document_type` : `cni`, `permis`, `carte_consulaire` (recto et verso), `passeport` ou `attestation_identite` (une page).\n3. `POST /identity/files` (multipart `kind` + `file`) pour chaque fichier de `required_files` : faces de la pièce (image ou PDF), `selfie` (la personne tenant sa pièce) et `profile_photo` (image). `DELETE /identity/files/{kind}` pour en retirer un.\n4. `POST /identity/submit` : envoi à l’administration (**422** avec la liste de ce qui manque sinon).\n5. Suivi : `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` : corriger selon `decision_comment`, puis renvoyer. Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).\n\n## Parcours d’un candidat\n\n1. Inscription (`POST /auth/register`, `POST /auth/register/verify`, `POST /auth/register/complete`) : compte candidat créé en attente ; connexion possible après validation par l’équipe. L’identité saisie pré-remplit l’étape « identité » de la candidature.\n2. Lecture des listes du formulaire : `GET /candidature/options`, `GET /communes`, `GET /communes/{commune}/localites`.\n3. Remplissage en trois étapes, enregistrées à chaque modification : `PUT /candidature/steps/identite`, `…/territoire`, `…/profil`.\n4. Pièces : `POST /candidature/documents` (photo de profil, recto, verso, selfie ; autorisation parentale si mineur admis).\n5. Textes juridiques : `GET /legal`, puis `POST /consents` avec les `uuid` des versions en vigueur.\n6. Formation et quiz : `GET /formation`, `GET /quiz`, `POST /quiz/attempts`.\n7. Dépôt : `POST /candidature/submit`. Le serveur renvoie **422** avec la liste des éléments manquants tant que le dossier est incomplet.\n8. Suivi : `GET /candidature` (statut, motif de refus, complément demandé). Une fois accepté, le compte devient **Relais** et `GET /me/badge` répond.\n\nStatuts d’une candidature : `draft` (à compléter) · `submitted` (reçue) · `under_review` (en examen) · `on_hold` (en attente) · `complement_requested` (complément demandé, dossier de nouveau modifiable) · `accepted` · `rejected` (avec motif).\n\n## Envoyer un relais\n\n1. `POST /relais` crée le brouillon. Le champ `client_uuid` est généré par l’application : renvoyer la même requête (réseau coupé, nouvel essai) rend le **même** relais (200) au lieu d’en créer un second (201).\n2. Pour chaque fichier, l’envoi se fait **directement vers le stockage**, en morceaux :\n   1. `POST /relais/{relais}/medias` annonce le fichier (`client_uuid`, `kind`, `mime`, `size` en octets, `sha256`). La réponse donne `upload.part_size` et, dans `upload.missing_parts`, une URL signée par morceau (valable 30 minutes).\n   2. Découper le fichier en morceaux de `part_size` octets (le dernier est plus petit) et envoyer chacun par `PUT` brut sur son URL, **sans** en-tête `Authorization`. Conserver l’en-tête `ETag` de chaque réponse.\n   3. Après une coupure : `GET /medias/{media}` renvoie les morceaux déjà reçus (`uploaded_parts`) et de nouvelles URL pour les manquants. Seuls ceux-là sont à renvoyer.\n   4. `POST /medias/{media}/complete` avec `parts: [{number, etag}]`. La taille totale reçue doit être exactement celle annoncée.\n   5. Le serveur contrôle ensuite le fichier (type réel, antivirus, empreinte, métadonnées, vignette) : `status` passe de `uploaded` à `processing`, puis `ready` ou `rejected` (avec la raison dans `rejection`). Interroger `GET /medias/{media}` toutes les quelques secondes jusqu’à `ready`.\n3. `POST /relais/{relais}/submit` envoie le relais. Il faut : au moins un média entièrement envoyé (clôturé, non rejeté ; son contrôle peut encore être en cours), la catégorie, le titre, une position GPS ou une commune déclarée, et les trois réponses de protection (`has_minors`, `people_consent`, `credit_mode`, plus `credit_name` si le Relais choisit un pseudonyme). Sinon **422** avec la liste des champs manquants. L’appel est idempotent.\n4. Le relais apparaît dans `GET /relais` avec son statut, mis à jour à chaque décision.\n\nStatuts d’un média : `pending` (en attente des morceaux) · `uploaded` (reçu, à contrôler) · `processing` · `ready` · `rejected`.\n\nRaisons de rejet d’un média : format non accepté, antivirus, fichier incomplet ou altéré, durée dépassée, taille dépassée, fichier illisible, envoi jamais terminé, taille différente de celle annoncée. Le texte affichable est dans `rejection`.\n\nStatuts d’un relais vus par le Relais : `uploading` (brouillon, envoi en cours) · `received` (reçu, en vérification) · `complement_requested` (le coordonnateur pose une question : `complement_request`, réponse par `POST /relais/{relais}/complement`) · `validated` · `rejected` (motif dans `rejection`) · `selected` (choisi par la rédaction) · `broadcast` (diffusé) · `archived`.\n\nLimites par défaut, modifiables par l’administration et lisibles dans `GET /settings` : vidéo de 3 minutes, audio de 10 minutes, 10 médias par relais, 500 Mo par fichier.\n\n## Erreurs\n\n| Code | Signification | Que faire |\n|---|---|---|\n| 401 | Jeton absent, invalide ou révoqué. Corps : `{\"message\": \"Unauthenticated.\"}` | Revenir à l’écran de connexion. |\n| 403 | Action non permise pour ce compte : candidat sur une route de Relais, Relais suspendu ou radié qui tente d’envoyer… Avec `\"code\": \"pin_required\"` : code PIN pas encore défini. | Afficher le message, ne pas réessayer. Si `pin_required` : ouvrir l’écran « Choisissez votre code PIN ». |\n| 404 | Ressource inexistante **ou appartenant à quelqu’un d’autre** (le serveur ne distingue pas les deux). | — |\n| 409 | Conflit d’état : dossier déjà déposé, relais déjà envoyé, `client_uuid` déjà utilisé par un autre compte. | Recharger la ressource. |\n| 422 | Données invalides. Corps : `{\"message\": \"…\", \"errors\": {\"champ\": [\"…\"]}}` | Afficher chaque message sous son champ. |\n| 429 | Trop de requêtes. En-tête `Retry-After` (secondes). | Attendre, puis réessayer. |\n| 503 | Antivirus momentanément indisponible (pièces de candidature). En-tête `Retry-After`. | Réessayer plus tard. |\n\n## Limites d’appels\n\n- 120 appels par minute et par compte connecté ; 1 200 par minute et par adresse IP sans connexion (les opérateurs partagent souvent une même adresse publique).\n- Codes SMS : 3 par numéro et par 15 minutes (quota commun au site et à l’application), 10 par adresse IP.\n- Vérification d’un code : 10 par minute et par adresse IP ; 5 essais par code.\n- Connexion par code PIN : 5 essais par minute ; après 5 PIN erronés, le numéro est bloqué 15 minutes, toutes adresses IP confondues.\n- Création de relais : 60 par minute. Annonce de médias : 120 par minute. Messages et pièces de candidature : 30 par minute. Quiz : 10 tentatives par heure. Export des données : 5 par heure.\n\n## Cache\n\nLes référentiels publics (`/communes`, `/categories`, `/settings`, `/legal`, `/formation`, `/candidature/options`, `/communes/{commune}/localites`, `/diffusions`) sont envoyés avec `Cache-Control: public, max-age=300` et un `ETag`. L’application peut les garder 5 minutes, puis les revalider avec `If-None-Match` (réponse **304** si rien n’a changé).\n\n## Notifications\n\nÀ chaque décision (relais validé, rejeté, complément demandé, sélectionné, diffusé ; candidature décidée), à chaque appel à relais de sa zone et à chaque message du coordonnateur, le Relais est prévenu par **SMS**. Les notifications push (FCM) utiliseront le jeton déclaré par `PUT /devices/current`, avec un contenu de la forme `{\"type\": \"relais.status_changed\", \"uuid\": \"…\", \"status\": \"validated\"}` (types : `relais.status_changed`, `appel.created`, `message.received`, `candidature.decided`) ; leur envoi est en cours de branchement avec l’équipe mobile.\n\n## Données personnelles\n\n`GET /me/export` renvoie toutes les données du compte (droit d’accès). `DELETE /me` supprime le compte avec `confirm: \"SUPPRIMER\"` : identité, pièces, positions et messages sont effacés ; les relais déjà diffusés restent anonymes.\n"
     },
     "servers": [
         {
@@ -19,6 +19,10 @@
         {
             "name": "Mon compte",
             "description": "Profil, mot de passe, tableau de bord, badge, appareil et données personnelles."
+        },
+        {
+            "name": "Vérification d’identité",
+            "description": "Commune, pièce d’identité, selfie et photo de profil : vérifiés par l’administration, condition pour recevoir ses gains."
         },
         {
             "name": "Référentiels",
@@ -236,7 +240,7 @@
         "/auth/login": {
             "post": {
                 "operationId": "v1.auth.login",
-                "description": "Code PIN de 4 chiffres dans `password`, défini après l'inscription avec `PUT /me/password`. Renvoie un nouveau jeton pour cet appareil.\nIdentifiants incorrects, compte suspendu ou compte de l'équipe : 422 sur `phone` (message volontairement générique).\nAprès 5 PIN erronés sur un même numéro, quelle que soit l'adresse IP, le numéro est bloqué 15 minutes (429) :\nproposer « Code PIN oublié » (`POST /auth/otp` puis `POST /auth/verify`).",
+                "description": "Code PIN de 4 chiffres dans `password`, défini après l'inscription avec `PUT /me/password`. Renvoie un nouveau jeton pour cet appareil.\nIdentifiants incorrects, compte suspendu ou compte de l'équipe : 422 sur `phone` (message volontairement générique).\nInscription pas encore validée par l'équipe : 422 sur `phone` avec le message « inscription en attente de validation ».\nAprès 5 PIN erronés sur un même numéro, quelle que soit l'adresse IP, le numéro est bloqué 15 minutes (429) :\nproposer « Code PIN oublié » (`POST /auth/otp` puis `POST /auth/verify`).",
                 "summary": "Se connecter avec son numéro et son code PIN",
                 "tags": [
                     "Authentification"
@@ -314,8 +318,8 @@
         "/auth/register": {
             "post": {
                 "operationId": "v1.auth.register.request",
-                "description": "Envoie par SMS un code à 4 chiffres, valable 5 minutes, au numéro à inscrire.\nTant qu'aucun fournisseur de SMS n'est branché, aucun SMS ne part : le code est `1234`.\nUn numéro qui a déjà un compte est refusé (422 sur `phone`) : l'application propose alors la connexion par code PIN.",
-                "summary": "Inscription, étape 1 : demander un code",
+                "description": "Envoie par SMS un code à 4 chiffres, valable 5 minutes, au numéro à inscrire.\nTant qu'aucun fournisseur de SMS n'est branché, aucun SMS ne part : le code est `1234`.\nUn numéro qui a déjà un compte est refusé (422 sur `phone`) : l'application propose alors la connexion.",
+                "summary": "Inscription 1/3 : demander un code",
                 "tags": [
                     "Authentification"
                 ],
@@ -406,8 +410,8 @@
         "/auth/register/verify": {
             "post": {
                 "operationId": "v1.auth.register.verify",
-                "description": "Crée le compte « candidat » et renvoie le jeton de cet appareil, avec `pin_required: true`.\nÉtape suivante obligatoire : définir le code PIN avec `PUT /me/password`. Tant qu'il ne l'est pas,\nles autres routes protégées répondent 403 avec `code: \"pin_required\"`.\n\nErreurs 422 : `code` faux ou expiré (5 essais par code) ; `phone` déjà inscrit.",
-                "summary": "Inscription, étape 2 : valider le code et créer le compte",
+                "description": "Vérifie le code et renvoie un `registration_token`, à usage unique et valable 30 minutes, à joindre à l'étape suivante.\nAucun compte n'est encore créé.\n\nErreurs 422 : `code` faux ou expiré (5 essais par code) ; `phone` déjà inscrit.",
+                "summary": "Inscription 2/3 : confirmer le code",
                 "tags": [
                     "Authentification"
                 ],
@@ -416,7 +420,106 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/VerifyOtpRequest"
+                                "$ref": "#/components/schemas/VerifyRegistrationCodeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Succès.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher.",
+                                            "const": "Numéro vérifié. Complétez votre inscription."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "description": "Contenu de la réponse.",
+                                            "properties": {
+                                                "registration_token": {
+                                                    "type": "string",
+                                                    "description": "Jeton à joindre à `POST /auth/register/complete`."
+                                                },
+                                                "expires_in_seconds": {
+                                                    "type": "integer",
+                                                    "description": "Durée de validité du jeton, en secondes.",
+                                                    "const": 1800
+                                                }
+                                            },
+                                            "required": [
+                                                "registration_token",
+                                                "expires_in_seconds"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "429": {
+                        "description": "Trop de requêtes. 10 vérifications par minute et par adresse IP. Chaque code accepte 5 essais. Limite générale : 120 appels par minute et par compte (1 200 par adresse IP sans connexion). Attendre la durée indiquée par l’en-tête `Retry-After` avant de réessayer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher.",
+                                            "examples": [
+                                                "Trop de demandes. Patientez quelques minutes avant de réessayer."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Nombre de secondes à attendre avant de réessayer.",
+                                "schema": {
+                                    "type": "integer",
+                                    "examples": [
+                                        60
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/auth/register/complete": {
+            "post": {
+                "operationId": "v1.auth.register.complete",
+                "description": "Nom, prénoms, sexe, date de naissance et code PIN de 4 chiffres (saisi deux fois).\nCrée le compte au statut **`pending`** (en attente) : **aucun jeton n'est renvoyé**. L'utilisateur ne peut pas se connecter\ntant que l'équipe JE RELAIS n'a pas validé son inscription ; en attendant, `POST /auth/login` répond 422 avec un message\n« inscription en attente de validation ». Une fois validée, il se connecte avec son numéro et son code PIN.\n\nErreur 422 sur `registration_token` : jeton inconnu, déjà utilisé ou expiré (recommencer à l'étape 1).",
+                "summary": "Inscription 3/3 : identité et code PIN",
+                "tags": [
+                    "Authentification"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CompleteRegistrationRequest"
                             }
                         }
                     }
@@ -429,12 +532,35 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher.",
+                                            "const": "Inscription enregistrée. Elle est en attente de validation par l’équipe JE RELAIS."
+                                        },
                                         "data": {
+                                            "type": "object",
                                             "description": "Contenu de la réponse.",
-                                            "$ref": "#/components/schemas/IssuedTokenResource"
+                                            "properties": {
+                                                "uuid": {
+                                                    "type": "string",
+                                                    "description": "Identifiant du compte créé.",
+                                                    "examples": [
+                                                        "01a15e8f-a96f-7286-ba6f-48930f972729"
+                                                    ]
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "description": "Statut du compte : `pending` jusqu'à la validation par l'équipe."
+                                                }
+                                            },
+                                            "required": [
+                                                "uuid",
+                                                "status"
+                                            ]
                                         }
                                     },
                                     "required": [
+                                        "message",
                                         "data"
                                     ]
                                 }
@@ -1413,6 +1539,505 @@
                     },
                     "429": {
                         "description": "Trop de requêtes. 5 exports par heure. Limite générale : 120 appels par minute et par compte (1 200 par adresse IP sans connexion). Attendre la durée indiquée par l’en-tête `Retry-After` avant de réessayer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher.",
+                                            "examples": [
+                                                "Trop de demandes. Patientez quelques minutes avant de réessayer."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Nombre de secondes à attendre avant de réessayer.",
+                                "schema": {
+                                    "type": "integer",
+                                    "examples": [
+                                        60
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/identity": {
+            "get": {
+                "operationId": "v1.identity.show",
+                "description": "Statut (`draft` à compléter, `submitted` en cours de vérification, `verified` vérifiée, `rejected` à corriger avec\n`decision_comment`), commune et localité, type de pièce, fichiers envoyés, éléments manquants (`missing`) et\néligibilité aux gains (`gains_eligible`). `document_types` liste les pièces acceptées et leurs faces.",
+                "summary": "Ma vérification d'identité",
+                "tags": [
+                    "Vérification d’identité"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "description": "Contenu de la réponse.",
+                                            "$ref": "#/components/schemas/IdentityVerificationResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Réservé aux Relais (compte validé).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Trop de requêtes. Limite générale : 120 appels par minute et par compte (1 200 par adresse IP sans connexion). Attendre la durée indiquée par l’en-tête `Retry-After` avant de réessayer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher.",
+                                            "examples": [
+                                                "Trop de demandes. Patientez quelques minutes avant de réessayer."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Nombre de secondes à attendre avant de réessayer.",
+                                "schema": {
+                                    "type": "integer",
+                                    "examples": [
+                                        60
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "operationId": "v1.identity.update",
+                "description": "`commune` (uuid de `GET /communes`) et/ou `localite` (uuid de `GET /communes/{commune}/localites`) : une localité suffit,\nsa commune est déduite. `document_type` : `cni`, `passeport`, `permis`, `carte_consulaire` ou `attestation_identite`.\nChanger de type de pièce retire les faces devenues inutiles. 409 si la vérification est envoyée ou déjà vérifiée.",
+                "summary": "Renseigner ma commune et mon type de pièce",
+                "tags": [
+                    "Vérification d’identité"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateIdentityRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Succès.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "description": "Contenu de la réponse.",
+                                            "$ref": "#/components/schemas/IdentityVerificationResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflit d’état : la ressource n’est plus modifiable (déjà envoyée ou déposée) ou l’identifiant est déjà utilisé.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "429": {
+                        "description": "Trop de requêtes. Limite générale : 120 appels par minute et par compte (1 200 par adresse IP sans connexion). Attendre la durée indiquée par l’en-tête `Retry-After` avant de réessayer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher.",
+                                            "examples": [
+                                                "Trop de demandes. Patientez quelques minutes avant de réessayer."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Nombre de secondes à attendre avant de réessayer.",
+                                "schema": {
+                                    "type": "integer",
+                                    "examples": [
+                                        60
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/files": {
+            "post": {
+                "operationId": "v1.identity.files.store",
+                "description": "Envoi multipart : `kind` et `file`. `kind` : `recto` et `verso` (CNI, permis, carte consulaire), `page` (passeport,\nattestation d'identité), `selfie` (la personne tenant sa pièce) et `profile_photo`. Choisir d'abord le type de pièce.\nFormats : JPEG, PNG, HEIC, et PDF pour les faces de la pièce ; 10 Mo maximum. Un nouveau fichier remplace le précédent.",
+                "summary": "Envoyer un fichier",
+                "tags": [
+                    "Vérification d’identité"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreIdentityFileRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Créé.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "description": "Contenu de la réponse.",
+                                            "$ref": "#/components/schemas/IdentityFileResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflit d’état : la ressource n’est plus modifiable (déjà envoyée ou déposée) ou l’identifiant est déjà utilisé.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Antivirus momentanément indisponible : réessayer plus tard (`Retry-After`).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "429": {
+                        "description": "Trop de requêtes. 30 appels par minute. Limite générale : 120 appels par minute et par compte (1 200 par adresse IP sans connexion). Attendre la durée indiquée par l’en-tête `Retry-After` avant de réessayer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher.",
+                                            "examples": [
+                                                "Trop de demandes. Patientez quelques minutes avant de réessayer."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Nombre de secondes à attendre avant de réessayer.",
+                                "schema": {
+                                    "type": "integer",
+                                    "examples": [
+                                        60
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/files/{kind}": {
+            "delete": {
+                "operationId": "v1.identity.files.destroy",
+                "description": "`kind` : `recto`, `verso`, `page`, `selfie` ou `profile_photo`. 409 si la vérification n'est plus modifiable.",
+                "summary": "Retirer un fichier",
+                "tags": [
+                    "Vérification d’identité"
+                ],
+                "parameters": [
+                    {
+                        "name": "kind",
+                        "in": "path",
+                        "required": true,
+                        "description": "The kind ID",
+                        "schema": {
+                            "$ref": "#/components/schemas/IdentityFileKind"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Succès, sans contenu."
+                    },
+                    "409": {
+                        "description": "Conflit d’état : la ressource n’est plus modifiable (déjà envoyée ou déposée) ou l’identifiant est déjà utilisé.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "429": {
+                        "description": "Trop de requêtes. Limite générale : 120 appels par minute et par compte (1 200 par adresse IP sans connexion). Attendre la durée indiquée par l’en-tête `Retry-After` avant de réessayer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher.",
+                                            "examples": [
+                                                "Trop de demandes. Patientez quelques minutes avant de réessayer."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Nombre de secondes à attendre avant de réessayer.",
+                                "schema": {
+                                    "type": "integer",
+                                    "examples": [
+                                        60
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/submit": {
+            "post": {
+                "operationId": "v1.identity.submit",
+                "description": "Exige la commune, le type de pièce, ses faces, le selfie et la photo de profil ; sinon 422 avec la liste des éléments\nmanquants. Passe au statut `submitted` : l'administration vérifie, puis le statut devient `verified` (éligible aux gains)\nou `rejected` (corriger selon `decision_comment` et renvoyer). Idempotent une fois envoyée.",
+                "summary": "Envoyer ma vérification d'identité",
+                "tags": [
+                    "Vérification d’identité"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "description": "Contenu de la réponse.",
+                                            "$ref": "#/components/schemas/IdentityVerificationResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflit d’état : la ressource n’est plus modifiable (déjà envoyée ou déposée) ou l’identifiant est déjà utilisé.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "description": "Vérification incomplète : `errors` liste chaque élément manquant.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Trop de requêtes. Limite générale : 120 appels par minute et par compte (1 200 par adresse IP sans connexion). Attendre la durée indiquée par l’en-tête `Retry-After` avant de réessayer.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6193,6 +6818,76 @@
                 ],
                 "title": "CommuneResource"
             },
+            "CompleteRegistrationRequest": {
+                "type": "object",
+                "description": "Inscription, étape 2 : identité (règles de l'étape « identité » de la candidature, ici obligatoires) et code PIN.",
+                "properties": {
+                    "registration_token": {
+                        "type": "string",
+                        "description": "Jeton reçu à l’étape « confirmer le code » : usage unique, valable 30 minutes.",
+                        "examples": [
+                            "q8Zk2..."
+                        ],
+                        "minLength": 64,
+                        "maxLength": 64
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "description": "Nom de famille.",
+                        "examples": [
+                            "Traoré"
+                        ],
+                        "maxLength": 100
+                    },
+                    "first_names": {
+                        "type": "string",
+                        "description": "Prénoms.",
+                        "examples": [
+                            "Awa Mariam"
+                        ],
+                        "maxLength": 150
+                    },
+                    "gender": {
+                        "description": "Sexe : `femme`, `homme` ou `non_precise`.",
+                        "examples": [
+                            "femme"
+                        ],
+                        "$ref": "#/components/schemas/Gender"
+                    },
+                    "birth_date": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Date de naissance (AAAA-MM-JJ). L’âge minimum est fixé par l’administration.",
+                        "examples": [
+                            "2001-04-17"
+                        ]
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "Code PIN : exactement 4 chiffres.",
+                        "examples": [
+                            "4826"
+                        ]
+                    },
+                    "password_confirmation": {
+                        "type": "string",
+                        "description": "Répétition du code PIN.",
+                        "examples": [
+                            "4826"
+                        ]
+                    }
+                },
+                "required": [
+                    "registration_token",
+                    "last_name",
+                    "first_names",
+                    "gender",
+                    "birth_date",
+                    "password",
+                    "password_confirmation"
+                ],
+                "title": "CompleteRegistrationRequest"
+            },
             "CreditMode": {
                 "type": "string",
                 "description": "Crédit du Relais à l'antenne (MOB-15, §9.2) : transmis à la rédaction avec chaque média.\n",
@@ -6232,7 +6927,7 @@
                     },
                     "platform": {
                         "type": "string",
-                        "description": "Système de l’appareil : `android`, `ios` ou `web`.",
+                        "description": "Facultatif. Système de l’appareil : `android`, `ios` ou `web` (déduit du User-Agent par défaut).",
                         "examples": [
                             "android"
                         ]
@@ -6405,6 +7100,288 @@
                     "parental_authorization"
                 ],
                 "title": "DocumentType"
+            },
+            "Gender": {
+                "type": "string",
+                "enum": [
+                    "femme",
+                    "homme",
+                    "non_precise"
+                ],
+                "title": "Gender"
+            },
+            "IdentityDocumentType": {
+                "type": "string",
+                "description": "Pièces d'identité acceptées (MOB-01) et faces à fournir pour chacune.\n",
+                "enum": [
+                    "cni",
+                    "passeport",
+                    "permis",
+                    "carte_consulaire",
+                    "attestation_identite"
+                ],
+                "title": "IdentityDocumentType"
+            },
+            "IdentityFileKind": {
+                "type": "string",
+                "description": "Fichiers d'une vérification d'identité. Les faces de la pièce acceptent image ou PDF ; le selfie et la photo de profil, des images seulement.\n",
+                "enum": [
+                    "recto",
+                    "verso",
+                    "page",
+                    "selfie",
+                    "profile_photo"
+                ],
+                "title": "IdentityFileKind"
+            },
+            "IdentityFileResource": {
+                "type": "object",
+                "properties": {
+                    "uuid": {
+                        "type": "string",
+                        "description": "Identifiant public (UUID).",
+                        "examples": [
+                            "01a15e8f-a96f-7286-ba6f-48930f972729"
+                        ]
+                    },
+                    "kind": {
+                        "type": "string",
+                        "description": "`recto`, `verso`, `page`, `selfie` ou `profile_photo`.",
+                        "examples": [
+                            "recto"
+                        ]
+                    },
+                    "label": {
+                        "type": "string",
+                        "description": "Libellé prêt à afficher.",
+                        "examples": [
+                            "Recto de la pièce"
+                        ]
+                    },
+                    "mime": {
+                        "type": "string",
+                        "description": "Type réel du fichier.",
+                        "examples": [
+                            "image/jpeg"
+                        ]
+                    },
+                    "size": {
+                        "type": "integer",
+                        "description": "Taille en octets.",
+                        "examples": [
+                            482113
+                        ]
+                    },
+                    "uploaded_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Date d’envoi.",
+                        "examples": [
+                            "2026-11-10T09:10:00Z"
+                        ]
+                    }
+                },
+                "required": [
+                    "uuid",
+                    "kind",
+                    "label",
+                    "mime",
+                    "size",
+                    "uploaded_at"
+                ],
+                "title": "IdentityFileResource"
+            },
+            "IdentityVerificationResource": {
+                "type": "object",
+                "properties": {
+                    "uuid": {
+                        "type": "string",
+                        "description": "Identifiant public (UUID).",
+                        "examples": [
+                            "01a15e8f-a96f-7286-ba6f-48930f972729"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "`draft` à compléter, `submitted` en cours de vérification, `verified` vérifiée, `rejected` à corriger (voir `decision_comment`).",
+                        "examples": [
+                            "draft"
+                        ]
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "description": "Statut prêt à afficher.",
+                        "examples": [
+                            "À compléter"
+                        ]
+                    },
+                    "is_editable": {
+                        "type": "boolean",
+                        "description": "`true` tant que les informations et fichiers peuvent être modifiés (`draft` ou `rejected`).",
+                        "examples": [
+                            true
+                        ]
+                    },
+                    "gains_eligible": {
+                        "type": "boolean",
+                        "description": "`true` quand l’identité est vérifiée : éligible aux gains.",
+                        "examples": [
+                            false
+                        ]
+                    },
+                    "commune": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "Commune déclarée (`uuid`, `name`).",
+                        "properties": {
+                            "uuid": {
+                                "type": "string",
+                                "description": "Identifiant public (UUID).",
+                                "examples": [
+                                    "01a15e8f-a96f-7286-ba6f-48930f972729"
+                                ]
+                            },
+                            "name": {
+                                "type": "string",
+                                "description": "Nom."
+                            }
+                        },
+                        "required": [
+                            "uuid",
+                            "name"
+                        ]
+                    },
+                    "localite": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "Localité déclarée (`uuid`, `name`), facultative.",
+                        "properties": {
+                            "uuid": {
+                                "type": "string",
+                                "description": "Identifiant public (UUID).",
+                                "examples": [
+                                    "01a15e8f-a96f-7286-ba6f-48930f972729"
+                                ]
+                            },
+                            "name": {
+                                "type": "string",
+                                "description": "Nom."
+                            }
+                        },
+                        "required": [
+                            "uuid",
+                            "name"
+                        ]
+                    },
+                    "document_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Type de pièce : `cni`, `passeport`, `permis`, `carte_consulaire` ou `attestation_identite`.",
+                        "examples": [
+                            "cni"
+                        ]
+                    },
+                    "required_files": {
+                        "type": "array",
+                        "description": "Fichiers attendus pour ce type de pièce : faces (`recto` et `verso`, ou `page`), `selfie` et `profile_photo`.",
+                        "examples": [
+                            [
+                                "recto",
+                                "verso",
+                                "selfie",
+                                "profile_photo"
+                            ]
+                        ],
+                        "items": {}
+                    },
+                    "files": {
+                        "type": "array",
+                        "description": "Fichiers déjà envoyés.",
+                        "items": {
+                            "$ref": "#/components/schemas/IdentityFileResource"
+                        }
+                    },
+                    "missing": {
+                        "description": "Éléments manquants avant l’envoi : clé => message à afficher.",
+                        "examples": [
+                            {
+                                "files.verso": "Ajoutez : Verso de la pièce."
+                            }
+                        ],
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "string"
+                                }
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
+                    },
+                    "decision_comment": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Ce que l’administration demande de corriger (statut `rejected`).",
+                        "examples": [
+                            "Le verso de la CNI est flou, merci de le reprendre."
+                        ]
+                    },
+                    "submitted_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Date d’envoi.",
+                        "examples": [
+                            "2026-11-10T09:12:00Z"
+                        ]
+                    },
+                    "decided_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Date de la décision.",
+                        "examples": [
+                            "2026-11-11T14:30:00Z"
+                        ]
+                    },
+                    "document_types": {
+                        "type": "array",
+                        "description": "Pièces acceptées : `value`, `label` et `sides` (faces à envoyer).",
+                        "items": {}
+                    }
+                },
+                "required": [
+                    "uuid",
+                    "status",
+                    "status_label",
+                    "is_editable",
+                    "gains_eligible",
+                    "commune",
+                    "localite",
+                    "document_type",
+                    "required_files",
+                    "files",
+                    "missing",
+                    "decision_comment",
+                    "submitted_at",
+                    "decided_at",
+                    "document_types"
+                ],
+                "title": "IdentityVerificationResource"
             },
             "IssuedTokenResource": {
                 "type": "object",
@@ -6702,19 +7679,29 @@
                         "maxLength": 200
                     },
                     "device_name": {
-                        "type": "string",
-                        "description": "Nom de l’appareil, affiché à la coordination pour la déconnexion à distance.",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Facultatif. Nom de l’appareil, affiché à la coordination pour la déconnexion à distance (« Appareil mobile » par défaut).",
                         "examples": [
                             "Tecno Spark 10"
                         ],
                         "maxLength": 100
                     },
                     "platform": {
-                        "description": "Système de l’appareil : `android`, `ios` ou `web`.",
-                        "examples": [
-                            "android"
-                        ],
-                        "$ref": "#/components/schemas/DevicePlatform"
+                        "anyOf": [
+                            {
+                                "description": "Facultatif. Système de l’appareil : `android`, `ios` ou `web` (déduit du User-Agent par défaut).",
+                                "examples": [
+                                    "android"
+                                ],
+                                "$ref": "#/components/schemas/DevicePlatform"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "app_version": {
                         "type": [
@@ -6730,9 +7717,7 @@
                 },
                 "required": [
                     "phone",
-                    "password",
-                    "device_name",
-                    "platform"
+                    "password"
                 ],
                 "title": "PasswordLoginRequest"
             },
@@ -7134,6 +8119,29 @@
                 ],
                 "title": "StoreConsentRequest"
             },
+            "StoreIdentityFileRequest": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "description": "Fichier envoyé : `recto`, `verso`, `page`, `selfie` (la personne tenant sa pièce) ou `profile_photo`.",
+                        "examples": [
+                            "recto"
+                        ],
+                        "$ref": "#/components/schemas/IdentityFileKind"
+                    },
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 10240 kilobytes."
+                    }
+                },
+                "required": [
+                    "kind",
+                    "file"
+                ],
+                "title": "StoreIdentityFileRequest"
+            },
             "StoreMediaRequest": {
                 "type": "object",
                 "description": "Annonce d'un média avant son envoi en morceaux (MOB-11, MOB-12, MOB-16).",
@@ -7493,6 +8501,49 @@
                 },
                 "title": "UpdateCurrentDeviceRequest"
             },
+            "UpdateIdentityRequest": {
+                "type": "object",
+                "description": "Commune ou localité, et type de pièce d'identité. Une localité suffit : sa commune est déduite.",
+                "properties": {
+                    "commune": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid",
+                        "description": "Commune (uuid de `GET /communes`). Facultative si une localité est donnée.",
+                        "examples": [
+                            "9d2c6f0e-1b3a-4c5d-8e7f-0a1b2c3d4e5f"
+                        ]
+                    },
+                    "localite": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid",
+                        "description": "Localité (uuid de `GET /communes/{commune}/localites`) : sa commune est déduite.",
+                        "examples": [
+                            "9d2c6f0e-2b3a-4c5d-8e7f-0a1b2c3d4e5f"
+                        ]
+                    },
+                    "document_type": {
+                        "anyOf": [
+                            {
+                                "description": "Type de pièce : `cni` (recto et verso), `passeport` (une page), `permis` (recto et verso), `carte_consulaire` (recto et verso) ou `attestation_identite` (une page).",
+                                "examples": [
+                                    "cni"
+                                ],
+                                "$ref": "#/components/schemas/IdentityDocumentType"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "title": "UpdateIdentityRequest"
+            },
             "UpdatePasswordRequest": {
                 "type": "object",
                 "description": "Définition ou changement du code PIN de l'application (MOB-01).",
@@ -7809,6 +8860,20 @@
                             true
                         ]
                     },
+                    "identity_status": {
+                        "type": "string",
+                        "description": "Vérification d’identité : `null` pas commencée, `draft` à compléter, `submitted` en cours, `verified` vérifiée, `rejected` à corriger. Voir `GET /identity`.",
+                        "examples": [
+                            "submitted"
+                        ]
+                    },
+                    "gains_eligible": {
+                        "type": "boolean",
+                        "description": "`true` quand l’identité est vérifiée : le Relais peut recevoir ses gains.",
+                        "examples": [
+                            false
+                        ]
+                    },
                     "communes": {
                         "type": "array",
                         "description": "Communes rattachées au compte.",
@@ -7835,6 +8900,8 @@
                     "status",
                     "roles",
                     "has_password",
+                    "identity_status",
+                    "gains_eligible",
                     "created_at"
                 ],
                 "title": "UserResource"
@@ -7858,19 +8925,29 @@
                         ]
                     },
                     "device_name": {
-                        "type": "string",
-                        "description": "Nom de l’appareil, affiché à la coordination pour la déconnexion à distance.",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Facultatif. Nom de l’appareil, affiché à la coordination pour la déconnexion à distance (« Appareil mobile » par défaut).",
                         "examples": [
                             "Tecno Spark 10"
                         ],
                         "maxLength": 100
                     },
                     "platform": {
-                        "description": "Système de l’appareil : `android`, `ios` ou `web`.",
-                        "examples": [
-                            "android"
-                        ],
-                        "$ref": "#/components/schemas/DevicePlatform"
+                        "anyOf": [
+                            {
+                                "description": "Facultatif. Système de l’appareil : `android`, `ios` ou `web` (déduit du User-Agent par défaut).",
+                                "examples": [
+                                    "android"
+                                ],
+                                "$ref": "#/components/schemas/DevicePlatform"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "app_version": {
                         "type": [
@@ -7886,11 +8963,34 @@
                 },
                 "required": [
                     "phone",
-                    "code",
-                    "device_name",
-                    "platform"
+                    "code"
                 ],
                 "title": "VerifyOtpRequest"
+            },
+            "VerifyRegistrationCodeRequest": {
+                "type": "object",
+                "properties": {
+                    "phone": {
+                        "type": "string",
+                        "description": "Numéro de téléphone : ivoirien à 10 chiffres ou format international.",
+                        "examples": [
+                            "0700000001"
+                        ],
+                        "maxLength": 25
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Code reçu par SMS : 4 chiffres, valable 5 minutes, 5 essais. Tant qu’aucun fournisseur de SMS n’est branché, le code est `1234`.",
+                        "examples": [
+                            "1234"
+                        ]
+                    }
+                },
+                "required": [
+                    "phone",
+                    "code"
+                ],
+                "title": "VerifyRegistrationCodeRequest"
             }
         },
         "responses": {

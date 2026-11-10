@@ -19,6 +19,7 @@ class PasswordLoginController extends Controller
      *
      * Code PIN de 4 chiffres dans `password`, défini après l'inscription avec `PUT /me/password`. Renvoie un nouveau jeton pour cet appareil.
      * Identifiants incorrects, compte suspendu ou compte de l'équipe : 422 sur `phone` (message volontairement générique).
+     * Inscription pas encore validée par l'équipe : 422 sur `phone` avec le message « inscription en attente de validation ».
      * Après 5 PIN erronés sur un même numéro, quelle que soit l'adresse IP, le numéro est bloqué 15 minutes (429) :
      * proposer « Code PIN oublié » (`POST /auth/otp` puis `POST /auth/verify`).
      *

@@ -26,6 +26,8 @@ class UserResource extends JsonResource
             'status' => $this->status->value,
             'roles' => $this->getRoleNames()->values(),
             'has_password' => $this->password !== null,
+            'identity_status' => $this->identityVerification?->status->value,
+            'gains_eligible' => $this->identityVerification?->isVerified() ?? false,
             'communes' => CommuneResource::collection($this->whenLoaded('communes')),
             'created_at' => $this->created_at?->toIso8601ZuluString(),
         ];

@@ -8,6 +8,7 @@ use App\Domain\Auth\Models\Device;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Contribution\Enums\CreditMode;
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Messagerie\Models\Message;
 use App\Domain\Relais\Enums\RelaisStatus;
 use App\Domain\Relais\Models\RelaisProfile;
@@ -46,6 +47,17 @@ class PseudonymizeUser
                     'last_name' => null, 'first_names' => null, 'birth_date' => null, 'gender' => null, 'email' => null,
                     'localite_id' => null, 'occupation' => null, 'languages' => null, 'interests' => null, 'motivation' => null,
                 ])->save();
+            }
+
+            $verification = IdentityVerification::query()->where('user_id', $user->id)->first();
+
+            if ($verification !== null) {
+                foreach ($verification->files as $file) {
+                    $files[] = [$file->disk, $file->path];
+                }
+
+                $verification->files()->delete();
+                $verification->delete();
             }
 
             RelaisProfile::withoutCommuneRestriction()->where('user_id', $user->id)->get()->each(fn (RelaisProfile $profile) => $profile->forceFill([

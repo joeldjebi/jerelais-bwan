@@ -15,15 +15,17 @@ API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV.
 
 Un compte est identifié par son **numéro de téléphone** et protégé par un **code PIN de 4 chiffres**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes SMS font **4 chiffres** et sont valables 5 minutes. **Phase de lancement :** tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et le code est toujours `1234`.
 
-**Inscription** (numéro seul) :
+**Inscription** (3 appels, sans connexion) :
 
 1. `POST /auth/register` avec le numéro : envoie le code. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.
-2. `POST /auth/register/verify` avec le numéro, le code et la description de l’appareil : crée le compte **candidat** et renvoie le jeton, avec `is_new_user: true` et `pin_required: true`.
-3. `PUT /me/password` avec `password` et `password_confirmation` (4 chiffres) : définit le code PIN. **Étape obligatoire** : tant qu’elle n’est pas faite, les autres routes protégées répondent **403** avec `{"code": "pin_required"}`.
+2. `POST /auth/register/verify` avec le numéro et le code : renvoie un `registration_token` (usage unique, 30 minutes). Aucun compte n’est encore créé.
+3. `POST /auth/register/complete` avec le `registration_token`, `last_name`, `first_names`, `gender`, `birth_date`, `password` et `password_confirmation` (code PIN de 4 chiffres) : crée le compte au statut **`pending`**. **Aucun jeton n’est renvoyé** : l’inscription est en attente de validation par l’équipe JE RELAIS. Afficher un écran « Inscription en attente de validation ».
 
-**Connexion** : `POST /auth/login` avec le numéro et le code PIN dans `password`. Après 5 PIN erronés sur un même numéro, il est bloqué 15 minutes (**429**).
+Tant que l’inscription n’est pas validée, `POST /auth/login` répond **422** avec le message « Votre inscription est en attente de validation… ». Une fois validée, la personne est **Relais** (numéro et badge) : elle se connecte avec son numéro et son code PIN et peut tout de suite envoyer des relais.
 
-**Code PIN oublié** : `POST /auth/otp`, puis `POST /auth/verify` (numéro, code, appareil) renvoie un jeton ; pendant 15 minutes, ce jeton peut redéfinir le PIN avec `PUT /me/password` **sans** `current_password`. Un numéro sans compte est refusé : proposer l’inscription.
+**Connexion** : `POST /auth/login` avec seulement `phone` et `password` (le code PIN). La description de l’appareil (`device_name`, `platform`, `app_version`) est facultative : sans elle, la plateforme est déduite du User-Agent. Après 5 PIN erronés sur un même numéro, il est bloqué 15 minutes (**429**).
+
+**Code PIN oublié** : `POST /auth/otp`, puis `POST /auth/verify` (numéro et code ; appareil facultatif) renvoie un jeton ; pendant 15 minutes, ce jeton peut redéfinir le PIN avec `PUT /me/password` **sans** `current_password`. Un numéro sans compte est refusé : proposer l’inscription.
 
 Ensuite :
 
@@ -37,9 +39,19 @@ Les comptes de l’équipe (coordonnateurs, rédaction, administration) n’ont 
 
 Numéros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00 01`) ou format international (`+2250700000001`).
 
+## Vérification d’identité et gains
+
+Après la validation de son inscription, le Relais complète, quand il le souhaite, sa vérification d’identité. Elle est **obligatoire pour recevoir ses gains** ; l’envoi de relais n’en dépend pas.
+
+1. `GET /identity` : statut, éléments manquants (`missing`), types de pièces acceptés (`document_types`) et éligibilité aux gains (`gains_eligible`).
+2. `PUT /identity` : `commune` et/ou `localite` (une localité suffit), et `document_type` : `cni`, `permis`, `carte_consulaire` (recto et verso), `passeport` ou `attestation_identite` (une page).
+3. `POST /identity/files` (multipart `kind` + `file`) pour chaque fichier de `required_files` : faces de la pièce (image ou PDF), `selfie` (la personne tenant sa pièce) et `profile_photo` (image). `DELETE /identity/files/{kind}` pour en retirer un.
+4. `POST /identity/submit` : envoi à l’administration (**422** avec la liste de ce qui manque sinon).
+5. Suivi : `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` : corriger selon `decision_comment`, puis renvoyer. Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).
+
 ## Parcours d’un candidat
 
-1. Inscription (`POST /auth/register`, puis `POST /auth/register/verify`) : le compte est créé avec le rôle candidat ; puis code PIN obligatoire (`PUT /me/password`).
+1. Inscription (`POST /auth/register`, `POST /auth/register/verify`, `POST /auth/register/complete`) : compte candidat créé en attente ; connexion possible après validation par l’équipe. L’identité saisie pré-remplit l’étape « identité » de la candidature.
 2. Lecture des listes du formulaire : `GET /candidature/options`, `GET /communes`, `GET /communes/{commune}/localites`.
 3. Remplissage en trois étapes, enregistrées à chaque modification : `PUT /candidature/steps/identite`, `…/territoire`, `…/profil`.
 4. Pièces : `POST /candidature/documents` (photo de profil, recto, verso, selfie ; autorisation parentale si mineur admis).
