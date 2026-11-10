@@ -44,6 +44,7 @@ Route::name('api.v1.')->group(function () {
         Route::get('formation', [FormationController::class, 'modules'])->name('formation.index');
         Route::get('diffusions', DiffusionController::class)->name('diffusions.index');
         Route::get('candidature/options', [CandidatureController::class, 'options'])->name('candidature.options');
+        Route::get('auth/register/options', [RegistrationController::class, 'options'])->name('auth.register.options');
     });
 
     Route::middleware('auth:sanctum')->group(function () {

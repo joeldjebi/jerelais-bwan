@@ -4,12 +4,12 @@ namespace App\Domain\Auth\Actions;
 
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Exceptions\AuthenticationRefused;
-use App\Domain\Auth\Support\RegistrationTokens;
+use App\Domain\Auth\Support\VerifiedRegistrations;
 use App\Models\User;
 
 /**
  * Inscription depuis l'application, étape 1 (MOB-01) : vérifie le code SMS du numéro à inscrire.
- * Aucun compte n'est encore créé : renvoie un jeton d'inscription à usage unique pour l'étape 2 (CompleteRegistration).
+ * Aucun compte n'est encore créé : le numéro est retenu comme vérifié 30 minutes pour l'étape suivante (CompleteRegistration).
  */
 class VerifyRegistrationCode
 {
@@ -18,13 +18,13 @@ class VerifyRegistrationCode
     /**
      * @throws AuthenticationRefused numéro déjà inscrit, code faux ou expiré
      */
-    public function handle(PhoneNumber $phone, string $code): string
+    public function handle(PhoneNumber $phone, string $code): void
     {
         self::ensureAvailable($phone);
 
         $this->confirm->consumeCode($phone, $code);
 
-        return RegistrationTokens::issue($phone);
+        VerifiedRegistrations::remember($phone);
     }
 
     /**

@@ -35,11 +35,12 @@ function approvedAppRegistrant(string $phone = '0707070707'): User
     fakeSms();
 
     test()->postJson(route('api.v1.auth.register.request'), ['phone' => $phone])->assertAccepted();
-    $token = test()->postJson(route('api.v1.auth.register.verify'), ['phone' => $phone, 'code' => '1234'])->json('data.registration_token');
-    test()->postJson(route('api.v1.auth.register.complete'), [
-        'registration_token' => $token, 'last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme',
-        'birth_date' => '2001-04-17', 'password' => '4826', 'password_confirmation' => '4826',
-    ])->assertCreated();
+    test()->postJson(route('api.v1.auth.register.verify'), ['phone' => $phone, 'code' => '1234'])->assertOk();
+    test()->post(route('api.v1.auth.register.complete'), [
+        'phone' => $phone, 'last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme', 'birth_date' => '2001-04-17',
+        'document_type' => 'cni', 'recto' => UploadedFile::fake()->image('recto.jpg'), 'verso' => UploadedFile::fake()->image('verso.jpg'),
+        'password' => '4826', 'password_confirmation' => '4826',
+    ], ['Accept' => 'application/json'])->assertCreated();
 
     $user = User::findByPhone(PhoneNumber::parse($phone));
     app(ReviewRegistration::class)->approve($user, User::factory()->withRole(Role::Admin)->create());
@@ -75,21 +76,26 @@ it('fait du compte validé un Relais sans commune, qui peut envoyer des relais [
         ->and($profile->number)->toStartWith('JR-');
 
     $this->postJson(route('api.v1.relais.store'), ['client_uuid' => (string) Str::uuid()])->assertCreated();
-    $this->getJson(route('api.v1.me.show'))->assertJsonPath('data.identity_status', null)->assertJsonPath('data.gains_eligible', false);
+    $this->getJson(route('api.v1.me.show'))->assertJsonPath('data.identity_status', 'draft')->assertJsonPath('data.gains_eligible', false);
 });
 
-it('indique ce qui manque avant l’envoi de la vérification d’identité', function () {
+it('reprend la pièce envoyée à l’inscription et indique ce qui manque encore', function () {
     $this->getJson(route('api.v1.identity.show'))
         ->assertOk()
         ->assertJsonPath('data.status', 'draft')
         ->assertJsonPath('data.gains_eligible', false)
-        ->assertJsonPath('data.missing.commune', 'Choisissez votre commune.')
-        ->assertJsonPath('data.missing.document_type', 'Choisissez le type de votre pièce d’identité.')
+        ->assertJsonPath('data.document_type', 'cni')
+        ->assertJsonCount(2, 'data.files')
+        ->assertJsonPath('data.missing', [
+            'commune' => 'Choisissez votre commune.',
+            'files.selfie' => 'Ajoutez : Selfie avec la pièce.',
+            'files.profile_photo' => 'Ajoutez : Photo de profil.',
+        ])
         ->assertJsonCount(5, 'data.document_types');
 
     $this->postJson(route('api.v1.identity.submit'))
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['commune', 'document_type', 'files.selfie', 'files.profile_photo']);
+        ->assertJsonValidationErrors(['commune', 'files.selfie', 'files.profile_photo']);
 });
 
 it('demande recto et verso pour une CNI, une seule page pour un passeport', function (string $type, array $sides) {
@@ -120,7 +126,8 @@ it('accepte la pièce en image ou en PDF, mais le selfie en image seulement', fu
     sendIdentityFile('selfie', UploadedFile::fake()->create('selfie.pdf', 200, 'application/pdf'))->assertJsonValidationErrors('file');
     sendIdentityFile('page')->assertUnprocessable()->assertJsonValidationErrors('kind');
 
-    expect(Storage::disk('identity')->allFiles())->toHaveCount(1);
+    // Le recto de l'inscription est remplacé par le PDF : toujours deux fichiers (recto, verso).
+    expect(Storage::disk('identity')->allFiles())->toHaveCount(2);
 });
 
 it('retire les faces devenues inutiles quand le type de pièce change', function () {
@@ -141,9 +148,11 @@ it('refuse un fichier infecté sans le stocker [§10]', function () {
     });
     $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'document_type' => 'cni'])->assertOk();
 
-    sendIdentityFile('recto')->assertUnprocessable()->assertJsonValidationErrors('file');
+    $before = Storage::disk('identity')->allFiles();
 
-    expect(Storage::disk('identity')->allFiles())->toBe([]);
+    sendIdentityFile('selfie')->assertUnprocessable()->assertJsonValidationErrors('file');
+
+    expect(Storage::disk('identity')->allFiles())->toBe($before);
 });
 
 it('envoie la vérification, la verrouille, puis l’administration la valide : éligible aux gains et rattaché à sa commune [MOB-01]', function () {

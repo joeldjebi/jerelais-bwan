@@ -90,9 +90,9 @@ it('vérifie le code d’inscription sans encore créer de compte [MOB-01]', fun
 
     confirmRegistration($this->sms->lastCodeFor('+2250707070707'))
         ->assertOk()
-        ->assertJsonPath('data.expires_in_seconds', 1800)
-        ->assertJsonStructure(['message', 'data' => ['registration_token']])
-        ->assertJsonMissingPath('data.token');
+        ->assertJsonPath('meta.expires_in_seconds', 1800)
+        ->assertJsonPath('message', 'Numéro vérifié. Complétez votre inscription.')
+        ->assertJsonMissingPath('data');
 
     expect(User::query()->count())->toBe(0)
         ->and(Device::query()->count())->toBe(0);
@@ -191,7 +191,7 @@ it('accepte le code fixe transitoire sans envoyer de SMS (en attendant un fourni
 
     confirmRegistration('1234')
         ->assertOk()
-        ->assertJsonStructure(['data' => ['registration_token']]);
+        ->assertJsonPath('meta.expires_in_seconds', 1800);
 
     $this->assertDatabaseHas('audit_logs', ['action' => 'auth.otp.requested']);
     expect(AuditLog::query()->where('action', 'auth.otp.requested')->latest('id')->first()->payload['fixed_code'])->toBeTrue();

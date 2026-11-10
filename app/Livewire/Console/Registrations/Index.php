@@ -97,7 +97,7 @@ class Index extends Component
 
         return User::query()
             ->where('status', UserStatus::Pending->value)
-            ->with(['candidature' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)])
+            ->with(['candidature' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class), 'identityVerification.files'])
             ->when($term !== '', fn ($query) => $query->whereLike('name', '%'.$term.'%'))
             ->orderBy('created_at')
             ->paginate(20);
