@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePinIsSet;
 use App\Http\Middleware\EnsureTwoFactorIsEnabled;
 use App\Http\Middleware\EnsureUserIsStaff;
 use App\Http\Middleware\SecurityHeaders;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'staff' => EnsureUserIsStaff::class,
+            'pin' => EnsurePinIsSet::class,
             'two-factor' => EnsureTwoFactorIsEnabled::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,

@@ -21,7 +21,7 @@ class FakeSmsGateway implements SmsGateway
     public function lastCodeFor(string $e164): ?string
     {
         foreach (array_reverse($this->sent) as $sms) {
-            if ($sms['to'] === $e164 && preg_match('/\b(\d{6})\b/', $sms['message'], $matches) === 1) {
+            if ($sms['to'] === $e164 && preg_match('/\b(\d{4,8})\b/', $sms['message'], $matches) === 1) {
                 return $matches[1];
             }
         }

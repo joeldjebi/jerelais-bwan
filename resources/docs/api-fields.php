@@ -39,12 +39,13 @@ return [
 
         // ------------------------------------------------------------ Authentification
         'RequestOtpRequest.phone' => ['Numéro à vérifier : ivoirien à 10 chiffres (`0700000001`, espaces acceptés) ou international (`+2250700000001`).', '0700000001'],
-        'VerifyOtpRequest.code' => ['Code reçu par SMS : 6 chiffres, valable 5 minutes, 5 essais. Tant qu’aucun fournisseur de SMS n’est branché, un code de test fixe (4 à 8 chiffres) communiqué par l’équipe le remplace : ne pas limiter la saisie à 6 chiffres.', '509418'],
-        'PasswordLoginRequest.password' => ['Mot de passe défini avec `PUT /me/password`.', 'mon-mot-de-passe'],
+        'VerifyOtpRequest.code' => ['Code reçu par SMS : 4 chiffres, valable 5 minutes, 5 essais. Tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et le code est `1234`.', '1234'],
+        'PasswordLoginRequest.password' => ['Code PIN de 4 chiffres, défini avec `PUT /me/password`.', '4826'],
         'IssuedTokenResource.token' => ['Jeton à envoyer dans `Authorization: Bearer <jeton>`. À conserver dans le stockage sécurisé du téléphone (Keychain, Keystore).', '12|Kq0nT3...'],
         'IssuedTokenResource.token_type' => ['Toujours `Bearer`.', 'Bearer'],
         'IssuedTokenResource.expires_at' => ['Fin de validité du jeton (60 jours). Après cette date : nouvelle connexion par code SMS.', '2026-12-20T07:42:10Z'],
         'IssuedTokenResource.is_new_user' => ['`true` si le compte vient d’être créé (candidat) : ouvrir le parcours de candidature.', false],
+        'IssuedTokenResource.pin_required' => ['`true` tant que le code PIN n’est pas défini : afficher l’écran « Choisissez votre code PIN » (`PUT /me/password`). Les autres routes protégées répondent 403 `pin_required` en attendant.', true],
         'IssuedTokenResource.device' => ['Appareil associé au jeton.'],
         'IssuedTokenResource.user' => ['Compte connecté.'],
 
@@ -54,15 +55,15 @@ return [
         'UserResource.email' => ['Adresse e-mail facultative.', 'awa@example.com'],
         'UserResource.status' => ['État du compte : `active`, `suspended`, `banned` (radié) ou `deleted` (supprimé).', 'active'],
         'UserResource.roles' => ['Rôles : `candidat` pendant la candidature, `relais` une fois accepté.', ['relais']],
-        'UserResource.has_password' => ['`true` si un mot de passe est défini : `current_password` sera alors exigé pour le changer.', true],
+        'UserResource.has_password' => ['`true` si le code PIN est défini. `false` : afficher l’écran « Choisissez votre code PIN ».', true],
         'UserResource.communes' => ['Communes rattachées au compte.'],
         'DeviceResource.name' => ['Nom de l’appareil.', 'Tecno Spark 10'],
         'DeviceResource.push_enabled' => ['`true` si un jeton de notifications push est enregistré.', true],
         'DeviceResource.last_seen_at' => ['Dernière activité de l’appareil.', '2026-10-21T07:42:10Z'],
         'UpdateCurrentDeviceRequest.fcm_token' => ['Jeton Firebase Cloud Messaging de l’appareil, pour les notifications push. `null` pour les désactiver.', 'fcm-token-de-l-appareil'],
-        'UpdatePasswordRequest.current_password' => ['Mot de passe actuel. Obligatoire pour changer un mot de passe existant, interdit pour le premier.', 'ancien-mot-de-passe'],
-        'UpdatePasswordRequest.password' => ['Nouveau mot de passe, 10 caractères minimum.', 'un-mot-de-passe-solide'],
-        'UpdatePasswordRequest.password_confirmation' => ['Répétition du nouveau mot de passe.', 'un-mot-de-passe-solide'],
+        'UpdatePasswordRequest.current_password' => ['Code PIN actuel. Obligatoire pour changer un PIN existant, sauf dans les 15 minutes qui suivent une connexion par code SMS (PIN oublié) ; interdit pour le premier PIN.', '4826'],
+        'UpdatePasswordRequest.password' => ['Nouveau code PIN : exactement 4 chiffres.', '7351'],
+        'UpdatePasswordRequest.password_confirmation' => ['Répétition du nouveau code PIN.', '7351'],
 
         // ------------------------------------------------------------ Badge
         'BadgeResource.number' => ['Numéro de Relais, unique.', 'JR-482917'],

@@ -24,7 +24,7 @@ return [
     */
 
     'otp' => [
-        'length' => 6,
+        'length' => 4,
         'ttl_minutes' => 5,
         'max_attempts' => 5,
         'requests_per_phone' => 3,
@@ -34,6 +34,21 @@ return [
         'fixed_code' => env('OTP_FIXED_CODE'),
         // Numéros autorisés à utiliser le code fixe, séparés par des virgules ; vide : tous les numéros.
         'fixed_code_numbers' => env('OTP_FIXED_CODE_NUMBERS', ''),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Code PIN de l'application mobile (MOB-01)
+    |--------------------------------------------------------------------------
+    | 4 chiffres : 10 000 combinaisons seulement, d'où le blocage par numéro (toutes adresses IP confondues).
+    | Un PIN oublié se redéfinit après une connexion par code SMS, sans l'ancien PIN, pendant reset_window_minutes.
+    */
+
+    'pin' => [
+        'length' => 4,
+        'max_failures' => 5,
+        'lock_minutes' => 15,
+        'reset_window_minutes' => 15,
     ],
 
     /*
