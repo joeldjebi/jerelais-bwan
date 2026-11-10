@@ -15,10 +15,12 @@ use Illuminate\Validation\ValidationException;
 class PasswordLoginController extends Controller
 {
     /**
-     * Se connecter avec son numéro et son mot de passe.
+     * Se connecter avec son numéro et son code PIN.
      *
-     * Possible une fois le mot de passe défini avec `PUT /me/password`. Renvoie un nouveau jeton pour cet appareil, comme `POST /auth/verify`.
+     * Code PIN de 4 chiffres dans `password`, défini après l'inscription avec `PUT /me/password`. Renvoie un nouveau jeton pour cet appareil.
      * Identifiants incorrects, compte suspendu ou compte de l'équipe : 422 sur `phone` (message volontairement générique).
+     * Après 5 PIN erronés sur un même numéro, quelle que soit l'adresse IP, le numéro est bloqué 15 minutes (429) :
+     * proposer « Code PIN oublié » (`POST /auth/otp` puis `POST /auth/verify`).
      *
      * @unauthenticated
      */

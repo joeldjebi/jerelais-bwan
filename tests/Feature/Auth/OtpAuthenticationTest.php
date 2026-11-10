@@ -26,13 +26,31 @@ function verifyOtp(?string $code, string $phone = '07 07 07 07 07'): TestRespons
     return test()->postJson(route('api.v1.auth.otp.verify'), ['phone' => $phone, 'code' => $code, ...deviceFields()]);
 }
 
-it('envoie un code SMS de 6 chiffres et ne stocke que son empreinte [MOB-01]', function () {
+function registerPhone(string $phone = '07 07 07 07 07'): TestResponse
+{
+    return test()->postJson(route('api.v1.auth.register.request'), ['phone' => $phone]);
+}
+
+function confirmRegistration(?string $code, string $phone = '07 07 07 07 07'): TestResponse
+{
+    return test()->postJson(route('api.v1.auth.register.verify'), ['phone' => $phone, 'code' => $code, ...deviceFields()]);
+}
+
+function existingAccount(string $phone = '0707070707'): User
+{
+    $user = User::factory()->withRole(Role::Relais)->create();
+    $user->setPhoneNumber(PhoneNumber::parse($phone))->save();
+
+    return $user;
+}
+
+it('envoie un code SMS de 4 chiffres et ne stocke que son empreinte [MOB-01]', function () {
     requestOtp()->assertAccepted()->assertJsonPath('meta.expires_in_seconds', 300);
 
     $code = $this->sms->lastCodeFor('+2250707070707');
     $otp = OtpCode::query()->sole();
 
-    expect($code)->toMatch('/^\d{6}$/')
+    expect($code)->toMatch('/^\d{4}$/')
         ->and($otp->code_hash)->not->toContain($code)
         ->and($otp->phone_hash)->toBe($this->phone->hash())
         ->and($otp->expires_at->diffInMinutes(now(), true))->toBeLessThanOrEqual(5.0);
@@ -67,13 +85,14 @@ it('limite les envois par adresse IP, quel que soit le numéro [§10 Sécurité]
     requestOtp('0708080808')->assertTooManyRequests();
 });
 
-it('crée le compte candidat et un jeton d’appareil au premier code valide [MOB-01]', function () {
-    requestOtp();
+it('crée le compte candidat et un jeton d’appareil à l’inscription [MOB-01]', function () {
+    registerPhone()->assertAccepted();
 
-    $response = verifyOtp($this->sms->lastCodeFor('+2250707070707'))
+    $response = confirmRegistration($this->sms->lastCodeFor('+2250707070707'))
         ->assertCreated()
         ->assertJsonPath('data.token_type', 'Bearer')
         ->assertJsonPath('data.is_new_user', true)
+        ->assertJsonPath('data.pin_required', true)
         ->assertJsonPath('data.device.platform', 'android')
         ->assertJsonPath('data.user.roles', [Role::Candidat->value])
         ->assertJsonMissingPath('data.user.phone')
@@ -91,9 +110,8 @@ it('crée le compte candidat et un jeton d’appareil au premier code valide [MO
         ->assertJsonPath('data.uuid', $user->uuid);
 });
 
-it('reconnecte un compte existant sans le dupliquer', function () {
-    $user = User::factory()->withRole(Role::Relais)->create();
-    $user->setPhoneNumber($this->phone)->save();
+it('reconnecte un compte existant par code SMS sans le dupliquer (PIN oublié)', function () {
+    existingAccount();
 
     requestOtp();
     verifyOtp($this->sms->lastCodeFor('+2250707070707'))->assertCreated()->assertJsonPath('data.is_new_user', false);
@@ -104,7 +122,7 @@ it('reconnecte un compte existant sans le dupliquer', function () {
 it('refuse un mauvais code puis bloque après 5 essais, même avec le bon code [MOB-01]', function () {
     requestOtp();
     $code = $this->sms->lastCodeFor('+2250707070707');
-    $wrong = $code === '000000' ? '111111' : '000000';
+    $wrong = $code === '0000' ? '1111' : '0000';
 
     foreach (range(1, 5) as $attempt) {
         verifyOtp($wrong)->assertUnprocessable()->assertJsonValidationErrors(['code' => 'Code invalide ou expiré.']);
@@ -124,6 +142,7 @@ it('refuse un code expiré', function () {
 });
 
 it('n’accepte un code qu’une seule fois', function () {
+    existingAccount();
     requestOtp();
     $code = $this->sms->lastCodeFor('+2250707070707');
 
@@ -132,6 +151,7 @@ it('n’accepte un code qu’une seule fois', function () {
 });
 
 it('annule l’ancien code quand un nouveau est demandé', function () {
+    existingAccount();
     requestOtp();
     $first = $this->sms->lastCodeFor('+2250707070707');
     requestOtp();
@@ -154,9 +174,9 @@ it('refuse la connexion d’un compte suspendu', function () {
 });
 
 it('trace les demandes et connexions dans l’audit sans jamais y écrire le code [ADM-25]', function () {
-    requestOtp();
+    registerPhone();
     $code = $this->sms->lastCodeFor('+2250707070707');
-    verifyOtp($code)->assertCreated();
+    confirmRegistration($code)->assertCreated();
 
     $actions = AuditLog::query()->orderBy('id')->pluck('action')->all();
     $serialized = AuditLog::query()->get()->toJson();
@@ -177,10 +197,10 @@ it('partage le quota d’envoi par numéro entre le site et l’application (rev
 it('accepte le code fixe transitoire sans envoyer de SMS (en attendant un fournisseur)', function () {
     config(['jerelais.otp.fixed_code' => '1234']);
 
-    requestOtp()->assertAccepted();
+    registerPhone()->assertAccepted();
     expect($this->sms->sent)->toBe([]);
 
-    $this->postJson(route('api.v1.auth.otp.verify'), ['phone' => '0707070707', 'code' => '1234', ...deviceFields()])
+    confirmRegistration('1234')
         ->assertCreated()
         ->assertJsonPath('data.is_new_user', true);
 

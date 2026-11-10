@@ -13,16 +13,25 @@ API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV.
 
 ## Authentification
 
-Un compte est identifié par son **numéro de téléphone**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu.
+Un compte est identifié par son **numéro de téléphone** et protégé par un **code PIN de 4 chiffres**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes SMS font **4 chiffres** et sont valables 5 minutes. **Phase de lancement :** tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et le code est toujours `1234`.
 
-1. `POST /auth/otp` avec le numéro : un code à 6 chiffres part par SMS, valable 5 minutes. La réponse est la même que le numéro soit inscrit ou non. **Phase de lancement :** tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et un code de test fixe (4 à 8 chiffres), communiqué par l’équipe JE RELAIS, sert de code : l’écran de saisie ne doit pas imposer 6 chiffres.
-2. `POST /auth/verify` avec le numéro, le code et la description de l’appareil : renvoie le jeton. Un numéro inconnu crée un compte **candidat** (`is_new_user: true`).
-3. Envoyer ensuite `Authorization: Bearer <jeton>` sur chaque requête protégée (bouton **Authorize** ci-dessus pour essayer).
-4. Ensuite, la connexion peut aussi se faire par mot de passe : `POST /auth/login` (après l’avoir défini avec `PUT /me/password`).
-5. `PUT /devices/current` après chaque connexion ou mise à jour de l’application : jeton de notifications push (FCM) et version installée.
-6. `POST /auth/logout` détruit le jeton de l’appareil.
+**Inscription** (numéro seul) :
 
-Le jeton est valable **60 jours** (date dans `expires_at`), puis une nouvelle connexion par code SMS est nécessaire. Il devient invalide plus tôt (réponse **401**) après une déconnexion, une révocation à distance, une radiation du Relais ou la suppression du compte : l’application doit alors revenir à l’écran de connexion.
+1. `POST /auth/register` avec le numéro : envoie le code. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.
+2. `POST /auth/register/verify` avec le numéro, le code et la description de l’appareil : crée le compte **candidat** et renvoie le jeton, avec `is_new_user: true` et `pin_required: true`.
+3. `PUT /me/password` avec `password` et `password_confirmation` (4 chiffres) : définit le code PIN. **Étape obligatoire** : tant qu’elle n’est pas faite, les autres routes protégées répondent **403** avec `{"code": "pin_required"}`.
+
+**Connexion** : `POST /auth/login` avec le numéro et le code PIN dans `password`. Après 5 PIN erronés sur un même numéro, il est bloqué 15 minutes (**429**).
+
+**Code PIN oublié** : `POST /auth/otp`, puis `POST /auth/verify` (numéro, code, appareil) renvoie un jeton ; pendant 15 minutes, ce jeton peut redéfinir le PIN avec `PUT /me/password` **sans** `current_password`. Un numéro sans compte est refusé : proposer l’inscription.
+
+Ensuite :
+
+- Envoyer `Authorization: Bearer <jeton>` sur chaque requête protégée (bouton **Authorize** ci-dessus pour essayer).
+- `PUT /devices/current` après chaque connexion ou mise à jour de l’application : jeton de notifications push (FCM) et version installée.
+- `POST /auth/logout` détruit le jeton de l’appareil.
+
+Le jeton est valable **60 jours** (date dans `expires_at`), puis une nouvelle connexion par code PIN est nécessaire. Il devient invalide plus tôt (réponse **401**) après une déconnexion, une révocation à distance, une radiation du Relais ou la suppression du compte : l’application doit alors revenir à l’écran de connexion.
 
 Les comptes de l’équipe (coordonnateurs, rédaction, administration) n’ont pas accès à l’API : ils passent par la console web, avec double authentification.
 
@@ -30,7 +39,7 @@ Numéros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00
 
 ## Parcours d’un candidat
 
-1. Connexion par code SMS : le compte est créé avec le rôle candidat.
+1. Inscription (`POST /auth/register`, puis `POST /auth/register/verify`) : le compte est créé avec le rôle candidat ; puis code PIN obligatoire (`PUT /me/password`).
 2. Lecture des listes du formulaire : `GET /candidature/options`, `GET /communes`, `GET /communes/{commune}/localites`.
 3. Remplissage en trois étapes, enregistrées à chaque modification : `PUT /candidature/steps/identite`, `…/territoire`, `…/profil`.
 4. Pièces : `POST /candidature/documents` (photo de profil, recto, verso, selfie ; autorisation parentale si mineur admis).
@@ -66,7 +75,7 @@ Limites par défaut, modifiables par l’administration et lisibles dans `GET /s
 | Code | Signification | Que faire |
 |---|---|---|
 | 401 | Jeton absent, invalide ou révoqué. Corps : `{"message": "Unauthenticated."}` | Revenir à l’écran de connexion. |
-| 403 | Action non permise pour ce compte : candidat sur une route de Relais, Relais suspendu ou radié qui tente d’envoyer… | Afficher le message, ne pas réessayer. |
+| 403 | Action non permise pour ce compte : candidat sur une route de Relais, Relais suspendu ou radié qui tente d’envoyer… Avec `"code": "pin_required"` : code PIN pas encore défini. | Afficher le message, ne pas réessayer. Si `pin_required` : ouvrir l’écran « Choisissez votre code PIN ». |
 | 404 | Ressource inexistante **ou appartenant à quelqu’un d’autre** (le serveur ne distingue pas les deux). | — |
 | 409 | Conflit d’état : dossier déjà déposé, relais déjà envoyé, `client_uuid` déjà utilisé par un autre compte. | Recharger la ressource. |
 | 422 | Données invalides. Corps : `{"message": "…", "errors": {"champ": ["…"]}}` | Afficher chaque message sous son champ. |
@@ -78,7 +87,7 @@ Limites par défaut, modifiables par l’administration et lisibles dans `GET /s
 - 120 appels par minute et par compte connecté ; 1 200 par minute et par adresse IP sans connexion (les opérateurs partagent souvent une même adresse publique).
 - Codes SMS : 3 par numéro et par 15 minutes (quota commun au site et à l’application), 10 par adresse IP.
 - Vérification d’un code : 10 par minute et par adresse IP ; 5 essais par code.
-- Connexion par mot de passe : 5 essais par minute.
+- Connexion par code PIN : 5 essais par minute ; après 5 PIN erronés, le numéro est bloqué 15 minutes, toutes adresses IP confondues.
 - Création de relais : 60 par minute. Annonce de médias : 120 par minute. Messages et pièces de candidature : 30 par minute. Quiz : 10 tentatives par heure. Export des données : 5 par heure.
 
 ## Cache

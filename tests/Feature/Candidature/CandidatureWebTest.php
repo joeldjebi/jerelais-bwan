@@ -46,7 +46,7 @@ it('refuse un mauvais code sans connecter personne', function () {
     Livewire::test(Rejoindre::class)
         ->set('phone', '0707070707')
         ->call('sendCode')
-        ->set('code', '000000')
+        ->set('code', '0000')
         ->call('verify')
         ->assertHasErrors('code');
 

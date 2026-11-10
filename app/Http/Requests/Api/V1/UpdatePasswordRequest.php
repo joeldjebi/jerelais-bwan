@@ -2,13 +2,13 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Domain\Auth\Support\PinPolicy;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 /**
- * Définition ou changement du mot de passe de connexion de l'application (MOB-01).
+ * Définition ou changement du code PIN de l'application (MOB-01).
  */
 class UpdatePasswordRequest extends FormRequest
 {
@@ -22,13 +22,25 @@ class UpdatePasswordRequest extends FormRequest
      */
     public function rules(): array
     {
-        $hasPassword = fn (): bool => $this->user()?->password !== null;
+        $hasPin = fn (): bool => $this->user()?->password !== null;
+        $resetAllowed = fn (): bool => PinPolicy::allowsResetWithoutCurrent($this->user()?->currentAccessToken());
 
         return [
-            // Mot de passe actuel : obligatoire pour changer un mot de passe existant, interdit pour le premier.
-            'current_password' => ['nullable', 'string', Rule::requiredIf($hasPassword), Rule::prohibitedIf(fn (): bool => ! $hasPassword()), 'current_password:sanctum'],
-            // Nouveau mot de passe, 10 caractères minimum, à confirmer dans `password_confirmation`.
-            'password' => ['required', 'string', 'confirmed', Password::defaults()],
+            // PIN actuel : obligatoire pour changer un PIN existant, sauf juste après une connexion par code SMS (PIN oublié) ; interdit pour le premier.
+            'current_password' => ['nullable', 'string', Rule::excludeIf($resetAllowed), Rule::requiredIf($hasPin), Rule::prohibitedIf(fn (): bool => ! $hasPin()), 'current_password:sanctum'],
+            // Nouveau code PIN de 4 chiffres, à confirmer dans `password_confirmation`.
+            'password' => ['required', 'string', 'digits:'.PinPolicy::length(), 'confirmed'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'password.digits' => __('auth.pin_format', ['length' => PinPolicy::length()]),
+            'password.confirmed' => __('auth.pin_confirmation'),
         ];
     }
 }

@@ -8,6 +8,7 @@ use App\Domain\Auth\Data\PhoneNumber;
 
 /**
  * Connexion de l'application par code SMS (MOB-01) : vérifie le code puis crée le jeton de l'appareil.
+ * Réservée aux comptes existants (code PIN oublié, nouvel appareil) : l'inscription passe par RegisterWithPhone.
  */
 class VerifyOtp
 {
@@ -18,8 +19,8 @@ class VerifyOtp
 
     public function handle(PhoneNumber $phone, string $code, DeviceInfo $device): IssuedToken
     {
-        $user = $this->confirm->handle($phone, $code);
+        $user = $this->confirm->handle($phone, $code, createAccount: false);
 
-        return $this->issueToken->handle($user, $device, 'otp', $user->wasRecentlyCreated);
+        return $this->issueToken->handle($user, $device, 'otp');
     }
 }
