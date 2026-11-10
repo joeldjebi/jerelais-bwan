@@ -14,7 +14,7 @@ return [
     'phone_already_registered' => 'Ce numéro a déjà un compte. Connectez-vous avec votre code PIN.',
     'account_pending' => 'Votre inscription est en attente de validation par l’équipe JE RELAIS. Vous pourrez vous connecter dès qu’elle sera validée.',
     'registration_code_verified' => 'Numéro vérifié. Complétez votre inscription.',
-    'registration_token_invalid' => 'Votre vérification a expiré. Recommencez l’inscription depuis le début.',
+    'registration_not_verified' => 'Ce numéro n’a pas été vérifié ou sa vérification a expiré. Recommencez l’inscription depuis le début.',
     'registration_completed' => 'Inscription enregistrée. Elle est en attente de validation par l’équipe JE RELAIS.',
     'unknown_account' => 'Aucun compte n’est associé à ce numéro. Inscrivez-vous d’abord.',
     'pin_format' => 'Le code PIN comporte :length chiffres.',

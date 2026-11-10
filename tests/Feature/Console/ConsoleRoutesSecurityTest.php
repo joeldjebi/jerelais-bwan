@@ -33,7 +33,7 @@ it('protège chaque route de la console par l’équipe et la double authentific
 });
 
 it('exige une session ou un jeton sur toutes les routes de l’API hors référentiels publics', function () {
-    $public = ['api.v1.auth.otp.request', 'api.v1.auth.otp.verify', 'api.v1.auth.login', 'api.v1.auth.register.request', 'api.v1.auth.register.verify', 'api.v1.auth.register.complete', 'api.v1.communes.index', 'api.v1.categories.index',
+    $public = ['api.v1.auth.otp.request', 'api.v1.auth.otp.verify', 'api.v1.auth.login', 'api.v1.auth.register.request', 'api.v1.auth.register.verify', 'api.v1.auth.register.complete', 'api.v1.auth.register.options', 'api.v1.communes.index', 'api.v1.categories.index',
         'api.v1.settings.index', 'api.v1.communes.localites', 'api.v1.candidature.options', 'api.v1.legal.index', 'api.v1.formation.index',
         'api.v1.diffusions.index']; // même contenu que la vitrine publique (WEB-05)
 

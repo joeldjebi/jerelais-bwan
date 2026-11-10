@@ -15,11 +15,12 @@ API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV.
 
 Un compte est identifié par son **numéro de téléphone** et protégé par un **code PIN de 4 chiffres**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes SMS font **4 chiffres** et sont valables 5 minutes. **Phase de lancement :** tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et le code est toujours `1234`.
 
-**Inscription** (3 appels, sans connexion) :
+**Inscription** (3 appels, sans connexion ni jeton) :
 
-1. `POST /auth/register` avec le numéro : envoie le code. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.
-2. `POST /auth/register/verify` avec le numéro et le code : renvoie un `registration_token` (usage unique, 30 minutes). Aucun compte n’est encore créé.
-3. `POST /auth/register/complete` avec le `registration_token`, `last_name`, `first_names`, `gender`, `birth_date`, `password` et `password_confirmation` (code PIN de 4 chiffres) : crée le compte au statut **`pending`**. **Aucun jeton n’est renvoyé** : l’inscription est en attente de validation par l’équipe JE RELAIS. Afficher un écran « Inscription en attente de validation ».
+0. `GET /auth/register/options` (public, mis en cache) : pièces d’identité acceptées pour l’écran d’inscription : `value`, `label` et `sides` (`recto` et `verso`, ou `page`).
+1. `POST /auth/register` avec `phone` : envoie le code. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.
+2. `POST /auth/register/verify` avec `phone` et `code` : le numéro est retenu comme vérifié pendant **30 minutes**. Aucun compte n’est encore créé.
+3. `POST /auth/register/complete` en **multipart** avec le même `phone`, `last_name`, `first_names`, `gender` (`femme` ou `homme`), `birth_date` (AAAA-MM-JJ), `document_type` et les faces de la pièce : `recto` et `verso` pour `cni`, `permis`, `carte_consulaire` ; `page` pour `passeport`, `attestation_identite` (image ou PDF, 10 Mo maximum chacune), puis `password` et `password_confirmation` (code PIN de 4 chiffres). Crée le compte au statut **`pending`** ; **aucun jeton n’est renvoyé** : afficher « Inscription en attente de validation ». L’équipe voit la pièce avant de valider.
 
 Tant que l’inscription n’est pas validée, `POST /auth/login` répond **422** avec le message « Votre inscription est en attente de validation… ». Une fois validée, la personne est **Relais** (numéro et badge) : elle se connecte avec son numéro et son code PIN et peut tout de suite envoyer des relais.
 
@@ -41,7 +42,7 @@ Numéros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00
 
 ## Vérification d’identité et gains
 
-Après la validation de son inscription, le Relais complète, quand il le souhaite, sa vérification d’identité. Elle est **obligatoire pour recevoir ses gains** ; l’envoi de relais n’en dépend pas.
+Après la validation de son inscription, le Relais complète, quand il le souhaite, sa vérification d’identité : son type de pièce et ses faces, envoyés à l’inscription, y sont déjà ; il reste la commune, le selfie et la photo de profil. Elle est **obligatoire pour recevoir ses gains** ; l’envoi de relais n’en dépend pas.
 
 1. `GET /identity` : statut, éléments manquants (`missing`), types de pièces acceptés (`document_types`) et éligibilité aux gains (`gains_eligible`).
 2. `PUT /identity` : `commune` et/ou `localite` (une localité suffit), et `document_type` : `cni`, `permis`, `carte_consulaire` (recto et verso), `passeport` ou `attestation_identite` (une page).
@@ -104,7 +105,7 @@ Limites par défaut, modifiables par l’administration et lisibles dans `GET /s
 
 ## Cache
 
-Les référentiels publics (`/communes`, `/categories`, `/settings`, `/legal`, `/formation`, `/candidature/options`, `/communes/{commune}/localites`, `/diffusions`) sont envoyés avec `Cache-Control: public, max-age=300` et un `ETag`. L’application peut les garder 5 minutes, puis les revalider avec `If-None-Match` (réponse **304** si rien n’a changé).
+Les référentiels publics (`/auth/register/options`, `/communes`, `/categories`, `/settings`, `/legal`, `/formation`, `/candidature/options`, `/communes/{commune}/localites`, `/diffusions`) sont envoyés avec `Cache-Control: public, max-age=300` et un `ETag`. L’application peut les garder 5 minutes, puis les revalider avec `If-None-Match` (réponse **304** si rien n’a changé).
 
 ## Notifications
 

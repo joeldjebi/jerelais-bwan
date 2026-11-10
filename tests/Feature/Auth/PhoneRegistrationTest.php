@@ -9,14 +9,20 @@ use App\Domain\Auth\Enums\DevicePlatform;
 use App\Domain\Auth\Enums\UserStatus;
 use App\Domain\Candidature\Enums\Gender;
 use App\Domain\Candidature\Models\Candidature;
+use App\Domain\Identity\Enums\IdentityDocumentType;
+use App\Domain\Identity\Models\IdentityVerification;
+use App\Domain\Media\Contracts\VirusScanner;
 use App\Livewire\Console\Registrations\Index as RegistrationsPage;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Livewire\Livewire;
 
 beforeEach(function () {
     config(['jerelais.otp.fixed_code' => '1234']);
+    Storage::fake('identity');
     $this->sms = fakeSms();
 });
 
@@ -27,20 +33,29 @@ function signUp(string $phone = '0707070707', array $overrides = []): TestRespon
 {
     test()->postJson(route('api.v1.auth.register.request'), ['phone' => $phone])->assertAccepted();
 
-    $token = test()->postJson(route('api.v1.auth.register.verify'), ['phone' => $phone, 'code' => '1234'])
-        ->assertOk()
-        ->json('data.registration_token');
+    test()->postJson(route('api.v1.auth.register.verify'), ['phone' => $phone, 'code' => '1234'])->assertOk();
 
-    return test()->postJson(route('api.v1.auth.register.complete'), [
-        'registration_token' => $token,
+    return completeRegistration($phone, $overrides);
+}
+
+/**
+ * @param  array<string, mixed>  $overrides
+ */
+function completeRegistration(string $phone = '0707070707', array $overrides = []): TestResponse
+{
+    return test()->post(route('api.v1.auth.register.complete'), array_filter([
+        'phone' => $phone,
         'last_name' => 'Traoré',
         'first_names' => 'Awa Mariam',
         'gender' => 'femme',
         'birth_date' => '2001-04-17',
+        'document_type' => 'cni',
+        'recto' => UploadedFile::fake()->image('cni-recto.jpg', 800, 500),
+        'verso' => UploadedFile::fake()->create('cni-verso.pdf', 120, 'application/pdf'),
         'password' => '4826',
         'password_confirmation' => '4826',
         ...$overrides,
-    ]);
+    ], fn (mixed $value): bool => $value !== null), ['Accept' => 'application/json']);
 }
 
 function pinLogin(string $pin = '4826', string $phone = '0707070707', string $ip = '127.0.0.1'): TestResponse
@@ -75,6 +90,12 @@ it('inscrit en trois étapes : numéro, code 1234, identité et code PIN — com
         ->and($candidature->first_names)->toBe('Awa Mariam')
         ->and($candidature->gender)->toBe(Gender::Female)
         ->and($candidature->birth_date->toDateString())->toBe('2001-04-17');
+
+    $verification = IdentityVerification::query()->where('user_id', $user->id)->sole();
+
+    expect($verification->document_type)->toBe(IdentityDocumentType::Cni)
+        ->and($verification->files()->pluck('kind')->map->value->sort()->values()->all())->toBe(['recto', 'verso'])
+        ->and(Storage::disk('identity')->allFiles())->toHaveCount(2);
 });
 
 it('refuse la connexion tant que l’inscription n’est pas validée, puis l’accepte [MOB-01]', function () {
@@ -110,15 +131,44 @@ it('exige toutes les informations d’identité et un code PIN de 4 chiffres con
     'PIN trop court' => [['password' => '123', 'password_confirmation' => '123'], 'password'],
     'PIN avec lettres' => [['password' => '12a4', 'password_confirmation' => '12a4'], 'password'],
     'confirmation différente' => [['password_confirmation' => '4827'], 'password'],
+    'type de pièce manquant' => [['document_type' => null], 'document_type'],
+    'type de pièce inconnu' => [['document_type' => 'carte_vitale'], 'document_type'],
+    'verso de la CNI manquant' => [['verso' => null], 'verso'],
+    'page du passeport manquante' => [['document_type' => 'passeport'], 'page'],
+    'pièce dans un format refusé' => [['recto' => UploadedFile::fake()->create('cni.docx', 50, 'application/msword')], 'recto'],
 ]);
 
-it('n’accepte le jeton d’inscription qu’une seule fois et refuse un jeton inconnu', function () {
-    signUp()->assertCreated();
+it('accepte un passeport en une seule page, en PDF', function () {
+    signUp(overrides: ['document_type' => 'passeport', 'recto' => null, 'verso' => null, 'page' => UploadedFile::fake()->create('passeport.pdf', 300, 'application/pdf')])
+        ->assertCreated();
 
-    $this->postJson(route('api.v1.auth.register.complete'), [
-        'registration_token' => str_repeat('a', 64), 'last_name' => 'Koné', 'first_names' => 'Ali', 'gender' => 'homme',
-        'birth_date' => '1999-01-01', 'password' => '1111', 'password_confirmation' => '1111',
-    ])->assertUnprocessable()->assertJsonValidationErrors(['registration_token' => 'Votre vérification a expiré. Recommencez l’inscription depuis le début.']);
+    $verification = IdentityVerification::query()->sole();
+
+    expect($verification->document_type)->toBe(IdentityDocumentType::Passport)
+        ->and($verification->files()->sole()->kind->value)->toBe('page');
+});
+
+it('refuse la dernière étape pour un numéro non vérifié, et n’accepte une vérification qu’une fois', function () {
+    completeRegistration('0505050505')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['phone' => 'Ce numéro n’a pas été vérifié ou sa vérification a expiré. Recommencez l’inscription depuis le début.']);
+
+    signUp()->assertCreated();
+    completeRegistration()->assertUnprocessable()->assertJsonValidationErrors(['phone']);
+
+    expect(User::query()->count())->toBe(1)
+        ->and(Storage::disk('identity')->allFiles())->toHaveCount(2);
+});
+
+it('oublie la vérification du numéro après 30 minutes', function () {
+    test()->postJson(route('api.v1.auth.register.request'), ['phone' => '0707070707'])->assertAccepted();
+    test()->postJson(route('api.v1.auth.register.verify'), ['phone' => '0707070707', 'code' => '1234'])
+        ->assertOk()
+        ->assertJsonPath('meta.expires_in_seconds', 1800);
+
+    $this->travel(31)->minutes();
+
+    completeRegistration()->assertUnprocessable()->assertJsonValidationErrors(['phone']);
 });
 
 it('refuse l’inscription d’un numéro qui a déjà un compte, sans envoyer de code', function () {
@@ -246,4 +296,44 @@ it('connecte avec seulement le numéro et le code PIN, sans décrire l’apparei
         ->assertCreated()
         ->assertJsonPath('data.device.name', 'Appareil mobile')
         ->assertJsonPath('data.device.platform', 'ios');
+});
+
+it('n’inscrit personne et ne garde aucun fichier si la pièce est refusée par l’antivirus [§10]', function () {
+    app()->instance(VirusScanner::class, new class implements VirusScanner
+    {
+        public function scan(string $path): ?string
+        {
+            return 'Win.Test.EICAR_HDB-1';
+        }
+    });
+
+    signUp()->assertUnprocessable()->assertJsonValidationErrors(['recto' => 'Ce fichier a été refusé par l’antivirus.']);
+
+    expect(User::query()->count())->toBe(0)
+        ->and(Storage::disk('identity')->allFiles())->toBe([]);
+});
+
+it('montre la pièce d’identité envoyée dans la console des inscriptions', function () {
+    signUp()->assertCreated();
+    $admin = User::factory()->withTwoFactor()->withRole(Role::Admin)->create();
+
+    $this->actingAs($admin)->get(route('console.registrations'))
+        ->assertOk()
+        ->assertSee('Carte nationale d’identité (CNI)')
+        ->assertSee('Recto de la pièce')
+        ->assertSee('Verso de la pièce (PDF)');
+});
+
+it('liste publiquement les pièces d’identité acceptées pour l’écran d’inscription', function () {
+    $this->getJson(route('api.v1.auth.register.options'))
+        ->assertOk()
+        ->assertHeader('ETag')
+        ->assertJsonCount(5, 'data')
+        ->assertJsonPath('data.0', ['value' => 'cni', 'label' => 'Carte nationale d’identité (CNI)', 'sides' => ['recto', 'verso']])
+        ->assertJsonPath('data.1', ['value' => 'passeport', 'label' => 'Passeport', 'sides' => ['page']])
+        ->assertJsonPath('data.2.sides', ['recto', 'verso'])
+        ->assertJsonPath('data.3.sides', ['recto', 'verso'])
+        ->assertJsonPath('data.4', ['value' => 'attestation_identite', 'label' => 'Attestation d’identité', 'sides' => ['page']])
+        ->assertJsonPath('meta.max_file_kb', 10240)
+        ->assertJsonPath('meta.accepted_mime_types', ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'application/pdf']);
 });
