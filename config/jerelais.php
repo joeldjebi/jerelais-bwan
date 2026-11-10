@@ -38,14 +38,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Code PIN de l'application mobile (MOB-01)
+    | Mot de passe de l'application mobile (MOB-01)
     |--------------------------------------------------------------------------
-    | 4 chiffres : 10 000 combinaisons seulement, d'où le blocage par numéro (toutes adresses IP confondues).
-    | Un PIN oublié se redéfinit après une connexion par code SMS, sans l'ancien PIN, pendant reset_window_minutes.
+    | Au moins 8 caractères ; numéro bloqué après plusieurs erreurs (toutes adresses IP confondues).
+    | Un mot de passe oublié se redéfinit après une connexion par code SMS, sans l'ancien, pendant reset_window_minutes.
     */
 
-    'pin' => [
-        'length' => 4,
+    'app_password' => [
+        'min_length' => 8,
         'max_failures' => 5,
         'lock_minutes' => 15,
         'reset_window_minutes' => 15,

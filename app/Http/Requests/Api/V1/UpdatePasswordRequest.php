@@ -2,13 +2,13 @@
 
 namespace App\Http\Requests\Api\V1;
 
-use App\Domain\Auth\Support\PinPolicy;
+use App\Domain\Auth\Support\PasswordPolicy;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Définition ou changement du code PIN de l'application (MOB-01).
+ * Définition ou changement du mot de passe de l'application (MOB-01).
  */
 class UpdatePasswordRequest extends FormRequest
 {
@@ -22,14 +22,14 @@ class UpdatePasswordRequest extends FormRequest
      */
     public function rules(): array
     {
-        $hasPin = fn (): bool => $this->user()?->password !== null;
-        $resetAllowed = fn (): bool => PinPolicy::allowsResetWithoutCurrent($this->user()?->currentAccessToken());
+        $hasPassword = fn (): bool => $this->user()?->password !== null;
+        $resetAllowed = fn (): bool => PasswordPolicy::allowsResetWithoutCurrent($this->user()?->currentAccessToken());
 
         return [
-            // PIN actuel : obligatoire pour changer un PIN existant, sauf juste après une connexion par code SMS (PIN oublié) ; interdit pour le premier.
-            'current_password' => ['nullable', 'string', Rule::excludeIf($resetAllowed), Rule::requiredIf($hasPin), Rule::prohibitedIf(fn (): bool => ! $hasPin()), 'current_password:sanctum'],
-            // Nouveau code PIN de 4 chiffres, à confirmer dans `password_confirmation`.
-            'password' => ['required', 'string', 'digits:'.PinPolicy::length(), 'confirmed'],
+            // Mot de passe actuel : obligatoire pour en changer, sauf juste après une connexion par code SMS (oubli) ; interdit pour le premier.
+            'current_password' => ['nullable', 'string', Rule::excludeIf($resetAllowed), Rule::requiredIf($hasPassword), Rule::prohibitedIf(fn (): bool => ! $hasPassword()), 'current_password:sanctum'],
+            // Nouveau mot de passe, au moins 8 caractères, à confirmer dans `password_confirmation`.
+            'password' => PasswordPolicy::rules(),
         ];
     }
 
@@ -38,9 +38,6 @@ class UpdatePasswordRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
-            'password.digits' => __('auth.pin_format', ['length' => PinPolicy::length()]),
-            'password.confirmed' => __('auth.pin_confirmation'),
-        ];
+        return PasswordPolicy::messages();
     }
 }

@@ -13,20 +13,20 @@ API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV.
 
 ## Authentification
 
-Un compte est identifié par son **numéro de téléphone** et protégé par un **code PIN de 4 chiffres**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes SMS font **4 chiffres** et sont valables 5 minutes. **Phase de lancement :** tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et le code est toujours `1234`.
+Un compte est identifié par son **numéro de téléphone** et protégé par un **mot de passe d’au moins 8 caractères**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes SMS font **4 chiffres** et sont valables 5 minutes. **Phase de lancement :** tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et le code est toujours `1234`.
 
 **Inscription** (3 appels, sans connexion ni jeton) :
 
 0. `GET /auth/register/options` (public, mis en cache) : pièces d’identité acceptées pour l’écran d’inscription : `value`, `label` et `sides` (`recto` et `verso`, ou `page`).
 1. `POST /auth/register` avec `phone` : envoie le code. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.
 2. `POST /auth/register/verify` avec `phone` et `code` : le numéro est retenu comme vérifié pendant **30 minutes**. Aucun compte n’est encore créé.
-3. `POST /auth/register/complete` en **multipart** avec le même `phone`, `last_name`, `first_names`, `gender` (`femme` ou `homme`), `birth_date` (AAAA-MM-JJ), `document_type` et les faces de la pièce : `recto` et `verso` pour `cni`, `permis`, `carte_consulaire` ; `page` pour `passeport`, `attestation_identite` (image ou PDF, 10 Mo maximum chacune), puis `password` et `password_confirmation` (code PIN de 4 chiffres). Crée le compte au statut **`pending`** ; **aucun jeton n’est renvoyé** : afficher « Inscription en attente de validation ». L’équipe voit la pièce avant de valider.
+3. `POST /auth/register/complete` en **multipart** avec le même `phone`, `last_name`, `first_names`, `gender` (`femme` ou `homme`), `birth_date` (AAAA-MM-JJ), `document_type` et les faces de la pièce : `recto` et `verso` pour `cni`, `permis`, `carte_consulaire` ; `page` pour `passeport`, `attestation_identite` (image ou PDF, 10 Mo maximum chacune), puis `password` et `password_confirmation` (mot de passe d’au moins 8 caractères). Crée le compte au statut **`pending`** ; **aucun jeton n’est renvoyé** : afficher « Inscription en attente de validation ». L’équipe voit la pièce avant de valider.
 
-Tant que l’inscription n’est pas validée, `POST /auth/login` répond **422** avec le message « Votre inscription est en attente de validation… ». Une fois validée, la personne est **Relais** (numéro et badge) : elle se connecte avec son numéro et son code PIN et peut tout de suite envoyer des relais.
+Tant que l’inscription n’est pas validée, `POST /auth/login` répond **422** avec le message « Votre inscription est en attente de validation… ». Une fois validée, la personne est **Relais** (numéro et badge) : elle se connecte avec son numéro et son mot de passe et peut tout de suite envoyer des relais.
 
-**Connexion** : `POST /auth/login` avec seulement `phone` et `password` (le code PIN). La description de l’appareil (`device_name`, `platform`, `app_version`) est facultative : sans elle, la plateforme est déduite du User-Agent. Après 5 PIN erronés sur un même numéro, il est bloqué 15 minutes (**429**).
+**Connexion** : `POST /auth/login` avec seulement `phone` et `password`. La description de l’appareil (`device_name`, `platform`, `app_version`) est facultative : sans elle, la plateforme est déduite du User-Agent. Après 5 mots de passe erronés sur un même numéro, il est bloqué 15 minutes (**429**).
 
-**Code PIN oublié** : `POST /auth/otp`, puis `POST /auth/verify` (numéro et code ; appareil facultatif) renvoie un jeton ; pendant 15 minutes, ce jeton peut redéfinir le PIN avec `PUT /me/password` **sans** `current_password`. Un numéro sans compte est refusé : proposer l’inscription.
+**Mot de passe oublié** : `POST /auth/otp`, puis `POST /auth/verify` (numéro et code ; appareil facultatif) renvoie un jeton ; pendant 15 minutes, ce jeton peut redéfinir le mot de passe avec `PUT /me/password` **sans** `current_password`. Un numéro sans compte est refusé : proposer l’inscription.
 
 Ensuite :
 
@@ -34,7 +34,7 @@ Ensuite :
 - `PUT /devices/current` après chaque connexion ou mise à jour de l’application : jeton de notifications push (FCM) et version installée.
 - `POST /auth/logout` détruit le jeton de l’appareil.
 
-Le jeton est valable **60 jours** (date dans `expires_at`), puis une nouvelle connexion par code PIN est nécessaire. Il devient invalide plus tôt (réponse **401**) après une déconnexion, une révocation à distance, une radiation du Relais ou la suppression du compte : l’application doit alors revenir à l’écran de connexion.
+Le jeton est valable **60 jours** (date dans `expires_at`), puis une nouvelle connexion est nécessaire. Il devient invalide plus tôt (réponse **401**) après une déconnexion, une révocation à distance, une radiation du Relais ou la suppression du compte : l’application doit alors revenir à l’écran de connexion.
 
 Les comptes de l’équipe (coordonnateurs, rédaction, administration) n’ont pas accès à l’API : ils passent par la console web, avec double authentification.
 
@@ -88,7 +88,7 @@ Limites par défaut, modifiables par l’administration et lisibles dans `GET /s
 | Code | Signification | Que faire |
 |---|---|---|
 | 401 | Jeton absent, invalide ou révoqué. Corps : `{"message": "Unauthenticated."}` | Revenir à l’écran de connexion. |
-| 403 | Action non permise pour ce compte : candidat sur une route de Relais, Relais suspendu ou radié qui tente d’envoyer… Avec `"code": "pin_required"` : code PIN pas encore défini. | Afficher le message, ne pas réessayer. Si `pin_required` : ouvrir l’écran « Choisissez votre code PIN ». |
+| 403 | Action non permise pour ce compte : candidat sur une route de Relais, Relais suspendu ou radié qui tente d’envoyer… Avec `"code": "password_required"` : compte sans mot de passe (créé sur le site web). | Afficher le message, ne pas réessayer. Si `password_required` : ouvrir l’écran « Choisissez votre mot de passe ». |
 | 404 | Ressource inexistante **ou appartenant à quelqu’un d’autre** (le serveur ne distingue pas les deux). | — |
 | 409 | Conflit d’état : dossier déjà déposé, relais déjà envoyé, `client_uuid` déjà utilisé par un autre compte. | Recharger la ressource. |
 | 422 | Données invalides. Corps : `{"message": "…", "errors": {"champ": ["…"]}}` | Afficher chaque message sous son champ. |
@@ -100,7 +100,7 @@ Limites par défaut, modifiables par l’administration et lisibles dans `GET /s
 - 120 appels par minute et par compte connecté ; 1 200 par minute et par adresse IP sans connexion (les opérateurs partagent souvent une même adresse publique).
 - Codes SMS : 3 par numéro et par 15 minutes (quota commun au site et à l’application), 10 par adresse IP.
 - Vérification d’un code : 10 par minute et par adresse IP ; 5 essais par code.
-- Connexion par code PIN : 5 essais par minute ; après 5 PIN erronés, le numéro est bloqué 15 minutes, toutes adresses IP confondues.
+- Connexion par mot de passe : 5 essais par minute ; après 5 mots de passe erronés, le numéro est bloqué 15 minutes, toutes adresses IP confondues.
 - Création de relais : 60 par minute. Annonce de médias : 120 par minute. Messages et pièces de candidature : 30 par minute. Quiz : 10 tentatives par heure. Export des données : 5 par heure.
 
 ## Cache
