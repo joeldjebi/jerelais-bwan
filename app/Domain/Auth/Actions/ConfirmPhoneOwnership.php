@@ -21,7 +21,10 @@ class ConfirmPhoneOwnership
 {
     public function __construct(private readonly AuditLogger $audit) {}
 
-    public function handle(PhoneNumber $phone, string $code): User
+    /**
+     * @param  bool  $createAccount  false : un numéro sans compte est refusé (connexion par code SMS de l'application)
+     */
+    public function handle(PhoneNumber $phone, string $code, bool $createAccount = true): User
     {
         $phoneHash = $phone->hash();
 
@@ -56,8 +59,12 @@ class ConfirmPhoneOwnership
             throw AuthenticationRefused::invalidCode();
         }
 
-        return DB::transaction(function () use ($phone): User {
+        return DB::transaction(function () use ($phone, $createAccount): User {
             $user = User::findByPhone($phone);
+
+            if ($user === null && ! $createAccount) {
+                throw AuthenticationRefused::unknownAccount();
+            }
 
             if ($user === null) {
                 $user = (new User(['status' => UserStatus::Active]))->setPhoneNumber($phone);

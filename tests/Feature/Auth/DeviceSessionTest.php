@@ -11,7 +11,7 @@ use App\Models\User;
 
 function issueTokenFor(User $user): IssuedToken
 {
-    return app(IssueDeviceToken::class)->handle($user, new DeviceInfo('Itel A70', DevicePlatform::Android), 'otp');
+    return app(IssueDeviceToken::class)->handle($user, new DeviceInfo('Itel A70', DevicePlatform::Android), 'password');
 }
 
 it('se déconnecte : le jeton de l’appareil devient inutilisable [MOB-31]', function () {
@@ -58,16 +58,16 @@ it('enregistre le jeton de notifications push de l’appareil courant [MOB-21]',
 });
 
 it('connecte par mot de passe un Relais qui en a défini un [MOB-01]', function () {
-    $user = User::factory()->withRole(Role::Relais)->create(['password' => 'un-mot-de-passe-solide']);
+    $user = User::factory()->withRole(Role::Relais)->create(['password' => '4826']);
     $user->setPhoneNumber(PhoneNumber::parse('0505050505'))->save();
 
-    $this->postJson(route('api.v1.auth.login'), ['phone' => '05 05 05 05 05', 'password' => 'un-mot-de-passe-solide', ...deviceFields()])
+    $this->postJson(route('api.v1.auth.login'), ['phone' => '05 05 05 05 05', 'password' => '4826', ...deviceFields()])
         ->assertCreated()
         ->assertJsonStructure(['data' => ['token', 'device' => ['uuid'], 'user' => ['uuid']]]);
 });
 
 it('refuse un mauvais mot de passe avec un message générique', function () {
-    $user = User::factory()->create(['password' => 'un-mot-de-passe-solide']);
+    $user = User::factory()->create(['password' => '4826']);
     $user->setPhoneNumber(PhoneNumber::parse('0505050505'))->save();
 
     $this->postJson(route('api.v1.auth.login'), ['phone' => '0505050505', 'password' => 'mauvais', ...deviceFields()])
@@ -87,17 +87,21 @@ it('limite les tentatives de connexion par mot de passe [§10 Sécurité]', func
     $this->postJson(route('api.v1.auth.login'), ['phone' => '0505050505', 'password' => 'x', ...deviceFields()])->assertTooManyRequests();
 });
 
-it('permet de définir puis changer son mot de passe', function () {
+it('permet de définir puis changer son code PIN', function () {
     $issued = issueTokenFor(User::factory()->withRole(Role::Relais)->create(['password' => null]));
 
     $this->withToken($issued->plainTextToken)
-        ->putJson(route('api.v1.me.password'), ['password' => 'nouveau-mot-de-passe', 'password_confirmation' => 'nouveau-mot-de-passe'])
+        ->putJson(route('api.v1.me.password'), ['password' => '4826', 'password_confirmation' => '4826'])
         ->assertNoContent();
 
     $this->withToken($issued->plainTextToken)
-        ->putJson(route('api.v1.me.password'), ['password' => 'encore-un-autre', 'password_confirmation' => 'encore-un-autre'])
+        ->putJson(route('api.v1.me.password'), ['password' => '7351', 'password_confirmation' => '7351'])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['current_password']);
+
+    $this->withToken($issued->plainTextToken)
+        ->putJson(route('api.v1.me.password'), ['current_password' => '4826', 'password' => '7351', 'password_confirmation' => '7351'])
+        ->assertNoContent();
 });
 
 it('refuse les routes protégées sans jeton', function (string $method, string $route) {

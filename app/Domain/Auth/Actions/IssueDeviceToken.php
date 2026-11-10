@@ -7,6 +7,7 @@ use App\Domain\Auth\Data\DeviceInfo;
 use App\Domain\Auth\Data\IssuedToken;
 use App\Domain\Auth\Exceptions\AuthenticationRefused;
 use App\Domain\Auth\Models\Device;
+use App\Domain\Auth\Support\PinPolicy;
 use App\Models\User;
 
 /**
@@ -31,7 +32,9 @@ class IssueDeviceToken
         $device->user()->associate($user);
         $device->save();
 
-        $token = $user->createToken($device->uuid, ['*'], now()->addMinutes((int) config('sanctum.expiration')));
+        // Un jeton obtenu par code SMS peut redéfinir le PIN sans l'ancien pendant quelques minutes (PIN oublié).
+        $abilities = $method === 'otp' ? ['*', PinPolicy::SMS_VERIFIED_ABILITY] : ['*'];
+        $token = $user->createToken($device->uuid, $abilities, now()->addMinutes((int) config('sanctum.expiration')));
         $device->update(['personal_access_token_id' => $token->accessToken->getKey()]);
 
         $user->forceFill(['last_login_at' => now()])->save();
