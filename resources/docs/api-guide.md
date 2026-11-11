@@ -13,7 +13,7 @@ API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV.
 
 ## Authentification
 
-Un compte est identifié par son **numéro de téléphone** et protégé par un **mot de passe d’au moins 8 caractères**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes SMS font **4 chiffres** et sont valables 5 minutes. **Phase de lancement :** tant qu’aucun fournisseur de SMS n’est branché, aucun SMS ne part et le code est **toujours `1234`** (inscription, mot de passe oublié, site web). Dès qu’un fournisseur sera branché, le code deviendra aléatoire et arrivera par SMS, sans changement pour l’application : le même écran de saisie à 4 chiffres sert dans les deux cas.
+Un compte est identifié par son **numéro de téléphone** et protégé par un **mot de passe d’au moins 8 caractères**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes de vérification font **4 chiffres**, sont valables 5 minutes et **arrivent par SMS** (fournisseur MTarget, expéditeur affiché sur le téléphone). Sur un environnement sans fournisseur de SMS (développement, recette), aucun SMS ne part et le code est toujours `1234`. L’écran de saisie est le même dans les deux cas. Si le fournisseur refuse l’envoi, l’API répond **503** « L’envoi du SMS a échoué. Réessayez dans quelques instants. »
 
 **Inscription** (3 appels, sans connexion ni jeton) :
 
