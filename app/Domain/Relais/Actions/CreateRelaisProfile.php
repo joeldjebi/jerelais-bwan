@@ -27,7 +27,7 @@ class CreateRelaisProfile
         $profile = new RelaisProfile([
             'commune_id' => $candidature->commune_id,
             'localite_id' => $candidature->localite_id,
-            'display_name' => $this->displayName($candidature),
+            'display_name' => self::displayNameFor($candidature),
             'status' => RelaisStatus::Active,
             'activated_at' => now(),
         ]);
@@ -46,7 +46,10 @@ class CreateRelaisProfile
     /**
      * Prénom et initiale du nom : suffisant pour reconnaître le Relais sans exposer son identité complète.
      */
-    private function displayName(Candidature $candidature): string
+    /**
+     * Nom public du Relais : premier prénom et initiale du nom (« Awa T. »), ou « Relais » sans identité.
+     */
+    public static function displayNameFor(Candidature $candidature): string
     {
         $firstName = Str::of((string) $candidature->first_names)->trim()->explode(' ')->first() ?: '';
         $initial = Str::upper(Str::substr(trim((string) $candidature->last_name), 0, 1));

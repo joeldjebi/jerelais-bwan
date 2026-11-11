@@ -2,6 +2,7 @@
 
 namespace App\Domain\Identity\Support;
 
+use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Identity\Enums\IdentityFileKind;
 use App\Domain\Identity\Models\IdentityVerification;
 
@@ -16,6 +17,13 @@ class IdentityChecklist
     public static function missing(IdentityVerification $verification): array
     {
         $missing = [];
+        $identity = Candidature::withoutCommuneRestriction()->where('user_id', $verification->user_id)->first();
+
+        foreach (['last_name', 'first_names', 'gender', 'birth_date'] as $field) {
+            if (blank($identity?->getAttribute($field))) {
+                $missing[$field] = __("identity.errors.{$field}");
+            }
+        }
 
         if ($verification->commune_id === null) {
             $missing['commune'] = __('identity.errors.commune');

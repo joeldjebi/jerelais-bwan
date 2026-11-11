@@ -15,14 +15,13 @@ API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV.
 
 Un compte est identifié par son **numéro de téléphone** et protégé par un **mot de passe d’au moins 8 caractères**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes de vérification font **4 chiffres**, sont valables 5 minutes et **arrivent par SMS** (fournisseur MTarget, expéditeur affiché sur le téléphone). Sur un environnement sans fournisseur de SMS (développement, recette), aucun SMS ne part et le code est toujours `1234`. L’écran de saisie est le même dans les deux cas. Si le fournisseur refuse l’envoi, l’API répond **503** « L’envoi du SMS a échoué. Réessayez dans quelques instants. »
 
-**Inscription** (3 appels, sans connexion ni jeton) :
+**Inscription** (3 appels) :
 
-0. `GET /auth/register/options` (public, mis en cache) : pièces d’identité acceptées pour l’écran d’inscription : `value`, `label` et `sides` (`recto` et `verso`, ou `page`).
-1. `POST /auth/register` avec `phone` : envoie le code. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.
-2. `POST /auth/register/verify` avec `phone` et `code` : le numéro est retenu comme vérifié pendant **30 minutes**. Aucun compte n’est encore créé.
-3. `POST /auth/register/complete` en **multipart** avec le même `phone`, `last_name`, `first_names`, `gender` (`femme` ou `homme`), `birth_date` (AAAA-MM-JJ), `document_type` et les faces de la pièce : `recto` et `verso` pour `cni`, `permis`, `carte_consulaire` ; `page` pour `passeport`, `attestation_identite` (image ou PDF, 10 Mo maximum chacune), puis `password` et `password_confirmation` (mot de passe d’au moins 8 caractères). Crée le compte au statut **`pending`** ; **aucun jeton n’est renvoyé** : afficher « Inscription en attente de validation ». L’équipe voit la pièce avant de valider.
+1. `POST /auth/register` avec `phone` : envoie le code par SMS. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.
+2. `POST /auth/register/verify` avec `phone` et `code` : le numéro est retenu comme vérifié pendant **30 minutes**.
+3. `POST /auth/register/complete` avec le même `phone`, `password` et `password_confirmation` (au moins 8 caractères). **Rien d’autre.** Le compte est **actif** : la personne est Relais (numéro et badge). Aucun jeton n’est renvoyé : ouvrir l’écran de connexion.
 
-Tant que l’inscription n’est pas validée, `POST /auth/login` répond **422** avec le message « Votre inscription est en attente de validation… ». Une fois validée, la personne est **Relais** (numéro et badge) : elle se connecte avec son numéro et son mot de passe et peut tout de suite envoyer des relais.
+La personne se connecte ensuite avec `POST /auth/login` et peut **envoyer des relais tout de suite**. Nom, prénoms, sexe, date de naissance, pièce d’identité, commune, selfie et photo de profil se complètent plus tard dans le profil (voir « Vérification d’identité et commissions ») : ils n’empêchent ni la connexion ni l’envoi de relais.
 
 **Connexion** : `POST /auth/login` avec seulement `phone` et `password`. La description de l’appareil (`device_name`, `platform`, `app_version`) est facultative : sans elle, la plateforme est déduite du User-Agent. Après 5 mots de passe erronés sur un même numéro, il est bloqué 15 minutes (**429**).
 
@@ -40,19 +39,19 @@ Les comptes de l’équipe (coordonnateurs, rédaction, administration) n’ont 
 
 Numéros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00 01`) ou format international (`+2250700000001`).
 
-## Vérification d’identité et gains
+## Vérification d’identité et commissions
 
-Après la validation de son inscription, le Relais complète, quand il le souhaite, sa vérification d’identité : son type de pièce et ses faces, envoyés à l’inscription, y sont déjà ; il reste la commune, le selfie et la photo de profil. Elle est **obligatoire pour recevoir ses gains** ; l’envoi de relais n’en dépend pas.
+Le Relais complète son profil quand il le souhaite ; il est **obligatoire seulement pour recevoir ses commissions**. Ni la connexion ni l’envoi de relais n’en dépendent.
 
-1. `GET /identity` : statut, éléments manquants (`missing`), types de pièces acceptés (`document_types`) et éligibilité aux gains (`gains_eligible`).
-2. `PUT /identity` : `commune` et/ou `localite` (une localité suffit), et `document_type` : `cni`, `permis`, `carte_consulaire` (recto et verso), `passeport` ou `attestation_identite` (une page).
+1. `GET /identity` : statut, éléments manquants (`missing`), identité déjà saisie, types de pièces acceptés (`document_types`, aussi en public sur `GET /auth/register/options`) et `gains_eligible`.
+2. `PUT /identity` (**mise à jour partielle** : seuls les champs envoyés changent) : `last_name`, `first_names`, `gender`, `birth_date`, `commune` et/ou `localite`, `document_type` (`cni`, `permis`, `carte_consulaire` : recto et verso ; `passeport`, `attestation_identite` : une page).
 3. `POST /identity/files` (multipart `kind` + `file`) pour chaque fichier de `required_files` : faces de la pièce (image ou PDF), `selfie` (la personne tenant sa pièce) et `profile_photo` (image). `DELETE /identity/files/{kind}` pour en retirer un.
 4. `POST /identity/submit` : envoi à l’administration (**422** avec la liste de ce qui manque sinon).
 5. Suivi : `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` : corriger selon `decision_comment`, puis renvoyer. Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).
 
 ## Parcours d’un candidat
 
-1. Inscription (`POST /auth/register`, `POST /auth/register/verify`, `POST /auth/register/complete`) : compte candidat créé en attente ; connexion possible après validation par l’équipe. L’identité saisie pré-remplit l’étape « identité » de la candidature.
+1. Inscription (`POST /auth/register`, `POST /auth/register/verify`, `POST /auth/register/complete`) : compte actif et Relais dès le mot de passe choisi.
 2. Lecture des listes du formulaire : `GET /candidature/options`, `GET /communes`, `GET /communes/{commune}/localites`.
 3. Remplissage en trois étapes, enregistrées à chaque modification : `PUT /candidature/steps/identite`, `…/territoire`, `…/profil`.
 4. Pièces : `POST /candidature/documents` (photo de profil, recto, verso, selfie ; autorisation parentale si mineur admis).

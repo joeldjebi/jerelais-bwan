@@ -42,10 +42,6 @@ class ConfirmPhoneOwnership
                 $this->audit->record('auth.account.created', $user, actor: $user);
             }
 
-            if ($user->status === UserStatus::Pending) {
-                throw AuthenticationRefused::accountPending();
-            }
-
             if (! $user->status->canSignIn()) {
                 throw AuthenticationRefused::accountDisabled();
             }

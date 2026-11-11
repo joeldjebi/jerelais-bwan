@@ -19,7 +19,6 @@ class PasswordLoginController extends Controller
      *
      * Uniquement `phone` et `password` (le mot de passe choisi à l'inscription). Renvoie un nouveau jeton pour cet appareil.
      * Identifiants incorrects, compte suspendu ou compte de l'équipe : 422 sur `phone` (message volontairement générique).
-     * Inscription pas encore validée par l'équipe : 422 sur `phone` avec le message « inscription en attente de validation ».
      * Après 5 mots de passe erronés sur un même numéro, quelle que soit l'adresse IP, le numéro est bloqué 15 minutes (429) :
      * proposer « Mot de passe oublié » (`POST /auth/otp` puis `POST /auth/verify`).
      *
