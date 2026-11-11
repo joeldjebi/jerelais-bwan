@@ -36,6 +36,8 @@
         <env name="FILESYSTEM_DISK" value="local"/>
         <env name="ANTIVIRUS_DRIVER" value="fake"/>
         <env name="TRUSTED_PROXIES" value=""/>
+        <!-- Codes aléatoires envoyés par la fausse passerelle SMS ; les tests du code fixe le réactivent explicitement. -->
+        <env name="OTP_FIXED_CODE" value="off"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

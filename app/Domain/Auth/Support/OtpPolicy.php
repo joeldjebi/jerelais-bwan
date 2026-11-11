@@ -8,13 +8,24 @@ use InvalidArgumentException;
 /**
  * Règles du code de vérification (MOB-01), dont le code fixe transitoire.
  *
- * OTP_FIXED_CODE (ex. « 1234 ») remplace le code aléatoire tant qu'aucun fournisseur de SMS n'est branché :
- * aucun SMS n'est envoyé et le code est communiqué aux testeurs par l'équipe. OTP_FIXED_CODE_NUMBERS restreint ce code
- * à une liste de numéros ; vide, il s'applique à tous. Toute personne connaissant le code et un numéro peut se connecter
- * à ce compte : mesure de transition, signalée par jerelais:check-production.
+ * Tant qu'aucun fournisseur de SMS réel n'est branché (pilotes « log », « mailpit » ou « none »), le code est
+ * toujours 1234 (DEFAULT_FIXED_CODE) : aucun SMS n'est envoyé. Dès qu'un vrai fournisseur est configuré, le code
+ * redevient aléatoire et part par SMS. OTP_FIXED_CODE permet d'imposer un autre code fixe, ou de le désactiver
+ * avec « off » ; OTP_FIXED_CODE_NUMBERS le restreint à une liste de numéros. Toute personne connaissant le code
+ * et un numéro peut se connecter à ce compte : mesure de transition, signalée par jerelais:check-production.
  */
 class OtpPolicy
 {
+    public const string DEFAULT_FIXED_CODE = '1234';
+
+    /** Pilotes qui n'envoient aucun vrai SMS. */
+    public const array SIMULATED_SMS_DRIVERS = ['log', 'mailpit', 'none'];
+
+    public static function hasRealSmsGateway(): bool
+    {
+        return ! in_array(config('jerelais.sms.driver'), self::SIMULATED_SMS_DRIVERS, true);
+    }
+
     public static function fixedCodeFor(PhoneNumber $phone): ?string
     {
         $code = self::fixedCode();
@@ -61,8 +72,12 @@ class OtpPolicy
     {
         $code = trim((string) config('jerelais.otp.fixed_code'));
 
-        if ($code === '') {
+        if (in_array(strtolower($code), ['off', 'none', 'false'], true)) {
             return null;
+        }
+
+        if ($code === '') {
+            return self::hasRealSmsGateway() ? null : self::DEFAULT_FIXED_CODE;
         }
 
         if (preg_match('/^\d{4,8}$/', $code) !== 1) {
