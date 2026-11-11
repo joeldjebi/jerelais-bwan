@@ -5,6 +5,7 @@ namespace App\Domain\Auth\Actions;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Auth\Contracts\SmsGateway;
 use App\Domain\Auth\Data\PhoneNumber;
+use App\Domain\Auth\Exceptions\SmsNotSent;
 use App\Domain\Auth\Models\OtpCode;
 use App\Domain\Auth\Support\OtpPolicy;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
@@ -27,6 +28,7 @@ class RequestOtp
 
     /**
      * @throws ThrottleRequestsException quota d'envoi atteint pour ce numéro
+     * @throws SmsNotSent le fournisseur de SMS n'a pas accepté le message
      */
     public function handle(PhoneNumber $phone, ?string $ipAddress = null): void
     {
@@ -61,9 +63,17 @@ class RequestOtp
             return;
         }
 
-        $this->sms->send($phone, __('auth.otp_sms', [
-            'code' => $code,
-            'minutes' => config('jerelais.otp.ttl_minutes'),
-        ]));
+        try {
+            $this->sms->send($phone, __('auth.otp_sms', [
+                'code' => $code,
+                'minutes' => config('jerelais.otp.ttl_minutes'),
+            ]));
+        } catch (SmsNotSent $exception) {
+            // Code jamais reçu : on l'annule pour ne laisser aucun code valide en circulation.
+            OtpCode::query()->where('phone_hash', $phoneHash)->whereNull('consumed_at')->update(['consumed_at' => now()]);
+            $this->audit->record('auth.otp.sms_failed', payload: ['phone_ref' => substr($phoneHash, 0, 12)]);
+
+            throw $exception;
+        }
     }
 }

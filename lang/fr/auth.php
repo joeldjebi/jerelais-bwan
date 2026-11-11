@@ -9,6 +9,7 @@ return [
     'otp_throttled' => 'Trop de tentatives. Patientez quelques minutes avant de réessayer.',
     'otp_format' => 'Le code comporte :length chiffres.',
     'staff_use_console' => 'Ce numéro appartient à un compte de l’équipe : connectez-vous depuis la console.',
+    'sms_failed' => 'L’envoi du SMS a échoué. Réessayez dans quelques instants.',
     'otp_sent' => 'Si ce numéro est valide, un code de vérification vient de lui être envoyé par SMS.',
     'registration_otp_sent' => 'Un code de vérification vient d’être envoyé par SMS à ce numéro.',
     'phone_already_registered' => 'Ce numéro a déjà un compte. Connectez-vous avec votre mot de passe.',
