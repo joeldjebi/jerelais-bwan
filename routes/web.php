@@ -37,7 +37,6 @@ use App\Livewire\Console\Messagerie\Index as MessageriePage;
 use App\Livewire\Console\Newsroom\Index as NewsroomPage;
 use App\Livewire\Console\Privacy\Index as PrivacyPage;
 use App\Livewire\Console\Referentiels\Index as ReferentielsPage;
-use App\Livewire\Console\Registrations\Index as RegistrationsPage;
 use App\Livewire\Console\Relais\Index as RelaisPage;
 use App\Livewire\Console\Relais\Show as RelaisProfilePage;
 use App\Livewire\Console\Reports\Index as ReportsPage;
@@ -107,7 +106,6 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::livewire('compte', AccountPage::class)->name('account');
         Route::livewire('communes', CommunesPage::class)->middleware('permission:'.Permission::TerritoireManage->value)->name('communes');
         Route::livewire('equipe', TeamPage::class)->middleware('permission:'.Permission::UsersManage->value)->name('team');
-        Route::livewire('inscriptions', RegistrationsPage::class)->middleware('permission:'.Permission::UsersManage->value)->name('registrations');
         Route::livewire('identites', IdentityPage::class)->middleware('permission:'.Permission::UsersManage->value)->name('identity');
         Route::livewire('identites/{verification}', IdentityShowPage::class)->middleware('permission:'.Permission::UsersManage->value)->name('identity.show');
         Route::get('identites/fichiers/{file}', IdentityFileController::class)->middleware(['signed', 'permission:'.Permission::UsersManage->value])->name('identity.file');

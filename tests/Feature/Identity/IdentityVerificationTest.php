@@ -1,6 +1,5 @@
 <?php
 
-use App\Domain\Access\Actions\ReviewRegistration;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Enums\UserStatus;
@@ -22,30 +21,25 @@ use Livewire\Livewire;
 beforeEach(function () {
     Storage::fake('identity');
     $this->commune = Commune::factory()->create();
-    $this->relais = approvedAppRegistrant();
+    $this->relais = registeredAppRelais();
     Sanctum::actingAs($this->relais);
 });
 
 /**
- * Inscrit un numéro depuis l'application puis valide l'inscription, comme le ferait l'administration.
+ * Inscrit un numéro depuis l'application (numéro, code, mot de passe) : le compte est aussitôt actif et Relais.
  */
-function approvedAppRegistrant(string $phone = '0707070707'): User
+function registeredAppRelais(string $phone = '0707070707'): User
 {
     config(['jerelais.otp.fixed_code' => '1234']);
     fakeSms();
 
     test()->postJson(route('api.v1.auth.register.request'), ['phone' => $phone])->assertAccepted();
     test()->postJson(route('api.v1.auth.register.verify'), ['phone' => $phone, 'code' => '1234'])->assertOk();
-    test()->post(route('api.v1.auth.register.complete'), [
-        'phone' => $phone, 'last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme', 'birth_date' => '2001-04-17',
-        'document_type' => 'cni', 'recto' => UploadedFile::fake()->image('recto.jpg'), 'verso' => UploadedFile::fake()->image('verso.jpg'),
-        'password' => 'MotDePasse2026', 'password_confirmation' => 'MotDePasse2026',
-    ], ['Accept' => 'application/json'])->assertCreated();
+    test()->postJson(route('api.v1.auth.register.complete'), [
+        'phone' => $phone, 'password' => 'MotDePasse2026', 'password_confirmation' => 'MotDePasse2026',
+    ])->assertCreated();
 
-    $user = User::findByPhone(PhoneNumber::parse($phone));
-    app(ReviewRegistration::class)->approve($user, User::factory()->withRole(Role::Admin)->create());
-
-    return $user->refresh();
+    return User::findByPhone(PhoneNumber::parse($phone));
 }
 
 function sendIdentityFile(string $kind, ?UploadedFile $file = null): TestResponse
@@ -58,7 +52,10 @@ function sendIdentityFile(string $kind, ?UploadedFile $file = null): TestRespons
 
 function completeIdentity(string $type = 'cni'): void
 {
-    test()->putJson(route('api.v1.identity.update'), ['commune' => test()->commune->uuid, 'document_type' => $type])->assertOk();
+    test()->putJson(route('api.v1.identity.update'), [
+        'last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme', 'birth_date' => '2001-04-17',
+        'commune' => test()->commune->uuid, 'document_type' => $type,
+    ])->assertOk();
 
     $sides = $type === 'passeport' || $type === 'attestation_identite' ? ['page'] : ['recto', 'verso'];
 
@@ -67,7 +64,7 @@ function completeIdentity(string $type = 'cni'): void
     }
 }
 
-it('fait du compte validé un Relais sans commune, qui peut envoyer des relais [MOB-01]', function () {
+it('fait du compte inscrit un Relais sans commune, qui peut envoyer des relais sans profil complété [MOB-01]', function () {
     $profile = RelaisProfile::withoutCommuneRestriction()->where('user_id', $this->relais->id)->sole();
 
     expect($this->relais->status)->toBe(UserStatus::Active)
@@ -76,18 +73,23 @@ it('fait du compte validé un Relais sans commune, qui peut envoyer des relais [
         ->and($profile->number)->toStartWith('JR-');
 
     $this->postJson(route('api.v1.relais.store'), ['client_uuid' => (string) Str::uuid()])->assertCreated();
-    $this->getJson(route('api.v1.me.show'))->assertJsonPath('data.identity_status', 'draft')->assertJsonPath('data.gains_eligible', false);
+    $this->getJson(route('api.v1.me.show'))->assertJsonPath('data.identity_status', null)->assertJsonPath('data.gains_eligible', false);
 });
 
-it('reprend la pièce envoyée à l’inscription et indique ce qui manque encore', function () {
+it('indique tout ce qui manque au profil d’un nouveau Relais', function () {
     $this->getJson(route('api.v1.identity.show'))
         ->assertOk()
         ->assertJsonPath('data.status', 'draft')
         ->assertJsonPath('data.gains_eligible', false)
-        ->assertJsonPath('data.document_type', 'cni')
-        ->assertJsonCount(2, 'data.files')
+        ->assertJsonPath('data.last_name', null)
+        ->assertJsonPath('data.document_type', null)
         ->assertJsonPath('data.missing', [
+            'last_name' => 'Indiquez votre nom.',
+            'first_names' => 'Indiquez vos prénoms.',
+            'gender' => 'Indiquez votre sexe.',
+            'birth_date' => 'Indiquez votre date de naissance.',
             'commune' => 'Choisissez votre commune.',
+            'document_type' => 'Choisissez le type de votre pièce d’identité.',
             'files.selfie' => 'Ajoutez : Selfie avec la pièce.',
             'files.profile_photo' => 'Ajoutez : Photo de profil.',
         ])
@@ -95,7 +97,35 @@ it('reprend la pièce envoyée à l’inscription et indique ce qui manque encor
 
     $this->postJson(route('api.v1.identity.submit'))
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['commune', 'files.selfie', 'files.profile_photo']);
+        ->assertJsonValidationErrors(['last_name', 'first_names', 'gender', 'birth_date', 'commune', 'document_type', 'files.selfie', 'files.profile_photo']);
+});
+
+it('complète le profil en plusieurs fois : seuls les champs envoyés changent', function () {
+    $this->putJson(route('api.v1.identity.update'), ['last_name' => 'Traoré', 'first_names' => 'Awa Mariam'])
+        ->assertOk()
+        ->assertJsonPath('data.last_name', 'Traoré')
+        ->assertJsonPath('data.first_names', 'Awa Mariam');
+
+    $this->putJson(route('api.v1.identity.update'), ['gender' => 'femme', 'birth_date' => '2001-04-17'])
+        ->assertOk()
+        ->assertJsonPath('data.last_name', 'Traoré')
+        ->assertJsonPath('data.gender', 'femme')
+        ->assertJsonPath('data.birth_date', '2001-04-17');
+
+    $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid])->assertOk()->assertJsonPath('data.commune.uuid', $this->commune->uuid);
+    $this->putJson(route('api.v1.identity.update'), ['document_type' => 'passeport'])
+        ->assertOk()
+        ->assertJsonPath('data.commune.uuid', $this->commune->uuid)
+        ->assertJsonPath('data.document_type', 'passeport');
+
+    expect($this->relais->refresh()->name)->toBe('Awa Mariam Traoré')
+        ->and(RelaisProfile::withoutCommuneRestriction()->where('user_id', $this->relais->id)->value('display_name'))->toBe('Awa T.');
+});
+
+it('refuse une date de naissance mal formée ou un sexe inconnu', function () {
+    $this->putJson(route('api.v1.identity.update'), ['birth_date' => '17/04/2001', 'gender' => 'x'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['birth_date', 'gender']);
 });
 
 it('demande recto et verso pour une CNI, une seule page pour un passeport', function (string $type, array $sides) {
@@ -126,8 +156,7 @@ it('accepte la pièce en image ou en PDF, mais le selfie en image seulement', fu
     sendIdentityFile('selfie', UploadedFile::fake()->create('selfie.pdf', 200, 'application/pdf'))->assertJsonValidationErrors('file');
     sendIdentityFile('page')->assertUnprocessable()->assertJsonValidationErrors('kind');
 
-    // Le recto de l'inscription est remplacé par le PDF : toujours deux fichiers (recto, verso).
-    expect(Storage::disk('identity')->allFiles())->toHaveCount(2);
+    expect(Storage::disk('identity')->allFiles())->toHaveCount(1);
 });
 
 it('retire les faces devenues inutiles quand le type de pièce change', function () {

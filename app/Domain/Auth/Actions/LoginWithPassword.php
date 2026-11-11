@@ -6,7 +6,6 @@ use App\Domain\Audit\AuditLogger;
 use App\Domain\Auth\Data\DeviceInfo;
 use App\Domain\Auth\Data\IssuedToken;
 use App\Domain\Auth\Data\PhoneNumber;
-use App\Domain\Auth\Enums\UserStatus;
 use App\Domain\Auth\Exceptions\AuthenticationRefused;
 use App\Domain\Auth\Support\PasswordPolicy;
 use App\Models\User;
@@ -43,10 +42,6 @@ class LoginWithPassword
         }
 
         PasswordPolicy::clearFailures($phone);
-
-        if ($user->status === UserStatus::Pending) {
-            throw AuthenticationRefused::accountPending();
-        }
 
         if (! $user->status->canSignIn()) {
             throw AuthenticationRefused::accountDisabled();

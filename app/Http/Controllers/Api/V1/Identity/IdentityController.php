@@ -32,7 +32,7 @@ use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 /**
  * Vérification d'identité du Relais (MOB-01) : condition pour recevoir ses gains.
  */
-#[Group('Vérification d’identité', 'Commune, pièce d’identité, selfie et photo de profil : vérifiés par l’administration, condition pour recevoir ses gains.', weight: 2)]
+#[Group('Vérification d’identité', 'Profil pour recevoir ses commissions : identité, commune, pièce d’identité, selfie et photo de profil, vérifiés par l’administration. N’empêche ni la connexion ni l’envoi de relais.', weight: 2)]
 class IdentityController extends Controller
 {
     /**
@@ -51,10 +51,12 @@ class IdentityController extends Controller
     }
 
     /**
-     * Renseigner ma commune et mon type de pièce.
+     * Compléter mon profil (identité, commune, type de pièce).
      *
+     * **Mise à jour partielle** : seuls les champs envoyés sont modifiés, l'application peut compléter le profil en plusieurs fois.
+     * `last_name`, `first_names`, `gender` (`femme` ou `homme`), `birth_date` (AAAA-MM-JJ) ;
      * `commune` (uuid de `GET /communes`) et/ou `localite` (uuid de `GET /communes/{commune}/localites`) : une localité suffit,
-     * sa commune est déduite. `document_type` : `cni`, `passeport`, `permis`, `carte_consulaire` ou `attestation_identite`.
+     * sa commune est déduite ; `document_type` : `cni`, `passeport`, `permis`, `carte_consulaire` ou `attestation_identite`.
      * Changer de type de pièce retire les faces devenues inutiles. 409 si la vérification est envoyée ou déjà vérifiée.
      *
      * @response IdentityVerificationResource
@@ -62,7 +64,7 @@ class IdentityController extends Controller
     public function update(UpdateIdentityRequest $request, SaveIdentityDetails $save): JsonResponse
     {
         try {
-            $verification = $save->handle($this->verificationOf($request), $request->commune(), $request->localite(), $request->documentType());
+            $verification = $save->handle($this->verificationOf($request), $request->details());
         } catch (IdentityLocked $exception) {
             throw new ConflictHttpException($exception->getMessage());
         }
@@ -114,7 +116,8 @@ class IdentityController extends Controller
     /**
      * Envoyer ma vérification d'identité.
      *
-     * Exige la commune, le type de pièce, ses faces, le selfie et la photo de profil ; sinon 422 avec la liste des éléments
+     * Exige le nom, les prénoms, le sexe, la date de naissance, la commune, le type de pièce, ses faces, le selfie et la photo
+     * de profil ; sinon 422 avec la liste des éléments
      * manquants. Passe au statut `submitted` : l'administration vérifie, puis le statut devient `verified` (éligible aux gains)
      * ou `rejected` (corriger selon `decision_comment` et renvoyer). Idempotent une fois envoyée.
      *
