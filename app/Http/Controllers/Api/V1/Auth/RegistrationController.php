@@ -10,8 +10,6 @@ use App\Domain\Auth\Exceptions\SmsNotSent;
 use App\Domain\Auth\Support\VerifiedRegistrations;
 use App\Domain\Identity\Enums\IdentityDocumentType;
 use App\Domain\Identity\Enums\IdentityFileKind;
-use App\Domain\Media\Exceptions\InfectedFile;
-use App\Domain\Media\Exceptions\VirusScanUnavailable;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\CompleteRegistrationRequest;
 use App\Http\Requests\Api\V1\Auth\RequestOtpRequest;
@@ -23,16 +21,15 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 /**
- * Inscription depuis l'application (MOB-01) : numéro, code SMS à 4 chiffres, puis identité, pièce d'identité et mot de passe.
- * Le compte créé reste « en attente » jusqu'à sa validation par l'équipe dans la console.
+ * Inscription depuis l'application (MOB-01) : numéro, code SMS à 4 chiffres, puis mot de passe. Le compte est actif tout de suite.
  */
 #[Group('Authentification', weight: 1)]
 class RegistrationController extends Controller
 {
     /**
-     * Inscription : pièces d'identité acceptées.
+     * Pièces d'identité acceptées.
      *
-     * Liste à afficher sur l'écran d'inscription : `value` (à envoyer dans `document_type`), `label` et `sides`
+     * Liste à afficher sur l'écran du profil (vérification d'identité, avant les commissions) : `value` (à envoyer dans `document_type`), `label` et `sides`
      * (fichiers à joindre : `recto` et `verso`, ou `page`). Formats acceptés et taille maximale dans `meta`.
      *
      * @unauthenticated
@@ -122,43 +119,26 @@ class RegistrationController extends Controller
     }
 
     /**
-     * Inscription 3/3 : identité, pièce d'identité et mot de passe.
+     * Inscription 3/3 : mot de passe.
      *
-     * Envoi **multipart** : `phone` (le numéro vérifié à l'étape 2, dans les 30 minutes), `last_name`, `first_names`,
-     * `gender` (`femme` ou `homme`), `birth_date` (AAAA-MM-JJ), `document_type`, les faces de la pièce et le mot de passe.
+     * `phone` (le numéro vérifié à l'étape 2, dans les 30 minutes), `password` (au moins 8 caractères) et
+     * `password_confirmation`. Rien d'autre n'est demandé.
      *
-     * Faces selon `document_type` : `cni`, `permis`, `carte_consulaire` → fichiers `recto` **et** `verso` ;
-     * `passeport`, `attestation_identite` → fichier `page`. Image (JPEG, PNG, HEIC) ou PDF, 10 Mo maximum chacun.
-     * Mot de passe : `password` (au moins 8 caractères) et `password_confirmation`.
+     * Crée le compte, **actif** : la personne est Relais (numéro et badge) et peut tout de suite se connecter avec
+     * `POST /auth/login` et envoyer des relais. **Aucun jeton n'est renvoyé** : l'application ouvre l'écran de connexion.
+     * Nom, prénoms, sexe, date de naissance, pièce d'identité, commune, selfie et photo de profil se complètent plus tard
+     * dans le profil (`/identity`) ; ils ne sont exigés que pour recevoir ses commissions.
      *
-     * Crée le compte au statut **`pending`** (en attente) : **aucun jeton n'est renvoyé**. L'utilisateur ne peut pas se connecter
-     * tant que l'équipe JE RELAIS n'a pas validé son inscription (elle voit la pièce envoyée). Une fois validée, il se connecte
-     * avec son numéro et son mot de passe. La commune, le selfie et la photo de profil se complètent ensuite (`/identity`).
-     *
-     * Erreurs 422 : champ invalide ; `phone` non vérifié ou vérification expirée (recommencer à l'étape 1) ; fichier refusé
-     * par l'antivirus (`recto`, `verso` ou `page`).
+     * Erreurs 422 : `phone` non vérifié ou vérification expirée (recommencer à l'étape 1), ou déjà inscrit ; `password`.
      *
      * @unauthenticated
      */
-    #[ApiResponse(503, 'Antivirus momentanément indisponible : réessayer plus tard (`Retry-After`).', type: 'array{message: string}')]
     public function complete(CompleteRegistrationRequest $request, CompleteRegistration $complete): JsonResponse
     {
-        $documentType = $request->documentType();
-
         try {
-            $user = $complete->handle(
-                $request->phoneNumber(),
-                $request->identity(),
-                $request->string('password')->toString(),
-                $documentType ?? throw ValidationException::withMessages(['document_type' => __('identity.errors.document_type')]),
-                $request->documentFiles(),
-            );
+            $user = $complete->handle($request->phoneNumber(), $request->string('password')->toString());
         } catch (AuthenticationRefused $exception) {
             throw ValidationException::withMessages(['phone' => $exception->getMessage()]);
-        } catch (InfectedFile $exception) {
-            throw ValidationException::withMessages([$documentType->sides()[0]->value => $exception->getMessage()]);
-        } catch (VirusScanUnavailable) {
-            throw new ServiceUnavailableHttpException(60, __('media.scan_unavailable'));
         }
 
         return response()->json([
@@ -166,7 +146,7 @@ class RegistrationController extends Controller
             'data' => [
                 /** Identifiant du compte créé. */
                 'uuid' => $user->uuid,
-                /** Statut du compte : `pending` jusqu'à la validation par l'équipe. */
+                /** Statut du compte : `active`, connexion possible tout de suite. */
                 'status' => $user->status->value,
             ],
         ], 201);

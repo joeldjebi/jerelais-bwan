@@ -26,11 +26,6 @@ class AuthenticationRefused extends RuntimeException
         return new self('Ce compte est suspendu. Contactez votre coordonnateur.');
     }
 
-    public static function accountPending(): self
-    {
-        return new self(__('auth.account_pending'));
-    }
-
     /**
      * Connexion par code SMS d'un numéro sans compte : l'application renvoie vers l'inscription.
      */

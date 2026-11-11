@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1;
 
+use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Identity\Enums\IdentityDocumentType;
 use App\Domain\Identity\Enums\IdentityFileKind;
 use App\Domain\Identity\Enums\IdentityStatus;
@@ -23,12 +24,18 @@ class IdentityVerificationResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $identity = Candidature::withoutCommuneRestriction()->where('user_id', $this->user_id)->first();
+
         return [
             'uuid' => $this->uuid,
             'status' => $this->status->value,
             'status_label' => $this->status->label(),
             'is_editable' => $this->status->isEditable(),
             'gains_eligible' => $this->status === IdentityStatus::Verified,
+            'last_name' => $identity?->last_name,
+            'first_names' => $identity?->first_names,
+            'gender' => $identity?->gender?->value,
+            'birth_date' => $identity?->birth_date?->toDateString(),
             'commune' => $this->commune === null ? null : ['uuid' => $this->commune->uuid, 'name' => $this->commune->name],
             'localite' => $this->localite === null ? null : ['uuid' => $this->localite->uuid, 'name' => $this->localite->name],
             'document_type' => $this->document_type?->value,
