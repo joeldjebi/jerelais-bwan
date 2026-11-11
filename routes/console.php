@@ -169,6 +169,7 @@ Artisan::command('jerelais:check-production', function () {
         'Cookies de session sécurisés' => (bool) config('session.secure'),
         'Session chiffrée' => (bool) config('session.encrypt'),
         'Passerelle SMS réelle (ni « log », « mailpit » ni « none »)' => OtpPolicy::hasRealSmsGateway(),
+        'Identifiants MTarget renseignés (si SMS_DRIVER=mtarget)' => config('jerelais.sms.driver') !== 'mtarget' || (filled(config('services.mtarget.username')) && filled(config('services.mtarget.password'))),
         'Code OTP fixe désactivé (fournisseur de SMS branché ou OTP_FIXED_CODE=off)' => ! OtpPolicy::isFixedCodeEnabled(),
         'Antivirus ClamAV' => config('jerelais.antivirus.driver') === 'clamav',
         'Code 2FA de démonstration désactivé' => blank(config('jerelais.demo.two_factor_code')),

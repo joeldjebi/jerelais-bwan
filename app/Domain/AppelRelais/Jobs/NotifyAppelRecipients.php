@@ -5,6 +5,7 @@ namespace App\Domain\AppelRelais\Jobs;
 use App\Domain\AppelRelais\Models\AppelRelais;
 use App\Domain\AppelRelais\Support\AppelAudience;
 use App\Domain\Auth\Contracts\SmsGateway;
+use App\Domain\Auth\Sms\NotificationSms;
 use App\Domain\Relais\Models\RelaisProfile;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -34,7 +35,7 @@ class NotifyAppelRecipients implements ShouldQueue
                 $phone = $profile->user->phoneNumber();
 
                 if ($phone !== null) {
-                    $sms->send($phone, (string) $message);
+                    NotificationSms::send($sms, $phone, (string) $message, 'appel');
                 }
             }
         });

@@ -4,6 +4,7 @@ namespace App\Domain\Messagerie\Actions;
 
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Auth\Contracts\SmsGateway;
+use App\Domain\Auth\Sms\NotificationSms;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Messagerie\Models\Conversation;
 use App\Domain\Messagerie\Models\Message;
@@ -114,8 +115,9 @@ class SendMessage
         $phone = $conversation->relaisProfile->user->phoneNumber();
 
         if ($phone !== null) {
-            $this->sms->send($phone, __('conversations.sms'));
-            $conversation->forceFill(['relais_notified_at' => now()])->save();
+            if (NotificationSms::send($this->sms, $phone, __('conversations.sms'), 'conversation')) {
+                $conversation->forceFill(['relais_notified_at' => now()])->save();
+            }
         }
     }
 }

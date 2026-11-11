@@ -35,4 +35,20 @@ return [
         ],
     ],
 
+    /*
+     * MTarget : envoi des SMS (codes de vérification et notifications) quand SMS_DRIVER=mtarget.
+     * Le code lit toujours ces valeurs via config('services.mtarget.*'), compatible avec config:cache.
+     */
+    'mtarget' => [
+        'url' => env('MTARGET_URL', 'https://api-public-2.mtarget.fr/messages'),
+        'username' => env('MTARGET_USERNAME'),
+        'password' => env('MTARGET_PASSWORD'),
+        // Nom d'expéditeur alphanumérique, 11 caractères au maximum.
+        'sender' => env('MTARGET_SENDER', 'JERELAIS'),
+        'timeout' => (int) env('MTARGET_TIMEOUT', 30),
+        'verify_ssl' => (bool) env('MTARGET_VERIFY_SSL', true),
+        // Jeton du webhook des accusés de réception (POST /api/v1/sms/dlr?token=…) ; vide : webhook désactivé.
+        'dlr_token' => env('MTARGET_DLR_TOKEN'),
+    ],
+
 ];

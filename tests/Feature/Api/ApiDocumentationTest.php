@@ -34,7 +34,7 @@ function openApiOperations(array $document): array
 
 it('documente toutes les routes de l’API mobile', function () {
     $routes = collect(Router::getRoutes()->getRoutes())
-        ->filter(fn (Route $route) => str_starts_with($route->uri(), 'api/v1/'))
+        ->filter(fn (Route $route) => str_starts_with($route->uri(), 'api/v1/') && $route->getName() !== 'api.v1.sms.dlr')
         ->flatMap(fn (Route $route) => collect($route->methods())->reject(fn (string $m) => $m === 'HEAD')->map(fn (string $m) => $m.' /'.substr($route->uri(), strlen('api/v1/'))))
         ->sort()->values()->all();
 

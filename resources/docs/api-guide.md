@@ -93,7 +93,7 @@ Limites par défaut, modifiables par l’administration et lisibles dans `GET /s
 | 409 | Conflit d’état : dossier déjà déposé, relais déjà envoyé, `client_uuid` déjà utilisé par un autre compte. | Recharger la ressource. |
 | 422 | Données invalides. Corps : `{"message": "…", "errors": {"champ": ["…"]}}` | Afficher chaque message sous son champ. |
 | 429 | Trop de requêtes. En-tête `Retry-After` (secondes). | Attendre, puis réessayer. |
-| 503 | Antivirus momentanément indisponible (pièces de candidature). En-tête `Retry-After`. | Réessayer plus tard. |
+| 503 | Antivirus momentanément indisponible (pièces), ou envoi du SMS refusé par le fournisseur (« L’envoi du SMS a échoué… »). En-tête `Retry-After`. | Réessayer plus tard. |
 
 ## Limites d’appels
 

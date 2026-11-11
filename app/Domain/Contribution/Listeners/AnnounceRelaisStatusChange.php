@@ -3,6 +3,7 @@
 namespace App\Domain\Contribution\Listeners;
 
 use App\Domain\Auth\Contracts\SmsGateway;
+use App\Domain\Auth\Sms\NotificationSms;
 use App\Domain\Contribution\Events\RelaisQueueChanged;
 use App\Domain\Contribution\Events\RelaisStatusChanged;
 
@@ -27,7 +28,7 @@ class AnnounceRelaisStatusChange
         $phone = $event->relais->user->phoneNumber();
 
         if ($phone !== null) {
-            $this->sms->send($phone, __("relais_items.sms.{$event->to}", ['title' => (string) str($event->relais->title ?? '')->limit(40)]));
+            NotificationSms::send($this->sms, $phone, __("relais_items.sms.{$event->to}", ['title' => (string) str($event->relais->title ?? '')->limit(40)]), 'relais_item');
         }
     }
 }
