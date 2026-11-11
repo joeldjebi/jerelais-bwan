@@ -5,13 +5,16 @@ namespace App\Http\Controllers\Api\V1\Auth;
 use App\Domain\Auth\Actions\RequestOtp;
 use App\Domain\Auth\Actions\VerifyOtp;
 use App\Domain\Auth\Exceptions\AuthenticationRefused;
+use App\Domain\Auth\Exceptions\SmsNotSent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\RequestOtpRequest;
 use App\Http\Requests\Api\V1\Auth\VerifyOtpRequest;
 use App\Http\Resources\V1\IssuedTokenResource;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response as ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 /**
  * Connexion par code SMS (MOB-01).
@@ -29,9 +32,14 @@ class OtpController extends Controller
      *
      * @unauthenticated
      */
+    #[ApiResponse(503, 'Le fournisseur de SMS n’a pas accepté le message : réessayer après le délai `Retry-After`.', type: 'array{message: string}')]
     public function request(RequestOtpRequest $request, RequestOtp $requestOtp): JsonResponse
     {
-        $requestOtp->handle($request->phoneNumber(), $request->ip());
+        try {
+            $requestOtp->handle($request->phoneNumber(), $request->ip());
+        } catch (SmsNotSent) {
+            throw new ServiceUnavailableHttpException(60, __('auth.sms_failed'));
+        }
 
         return response()->json([
             'message' => __('auth.otp_sent'),

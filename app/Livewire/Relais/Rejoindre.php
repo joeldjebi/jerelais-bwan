@@ -7,6 +7,7 @@ use App\Domain\Auth\Actions\ConfirmPhoneOwnership;
 use App\Domain\Auth\Actions\RequestOtp;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Exceptions\AuthenticationRefused;
+use App\Domain\Auth\Exceptions\SmsNotSent;
 use App\Domain\Auth\Support\OtpPolicy;
 use App\Domain\Contribution\Support\RelaisSender;
 use App\Models\User;
@@ -72,6 +73,10 @@ class Rejoindre extends Component
             $this->codeLength = OtpPolicy::lengthFor($phone);
         } catch (ThrottleRequestsException) {
             $this->addError('phone', __('auth.otp_throttled'));
+
+            return;
+        } catch (SmsNotSent) {
+            $this->addError('phone', __('auth.sms_failed'));
 
             return;
         }

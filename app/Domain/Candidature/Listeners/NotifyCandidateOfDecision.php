@@ -3,6 +3,7 @@
 namespace App\Domain\Candidature\Listeners;
 
 use App\Domain\Auth\Contracts\SmsGateway;
+use App\Domain\Auth\Sms\NotificationSms;
 use App\Domain\Candidature\Enums\CandidatureDecision;
 use App\Domain\Candidature\Events\CandidatureDecided;
 
@@ -22,6 +23,6 @@ class NotifyCandidateOfDecision
             return;
         }
 
-        $this->sms->send($phone, __("candidature.sms.{$event->decision->value}"));
+        NotificationSms::send($this->sms, $phone, __("candidature.sms.{$event->decision->value}"), 'candidature');
     }
 }

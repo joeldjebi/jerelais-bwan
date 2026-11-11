@@ -6,6 +6,7 @@ use App\Domain\Auth\Actions\CompleteRegistration;
 use App\Domain\Auth\Actions\RequestOtp;
 use App\Domain\Auth\Actions\VerifyRegistrationCode;
 use App\Domain\Auth\Exceptions\AuthenticationRefused;
+use App\Domain\Auth\Exceptions\SmsNotSent;
 use App\Domain\Auth\Support\VerifiedRegistrations;
 use App\Domain\Identity\Enums\IdentityDocumentType;
 use App\Domain\Identity\Enums\IdentityFileKind;
@@ -65,6 +66,7 @@ class RegistrationController extends Controller
      *
      * @unauthenticated
      */
+    #[ApiResponse(503, 'Le fournisseur de SMS n’a pas accepté le message : réessayer après le délai `Retry-After`.', type: 'array{message: string}')]
     public function request(RequestOtpRequest $request, RequestOtp $requestOtp): JsonResponse
     {
         $phone = $request->phoneNumber();
@@ -75,7 +77,11 @@ class RegistrationController extends Controller
             throw ValidationException::withMessages(['phone' => $exception->getMessage()]);
         }
 
-        $requestOtp->handle($phone, $request->ip());
+        try {
+            $requestOtp->handle($phone, $request->ip());
+        } catch (SmsNotSent) {
+            throw new ServiceUnavailableHttpException(60, __('auth.sms_failed'));
+        }
 
         return response()->json([
             'message' => __('auth.registration_otp_sent'),

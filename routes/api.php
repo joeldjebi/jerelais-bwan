@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\Messagerie\ConversationController;
 use App\Http\Controllers\Api\V1\ReferentielController;
 use App\Http\Controllers\Api\V1\Relais\MediaController;
 use App\Http\Controllers\Api\V1\Relais\RelaisItemController;
+use App\Http\Controllers\Api\V1\Sms\MtargetDeliveryReportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,6 +34,9 @@ Route::name('api.v1.')->group(function () {
         Route::post('register/verify', [RegistrationController::class, 'verify'])->middleware('throttle:otp-verify')->name('register.verify');
         Route::post('register/complete', [RegistrationController::class, 'complete'])->middleware('throttle:otp-verify')->name('register.complete');
     });
+
+    // Accusés de réception MTarget (jeton MTARGET_DLR_TOKEN) : hors documentation de l'API mobile.
+    Route::match(['get', 'post'], 'sms/dlr', MtargetDeliveryReportController::class)->middleware('throttle:120,1')->name('sms.dlr');
 
     // Référentiels publics : mis en cache 5 minutes par l'application et les proxys (ETag pour revalider).
     Route::middleware('cache.headers:public;max_age=300;etag')->group(function () {

@@ -6,6 +6,7 @@ use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Auth\Contracts\SmsGateway;
+use App\Domain\Auth\Sms\NotificationSms;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Messagerie\Models\Conversation;
 use App\Domain\Relais\Enums\RelaisStatus;
@@ -73,7 +74,7 @@ class ChangeRelaisStatus
         $phone = $profile->user->phoneNumber();
 
         if ($phone !== null) {
-            $this->sms->send($phone, __("relais_profils.sms.{$status->value}"));
+            NotificationSms::send($this->sms, $phone, __("relais_profils.sms.{$status->value}"), 'relais_status');
         }
 
         return $profile;
