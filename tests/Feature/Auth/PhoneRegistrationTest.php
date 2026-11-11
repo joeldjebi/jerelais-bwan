@@ -7,6 +7,7 @@ use App\Domain\Auth\Data\DeviceInfo;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Enums\DevicePlatform;
 use App\Domain\Auth\Enums\UserStatus;
+use App\Domain\Auth\Support\OtpPolicy;
 use App\Domain\Candidature\Enums\Gender;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Identity\Enums\IdentityDocumentType;
@@ -336,4 +337,22 @@ it('liste publiquement les pièces d’identité acceptées pour l’écran d’
         ->assertJsonPath('data.4', ['value' => 'attestation_identite', 'label' => 'Attestation d’identité', 'sides' => ['page']])
         ->assertJsonPath('meta.max_file_kb', 10240)
         ->assertJsonPath('meta.accepted_mime_types', ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'application/pdf']);
+});
+
+it('envoie le code 1234 par défaut à l’inscription tant qu’aucun fournisseur de SMS n’est branché', function (string $driver) {
+    config(['jerelais.otp.fixed_code' => '', 'jerelais.sms.driver' => $driver]);
+
+    $this->postJson(route('api.v1.auth.register.request'), ['phone' => '0707070707'])->assertAccepted();
+    $this->postJson(route('api.v1.auth.register.verify'), ['phone' => '0707070707', 'code' => '1234'])->assertOk();
+
+    expect($this->sms->sent)->toBe([]);
+})->with(['none', 'log', 'mailpit']);
+
+it('repasse à un code aléatoire envoyé par SMS dès qu’un vrai fournisseur est branché', function () {
+    config(['jerelais.otp.fixed_code' => '', 'jerelais.sms.driver' => 'fournisseur-reel']);
+
+    $this->postJson(route('api.v1.auth.register.request'), ['phone' => '0707070707'])->assertAccepted();
+
+    expect($this->sms->sent)->toHaveCount(1)
+        ->and(OtpPolicy::isFixedCodeEnabled())->toBeFalse();
 });
