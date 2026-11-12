@@ -8,6 +8,7 @@ use App\Domain\Identity\Actions\SaveIdentityDetails;
 use App\Domain\Identity\Enums\IdentityDocumentType;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Localite;
+use App\Http\Requests\Concerns\DescribesIdentity;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,9 +18,16 @@ use Illuminate\Validation\Rule;
  */
 class UpdateIdentityRequest extends FormRequest
 {
+    use DescribesIdentity;
+
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->normalizeBirthDate();
     }
 
     /**
@@ -38,6 +46,14 @@ class UpdateIdentityRequest extends FormRequest
             'localite' => ['bail', 'nullable', 'uuid', Rule::exists('localites', 'uuid')],
             'document_type' => ['nullable', Rule::enum(IdentityDocumentType::class)],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return ['birth_date.date_format' => __('La date de naissance doit être au format JJ/MM/AAAA, par exemple 26/04/2000.')];
     }
 
     /**
