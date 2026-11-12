@@ -119,24 +119,26 @@ class RegistrationController extends Controller
     }
 
     /**
-     * Inscription 3/3 : mot de passe.
+     * Inscription 3/3 : mot de passe (et identité facultative).
      *
      * `phone` (le numéro vérifié à l'étape 2, dans les 30 minutes), `password` (au moins 8 caractères) et
-     * `password_confirmation`. Rien d'autre n'est demandé.
+     * `password_confirmation`. Facultatifs : `last_name`, `first_names`, `gender` (`femme` ou `homme`) et
+     * `birth_date` au format **JJ/MM/AAAA** (`26/04/2000`, `2000-04-26` est aussi accepté).
      *
-     * Crée le compte, **actif** : la personne est Relais (numéro et badge) et peut tout de suite se connecter avec
-     * `POST /auth/login` et envoyer des relais. **Aucun jeton n'est renvoyé** : l'application ouvre l'écran de connexion.
-     * Nom, prénoms, sexe, date de naissance, pièce d'identité, commune, selfie et photo de profil se complètent plus tard
-     * dans le profil (`/identity`) ; ils ne sont exigés que pour recevoir ses commissions.
+     * Crée le compte, **actif** : la personne est Relais (numéro et badge, au nom saisi) et peut tout de suite se connecter
+     * avec `POST /auth/login` et envoyer des relais. **Aucun jeton n'est renvoyé** : l'application ouvre l'écran de connexion.
+     * L'identité saisie ici pré-remplit le profil ; pièce d'identité, commune, selfie et photo se complètent plus tard
+     * dans le profil (`/identity`), exigés seulement pour recevoir ses commissions.
      *
-     * Erreurs 422 : `phone` non vérifié ou vérification expirée (recommencer à l'étape 1), ou déjà inscrit ; `password`.
+     * Erreurs 422 : `phone` non vérifié ou vérification expirée (recommencer à l'étape 1), ou déjà inscrit ; `password` ;
+     * `birth_date` (format ou âge minimum) ; `gender`.
      *
      * @unauthenticated
      */
     public function complete(CompleteRegistrationRequest $request, CompleteRegistration $complete): JsonResponse
     {
         try {
-            $user = $complete->handle($request->phoneNumber(), $request->string('password')->toString());
+            $user = $complete->handle($request->phoneNumber(), $request->string('password')->toString(), $request->identity());
         } catch (AuthenticationRefused $exception) {
             throw ValidationException::withMessages(['phone' => $exception->getMessage()]);
         }

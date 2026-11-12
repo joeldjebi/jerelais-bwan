@@ -19,9 +19,9 @@ Un compte est identifié par son **numéro de téléphone** et protégé par un 
 
 1. `POST /auth/register` avec `phone` : envoie le code par SMS. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.
 2. `POST /auth/register/verify` avec `phone` et `code` : le numéro est retenu comme vérifié pendant **30 minutes**.
-3. `POST /auth/register/complete` avec le même `phone`, `password` et `password_confirmation` (au moins 8 caractères). **Rien d’autre.** Le compte est **actif** : la personne est Relais (numéro et badge). Aucun jeton n’est renvoyé : ouvrir l’écran de connexion.
+3. `POST /auth/register/complete` avec le même `phone`, `password` et `password_confirmation` (au moins 8 caractères), et, facultatifs, `last_name`, `first_names`, `gender` (`femme` ou `homme`) et `birth_date` au format **JJ/MM/AAAA** (`26/04/2000`). Le compte est **actif** : la personne est Relais (numéro et badge). Aucun jeton n’est renvoyé : ouvrir l’écran de connexion.
 
-La personne se connecte ensuite avec `POST /auth/login` et peut **envoyer des relais tout de suite**. Nom, prénoms, sexe, date de naissance, pièce d’identité, commune, selfie et photo de profil se complètent plus tard dans le profil (voir « Vérification d’identité et commissions ») : ils n’empêchent ni la connexion ni l’envoi de relais.
+La personne se connecte ensuite avec `POST /auth/login` et peut **envoyer des relais tout de suite**. L’identité saisie à l’inscription pré-remplit le profil ; pièce d’identité, commune, selfie et photo de profil se complètent plus tard dans le profil (voir « Vérification d’identité et commissions ») : ils n’empêchent ni la connexion ni l’envoi de relais.
 
 **Connexion** : `POST /auth/login` avec seulement `phone` et `password`. La description de l’appareil (`device_name`, `platform`, `app_version`) est facultative : sans elle, la plateforme est déduite du User-Agent. Après 5 mots de passe erronés sur un même numéro, il est bloqué 15 minutes (**429**).
 

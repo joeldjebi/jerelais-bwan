@@ -123,7 +123,7 @@ it('complète le profil en plusieurs fois : seuls les champs envoyés changent',
 });
 
 it('refuse une date de naissance mal formée ou un sexe inconnu', function () {
-    $this->putJson(route('api.v1.identity.update'), ['birth_date' => '17/04/2001', 'gender' => 'x'])
+    $this->putJson(route('api.v1.identity.update'), ['birth_date' => '31/02/2001', 'gender' => 'x'])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['birth_date', 'gender']);
 });
@@ -251,4 +251,10 @@ it('efface les pièces d’identité à la suppression du compte (§9.4)', funct
 
     expect(IdentityVerification::query()->count())->toBe(0)
         ->and(Storage::disk('identity')->allFiles())->toBe([]);
+});
+
+it('accepte la date de naissance au format JJ/MM/AAAA dans le profil', function () {
+    $this->putJson(route('api.v1.identity.update'), ['birth_date' => '26/04/2000'])
+        ->assertOk()
+        ->assertJsonPath('data.birth_date', '2000-04-26');
 });

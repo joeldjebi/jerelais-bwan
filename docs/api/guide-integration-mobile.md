@@ -32,7 +32,7 @@ Commissions :  plus tard, dans le profil : identity (identité, commune, pièce,
 
 ## 1. Inscription (3 appels)
 
-L’inscription ne demande **que le numéro, le code SMS et le mot de passe**. Le reste se complète plus tard dans le profil (5).
+L’inscription demande le numéro, le code SMS et le mot de passe ; le nom, les prénoms, le genre et la date de naissance peuvent être saisis au même moment (facultatifs). La pièce, la commune, le selfie et la photo se complètent plus tard dans le profil (5).
 
 ### 1.1 Numéro : envoi du code par SMS
 
@@ -64,12 +64,21 @@ curl -X POST "$BASE/auth/register/verify" -H "Accept: application/json" -H "Cont
 
 Le numéro reste vérifié **30 minutes** : le temps de choisir le mot de passe.
 
-### 1.3 Mot de passe
+### 1.3 Mot de passe et identité
 
 ```bash
 curl -X POST "$BASE/auth/register/complete" -H "Accept: application/json" -H "Content-Type: application/json" \
-  -d '{"phone":"0700000001","password":"MotDePasse2026","password_confirmation":"MotDePasse2026"}'
+  -d '{"phone":"0700000001","password":"MotDePasse2026","password_confirmation":"MotDePasse2026",
+       "last_name":"Traoré","first_names":"Awa","gender":"femme","birth_date":"26/04/2000"}'
 ```
+
+| Champ | Règle |
+|---|---|
+| `phone` | Le numéro vérifié en 1.2, dans les 30 minutes |
+| `password` + `password_confirmation` | Au moins 8 caractères, identiques |
+| `last_name`, `first_names` | Facultatifs |
+| `gender` | Facultatif : `femme` ou `homme` |
+| `birth_date` | Facultatif : **JJ/MM/AAAA** (`26/04/2000`) ; `2000-04-26` est aussi accepté ; âge minimum fixé par l’administration |
 
 **201** — compte **actif**, Relais (numéro JR-… et badge). **Aucun jeton** : ouvrir l’écran de connexion (2).
 ```json
@@ -83,6 +92,10 @@ curl -X POST "$BASE/auth/register/complete" -H "Accept: application/json" -H "Co
 |---|---|
 | `phone` | « Ce numéro n’a pas été vérifié ou sa vérification a expiré. Recommencez l’inscription depuis le début. » |
 | `password` | « Le mot de passe doit contenir au moins 8 caractères. » ou « Les deux mots de passe ne correspondent pas. » |
+| `birth_date` | « La date de naissance doit être au format JJ/MM/AAAA, par exemple 26/04/2000. », date impossible, ou âge minimum non atteint |
+| `gender` | Valeur autre que `femme` ou `homme` |
+
+L’identité saisie ici pré-remplit le profil (5).
 
 ---
 
@@ -254,7 +267,7 @@ curl -X PUT "$BASE/identity" -H "Authorization: Bearer $TOKEN" \
 |---|---|
 | `last_name`, `first_names` | Texte |
 | `gender` | `femme` ou `homme` |
-| `birth_date` | `AAAA-MM-JJ` ; âge minimum fixé par l’administration |
+| `birth_date` | **JJ/MM/AAAA** (`26/04/2000`) ou `AAAA-MM-JJ` ; âge minimum fixé par l’administration |
 | `commune`, `localite` | uuid de `GET /communes` et `GET /communes/{commune}/localites` ; une localité seule suffit |
 | `document_type` | Une valeur de 5.0 ; changer de type retire les faces devenues inutiles |
 
