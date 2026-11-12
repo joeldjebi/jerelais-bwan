@@ -13,7 +13,11 @@
         :eyebrow="__('Réseau')"
         :title="__('Candidatures')"
         :subtitle="__('Les dossiers des futurs Relais de votre périmètre, du plus ancien au plus récent. Vous pouvez appeler le candidat avant de décider.')"
-    />
+    >
+        <x-slot:actions>
+            <livewire:console.network.purge-button />
+        </x-slot:actions>
+    </x-console.page-header>
 
     <div class="grid grid-cols-2 gap-4 lg:grid-cols-4" data-bento>
         <x-console.stat :label="__('À traiter')" value="" :count="$this->counts['a-traiter']" icon="inbox" tint="pink" :hint="__('Reçues ou en examen')" />
