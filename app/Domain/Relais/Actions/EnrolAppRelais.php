@@ -19,6 +19,19 @@ class EnrolAppRelais
         private readonly CreateRelaisProfile $createProfile,
     ) {}
 
+    /**
+     * Fait d'un ancien compte « candidat » (ou sans rôle) un Relais à sa connexion ; sans effet sur l'équipe
+     * ou sur un compte qui est déjà Relais.
+     */
+    public function ensure(User $user): void
+    {
+        if ($user->isStaff() || RelaisProfile::withoutCommuneRestriction()->where('user_id', $user->id)->exists()) {
+            return;
+        }
+
+        $this->handle($user);
+    }
+
     public function handle(User $user): RelaisProfile
     {
         $user->syncRoles([Role::Relais->value]);

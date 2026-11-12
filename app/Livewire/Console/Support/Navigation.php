@@ -41,7 +41,6 @@ class Navigation
                     ['label' => __('Relais'), 'route' => 'console.relais', 'icon' => 'signal', 'tint' => 'brand', 'keywords' => 'relais observateurs suspension radiation fiche', 'permission' => [Permission::RelaisProfilesSuspend, Permission::RelaisValidate]],
                     ['label' => __('Messagerie'), 'route' => 'console.messagerie', 'icon' => 'inbox', 'tint' => 'blue', 'keywords' => 'messages relais conversation', 'permission' => Permission::RelaisValidate],
                     ['label' => __('Vérifications d’identité'), 'route' => 'console.identity', 'icon' => 'shield', 'tint' => 'blue', 'keywords' => 'identité pièces cni passeport gains vérification', 'permission' => Permission::UsersManage],
-                    ['label' => __('Candidatures'), 'route' => 'console.candidatures', 'icon' => 'inbox', 'tint' => 'pink', 'keywords' => 'recrutement dossiers candidats relais décision', 'permission' => Permission::CandidaturesValidate],
                     ['label' => __('Communes'), 'route' => 'console.communes', 'icon' => 'map-pin', 'tint' => 'blue', 'keywords' => 'territoire référentiel régions pilote', 'permission' => Permission::TerritoireManage],
                     ['label' => __('Équipe'), 'route' => 'console.team', 'icon' => 'users', 'tint' => 'green', 'keywords' => 'coordonnateurs journalistes comptes membres', 'permission' => Permission::UsersManage],
                 ],

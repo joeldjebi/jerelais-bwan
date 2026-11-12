@@ -5,7 +5,7 @@
         'items' => [route('relais.items'), __('Mes relais'), 'inbox'],
         'appels' => [route('relais.appels'), __('Appels'), 'bell'],
         'messages' => [route('relais.messages'), __('Messages'), 'users'],
-        'badge' => [route('relais.candidature'), __('Mon badge'), 'shield'],
+        'profile' => [route('relais.profile'), __('Mon profil'), 'shield'],
     ];
 @endphp
 <nav class="-mx-1 flex gap-1 overflow-x-auto pb-1" aria-label="{{ __('Espace Relais') }}" data-enter>
