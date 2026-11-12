@@ -5,7 +5,11 @@
 @endphp
 
 <div class="space-y-8">
-    <x-console.page-header :eyebrow="__('Réseau')" :title="__('Relais')" :subtitle="__('Les Relais recrutés de votre périmètre : activité, fiabilité, statut.')" />
+    <x-console.page-header :eyebrow="__('Réseau')" :title="__('Relais')" :subtitle="__('Les Relais recrutés de votre périmètre : activité, fiabilité, statut.')">
+        <x-slot:actions>
+            <livewire:console.network.purge-button />
+        </x-slot:actions>
+    </x-console.page-header>
 
     <x-console.group :title="trans_choice(':count Relais|:count Relais', $this->profiles->total())">
         <div class="flex flex-wrap items-center gap-3 border-b border-line p-3">
