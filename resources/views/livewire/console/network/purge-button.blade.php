@@ -2,6 +2,8 @@
     @if ($visible)
         <x-ui.button variant="secondary" size="sm" class="text-status-rejected!" wire:click="$set('open', true)">{{ __('Tout vider') }}</x-ui.button>
 
+        {{-- Affiché au niveau de la page : l'en-tête animé (transformation CSS) couperait un panneau plein écran. --}}
+        @teleport('body')
         <x-console.slide-over model="open" :title="__('Tout vider')" :description="__('Réservé aux administrateurs. Action définitive.')">
             <form id="purge-form" wire:submit="purge" class="space-y-4">
                 <p class="text-[0.9375rem] leading-relaxed">
@@ -19,5 +21,6 @@
                 <x-ui.button type="submit" form="purge-form" variant="danger" wire:loading.attr="disabled" wire:target="purge">{{ __('Tout supprimer') }}</x-ui.button>
             </x-slot:footer>
         </x-console.slide-over>
+        @endteleport
     @endif
 </div>
