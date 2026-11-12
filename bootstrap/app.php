@@ -23,7 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
         $middleware->throttleApi();
-        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('espace-relais/*') ? route('relais.join') : route('login'));
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('espace-relais/*') ? route('relais.join', ['mode' => 'connexion']) : route('login'));
 
         $middleware->alias([
             'staff' => EnsureUserIsStaff::class,
