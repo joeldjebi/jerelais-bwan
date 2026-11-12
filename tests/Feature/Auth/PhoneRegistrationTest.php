@@ -7,6 +7,7 @@ use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Enums\DevicePlatform;
 use App\Domain\Auth\Enums\UserStatus;
 use App\Domain\Auth\Support\OtpPolicy;
+use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Models\User;
@@ -240,3 +241,57 @@ it('active les comptes restés en attente lors de la migration', function () {
         ->and($user->hasRole(Role::Relais->value))->toBeTrue()
         ->and(RelaisProfile::withoutCommuneRestriction()->where('user_id', $user->id)->exists())->toBeTrue();
 });
+
+it('enregistre à l’inscription le nom, les prénoms, le genre et la date de naissance au format JJ/MM/AAAA [MOB-01]', function () {
+    test()->postJson(route('api.v1.auth.register.request'), ['phone' => '0707070707'])->assertAccepted();
+    test()->postJson(route('api.v1.auth.register.verify'), ['phone' => '0707070707', 'code' => '1234'])->assertOk();
+
+    $this->postJson(route('api.v1.auth.register.complete'), [
+        'phone' => '0707070707', 'password' => 'MotDePasse2026', 'password_confirmation' => 'MotDePasse2026',
+        'last_name' => 'Traoré', 'first_names' => 'Awa Mariam', 'gender' => 'femme', 'birth_date' => '26/04/2000',
+    ])->assertCreated()->assertJsonPath('data.status', 'active');
+
+    $user = User::findByPhone(PhoneNumber::parse('0707070707'));
+    $candidature = Candidature::withoutCommuneRestriction()->where('user_id', $user->id)->sole();
+
+    expect($user->name)->toBe('Awa Mariam Traoré')
+        ->and($candidature->last_name)->toBe('Traoré')
+        ->and($candidature->first_names)->toBe('Awa Mariam')
+        ->and($candidature->gender?->value)->toBe('femme')
+        ->and($candidature->birth_date->toDateString())->toBe('2000-04-26')
+        ->and(RelaisProfile::withoutCommuneRestriction()->where('user_id', $user->id)->value('display_name'))->toBe('Awa T.');
+
+    // Le profil (GET /identity) est pré-rempli.
+    $token = passwordLogin()->json('data.token');
+    $this->withToken($token)->getJson(route('api.v1.identity.show'))
+        ->assertJsonPath('data.last_name', 'Traoré')
+        ->assertJsonPath('data.birth_date', '2000-04-26');
+});
+
+it('accepte aussi la date AAAA-MM-JJ et laisse l’identité facultative', function () {
+    signUp('0505050505')->assertCreated();
+
+    test()->postJson(route('api.v1.auth.register.request'), ['phone' => '0707070707'])->assertAccepted();
+    test()->postJson(route('api.v1.auth.register.verify'), ['phone' => '0707070707', 'code' => '1234'])->assertOk();
+    $this->postJson(route('api.v1.auth.register.complete'), [
+        'phone' => '0707070707', 'password' => 'MotDePasse2026', 'password_confirmation' => 'MotDePasse2026', 'birth_date' => '2000-04-26',
+    ])->assertCreated();
+
+    expect(User::query()->count())->toBe(2);
+});
+
+it('refuse une date de naissance invalide ou un genre inconnu à l’inscription, sans créer de compte', function (array $fields, string $error) {
+    test()->postJson(route('api.v1.auth.register.request'), ['phone' => '0707070707'])->assertAccepted();
+    test()->postJson(route('api.v1.auth.register.verify'), ['phone' => '0707070707', 'code' => '1234'])->assertOk();
+
+    $this->postJson(route('api.v1.auth.register.complete'), [
+        'phone' => '0707070707', 'password' => 'MotDePasse2026', 'password_confirmation' => 'MotDePasse2026', ...$fields,
+    ])->assertUnprocessable()->assertJsonValidationErrors([$error]);
+
+    expect(User::query()->count())->toBe(0);
+})->with([
+    'date impossible' => [['birth_date' => '31/02/2000'], 'birth_date'],
+    'date illisible' => [['birth_date' => 'avril 2000'], 'birth_date'],
+    'date future' => [['birth_date' => '01/01/2099'], 'birth_date'],
+    'genre inconnu' => [['gender' => 'x'], 'gender'],
+]);
