@@ -51,6 +51,7 @@ use App\Livewire\Relais\Envoyer as RelaisSendPage;
 use App\Livewire\Relais\MesDonnees as RelaisDataPage;
 use App\Livewire\Relais\MesRelais as RelaisItemsPage;
 use App\Livewire\Relais\Messages as RelaisMessagesPage;
+use App\Livewire\Relais\Profil as RelaisProfilePageWeb;
 use App\Livewire\Relais\Rejoindre;
 use Illuminate\Support\Facades\Route;
 
@@ -78,6 +79,7 @@ Route::livewire('devenir-relais', Rejoindre::class)->name('relais.join');
 
 Route::middleware('auth')->prefix('espace-relais')->name('relais.')->group(function () {
     Route::livewire('candidature', Dossier::class)->name('candidature');
+    Route::livewire('profil', RelaisProfilePageWeb::class)->name('profile');
     Route::get('candidature/pieces/{document}', DocumentPreviewController::class)->name('documents.show');
     Route::post('deconnexion', RelaisLogoutController::class)->name('logout');
     Route::livewire('mes-donnees', RelaisDataPage::class)->name('data');

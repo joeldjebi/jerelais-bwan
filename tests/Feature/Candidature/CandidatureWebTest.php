@@ -12,6 +12,7 @@ use App\Livewire\Relais\Rejoindre;
 use App\Models\User;
 use Database\Seeders\LegalDocumentsSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -21,25 +22,48 @@ beforeEach(function () {
 });
 
 it('affiche la page Devenir Relais [WEB-02]', function () {
-    $this->get(route('relais.join'))->assertOk()->assertSee('Commençons par votre numéro');
+    $this->get(route('relais.join'))->assertOk()->assertSee('Créez votre compte')->assertSee('Se connecter');
 });
 
-it('crée le compte candidat après le code SMS et ouvre le dossier [WEB-02]', function () {
+it('inscrit sur le site comme dans l’application : numéro, code, mot de passe, puis connexion [WEB-02]', function () {
     $component = Livewire::test(Rejoindre::class)
         ->set('phone', '07 07 07 07 07')
         ->call('sendCode')
         ->assertHasNoErrors()
-        ->assertSet('maskedPhone', fn (?string $masked) => $masked !== null);
+        ->assertSet('step', 'code');
 
     $component->set('code', $this->sms->lastCodeFor('+2250707070707'))
         ->call('verify')
-        ->assertRedirect(route('relais.candidature'));
+        ->assertHasNoErrors()
+        ->assertSet('step', 'password')
+        ->set('password', 'MotDePasse2026')
+        ->set('passwordConfirmation', 'MotDePasse2026')
+        ->call('savePassword')
+        ->assertHasNoErrors()
+        ->assertSet('mode', 'connexion')
+        ->assertSee('Inscription terminée');
 
     $user = User::findByPhone(PhoneNumber::parse('0707070707'));
     expect($user)->not->toBeNull()
-        ->and($user->hasRole(Role::Candidat->value))->toBeTrue()
-        ->and(auth()->id())->toBe($user->id)
+        ->and($user->hasRole(Role::Relais->value))->toBeTrue()
+        ->and(auth()->check())->toBeFalse();
+
+    $component->set('password', 'MotDePasse2026')->call('login')->assertRedirect(route('relais.send'));
+
+    expect(auth()->id())->toBe($user->id)
         ->and(AuditLog::query()->where('action', 'auth.login')->exists())->toBeTrue();
+});
+
+it('exige un mot de passe d’au moins 8 caractères, confirmé, à l’inscription sur le site', function () {
+    Livewire::test(Rejoindre::class)
+        ->set('phone', '0707070707')->call('sendCode')
+        ->set('code', $this->sms->lastCodeFor('+2250707070707'))->call('verify')
+        ->set('password', 'court')->set('passwordConfirmation', 'court')->call('savePassword')
+        ->assertHasErrors(['password' => 'Le mot de passe doit contenir au moins 8 caractères.'])
+        ->set('password', 'MotDePasse2026')->set('passwordConfirmation', 'Autre2026xx')->call('savePassword')
+        ->assertHasErrors(['password' => 'Les deux mots de passe ne correspondent pas.']);
+
+    expect(User::query()->count())->toBe(0);
 });
 
 it('refuse un mauvais code sans connecter personne', function () {
@@ -48,23 +72,58 @@ it('refuse un mauvais code sans connecter personne', function () {
         ->call('sendCode')
         ->set('code', '0000')
         ->call('verify')
-        ->assertHasErrors('code');
+        ->assertHasErrors('code')
+        ->assertSet('step', 'code');
 
     expect(auth()->check())->toBeFalse();
 });
 
-it('refuse la connexion par SMS d’un compte de l’équipe (pas de contournement de la double authentification)', function () {
-    User::factory()->withRole(Role::Admin)->create()->setPhoneNumber(PhoneNumber::parse('0505050505'))->save();
+it('refuse l’inscription sur le site d’un numéro qui a déjà un compte', function () {
+    User::factory()->withRole(Role::Relais)->create()->setPhoneNumber(PhoneNumber::parse('0707070707'))->save();
 
     Livewire::test(Rejoindre::class)
-        ->set('phone', '0505050505')
+        ->set('phone', '0707070707')
         ->call('sendCode')
-        ->set('code', $this->sms->lastCodeFor('+2250505050505'))
-        ->call('verify')
-        ->assertHasErrors('code')
+        ->assertHasErrors(['phone' => 'Ce numéro a déjà un compte. Connectez-vous avec votre mot de passe.']);
+
+    expect($this->sms->sent)->toBe([]);
+});
+
+it('refuse la connexion sur le site d’un compte de l’équipe (pas de contournement de la double authentification)', function () {
+    User::factory()->withRole(Role::Admin)->create(['password' => 'MotDePasse2026'])->setPhoneNumber(PhoneNumber::parse('0505050505'))->save();
+
+    Livewire::test(Rejoindre::class, ['mode' => 'connexion'])
+        ->set('phone', '0505050505')
+        ->set('password', 'MotDePasse2026')
+        ->call('login')
+        ->assertHasErrors('phone')
         ->assertSee('connectez-vous depuis la console');
 
     expect(auth()->check())->toBeFalse();
+});
+
+it('redéfinit un mot de passe oublié sur le site puis connecte, et fait d’un ancien candidat un Relais', function () {
+    $user = User::factory()->withRole(Role::Candidat)->create(['password' => null]);
+    $user->setPhoneNumber(PhoneNumber::parse('0707070707'))->save();
+
+    Livewire::test(Rejoindre::class)
+        ->call('switchMode', 'oubli')
+        ->set('phone', '0707070707')->call('sendCode')->assertHasNoErrors()
+        ->set('code', $this->sms->lastCodeFor('+2250707070707'))->call('verify')->assertSet('step', 'password')
+        ->set('password', 'NouveauSecret!8')->set('passwordConfirmation', 'NouveauSecret!8')->call('savePassword')
+        ->assertRedirect(route('relais.send'));
+
+    expect(auth()->id())->toBe($user->id)
+        ->and($user->refresh()->hasRole(Role::Relais->value))->toBeTrue()
+        ->and(Hash::check('NouveauSecret!8', $user->password))->toBeTrue();
+});
+
+it('envoie le mot de passe oublié vers un code, mais n’en redéfinit aucun pour un numéro sans compte', function () {
+    Livewire::test(Rejoindre::class)
+        ->call('switchMode', 'oubli')
+        ->set('phone', '0707070707')->call('sendCode')
+        ->set('code', $this->sms->lastCodeFor('+2250707070707'))->call('verify')
+        ->assertHasErrors(['code' => 'Aucun compte n’est associé à ce numéro. Inscrivez-vous d’abord.']);
 });
 
 it('limite les envois de code par numéro sur le site aussi [§10 Sécurité]', function () {
@@ -79,7 +138,7 @@ it('limite les envois de code par numéro sur le site aussi [§10 Sécurité]', 
 });
 
 it('renvoie les visiteurs non connectés de l’espace candidat vers Devenir Relais', function () {
-    $this->get(route('relais.candidature'))->assertRedirect(route('relais.join'));
+    $this->get(route('relais.profile'))->assertRedirect(route('relais.join', ['mode' => 'connexion']));
 });
 
 it('enregistre automatiquement chaque champ du dossier [MOB-02]', function () {

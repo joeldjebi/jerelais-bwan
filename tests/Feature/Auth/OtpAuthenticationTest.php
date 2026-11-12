@@ -219,7 +219,7 @@ it('réserve le code fixe aux numéros listés : les autres reçoivent un vrai c
     $this->postJson(route('api.v1.auth.otp.verify'), ['phone' => '0707070707', 'code' => '1234', ...deviceFields()])->assertUnprocessable();
 });
 
-it('connecte un candidat sur le site avec le code fixe à 4 chiffres', function () {
+it('vérifie le numéro sur le site avec le code fixe à 4 chiffres', function () {
     config(['jerelais.otp.fixed_code' => '1234']);
 
     Livewire::test(Rejoindre::class)
@@ -229,5 +229,5 @@ it('connecte un candidat sur le site avec le code fixe à 4 chiffres', function 
         ->set('code', '1234')
         ->call('verify')
         ->assertHasNoErrors()
-        ->assertRedirect(route('relais.candidature'));
+        ->assertSet('step', 'password');
 });

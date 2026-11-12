@@ -62,6 +62,14 @@ final readonly class PhoneNumber
     /**
      * Version masquée pour l'affichage : +225 07 •• •• •• 42.
      */
+    /**
+     * Numéro national à 10 chiffres (« 0707070707 »), pour pré-remplir un formulaire.
+     */
+    public function national(): string
+    {
+        return str_starts_with($this->e164, '+225') ? substr($this->e164, 4) : $this->e164;
+    }
+
     public function masked(): string
     {
         return substr($this->e164, 0, 6).' •• •• •• '.substr($this->e164, -2);
