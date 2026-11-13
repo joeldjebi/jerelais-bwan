@@ -6,7 +6,11 @@ use App\Domain\Contribution\Enums\CreditMode;
 use App\Domain\Contribution\Enums\PeopleConsent;
 use App\Domain\Contribution\Enums\Urgency;
 use App\Domain\Contribution\Models\Category;
+use App\Domain\Media\Actions\StoreDirectMedia;
+use App\Domain\Media\Enums\MediaKind;
 use App\Domain\Territoire\Models\Commune;
+use Closure;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -112,6 +116,26 @@ trait RelaisItemRules
     }
 
     /**
+     * Règles d'un fichier joint : taille, et format réel (lu dans le contenu) avec le type reçu dans le message.
+     *
+     * @return list<mixed>
+     */
+    protected function fileRules(): array
+    {
+        return [
+            'file',
+            'max:'.(app(StoreDirectMedia::class)->maxMegabytes() * 1024),
+            function (string $attribute, mixed $value, Closure $fail): void {
+                $mime = $value instanceof UploadedFile ? (string) $value->getMimeType() : '';
+
+                if (MediaKind::fromMime($mime) === null) {
+                    $fail(__('media.unsupported_type_detail', ['type' => $mime !== '' ? $mime : '?']));
+                }
+            },
+        ];
+    }
+
+    /**
      * Messages pour une catégorie ou une commune inconnue.
      *
      * @return array<string, string>
@@ -123,6 +147,8 @@ trait RelaisItemRules
             'category.exists' => __('relais_items.errors.category_unknown'),
             'declared_commune.uuid' => __('relais_items.errors.commune_unknown'),
             'declared_commune.exists' => __('relais_items.errors.commune_unknown'),
+            'appel.uuid' => __('relais_items.errors.appel_unknown'),
+            'appel.exists' => __('relais_items.errors.appel_unknown'),
         ];
     }
 

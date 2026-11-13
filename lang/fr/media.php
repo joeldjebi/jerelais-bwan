@@ -6,6 +6,7 @@ return [
     'unsupported_type' => 'Ce format de fichier n’est pas accepté.',
     'too_large' => 'Ce fichier dépasse la taille maximale de :max Mo.',
     'not_in_relais' => 'Ce fichier n’appartient pas à ce relais : utilisez l’uuid d’un de ses médias (`medias.N.uuid`).',
+    'unsupported_type_detail' => 'Format non accepté (fichier reçu : :type). Formats acceptés : photos JPEG, PNG, HEIC ; vidéos MP4, MOV ; sons M4A, MP3, AAC.',
     'too_large_direct' => 'Ce fichier dépasse :max Mo : envoyez-le en morceaux (envoi reprenable, voir la documentation).',
     'too_many' => 'Un relais contient au plus :max médias.',
     'parts_incomplete' => 'L’envoi n’est pas terminé : :count morceaux sont attendus.',
