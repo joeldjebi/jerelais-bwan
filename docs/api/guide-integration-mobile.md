@@ -361,7 +361,7 @@ Requête **multipart/form-data**. Le relais est **aussitôt envoyé au coordonna
 
 ```bash
 curl -X POST "$BASE/relais" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
-  -F "category=<uuid de GET /categories>" \
+  -F "category=vie-de-quartier" \
   -F "title=Route coupée au carrefour Siporex" \
   -F "description=L’eau arrive aux genoux." \
   -F "urgency=urgent" \
@@ -373,19 +373,19 @@ curl -X POST "$BASE/relais" -H "Authorization: Bearer $TOKEN" -H "Accept: applic
 
 | Champ | Obligatoire | Règle |
 |---|---|---|
-| `category` | oui | uuid de `GET /categories` |
+| `category` | oui | Catégorie : `uuid` (ou `slug`, ex. `vie-de-quartier`) de `GET /categories` |
 | `title` | oui | 120 caractères maximum |
 | `description` | non | 2 000 caractères maximum |
 | `urgency` | non | `normal` (par défaut), `important`, `urgent` |
 | `lat` + `lng` (`accuracy_m`) | oui, sauf `declared_commune` | Position GPS ; elle prime pour choisir la commune |
-| `declared_commune` | si pas de GPS | uuid de `GET /communes` |
+| `declared_commune` | si pas de GPS | **Commune où s’est passé l’événement**, choisie par le Relais : `uuid` (ou `slug`, ex. `abobo`) de `GET /communes`. Le relais part au coordonnateur de cette commune ; avec le GPS, c’est la position qui décide |
 | `declared_place` | non | Lieu en clair |
 | `has_minors` | oui | `true` ou `false` |
 | `people_consent` | oui | `yes`, `no`, `not_applicable` |
 | `credit_mode` | oui | `anonymous`, `name`, `pseudonym` (+ `credit_name` si pseudonyme) |
-| `appel` | non | uuid d’un appel à relais (`GET /appels`) |
+| `appel` | non | **Réponse à un appel à relais** : quand la rédaction demande de couvrir un sujet (`GET /appels`), `uuid` de cet appel ; le relais y est rattaché et remonte en priorité. Vide pour un relais spontané |
 | `files[]` | oui | 1 à 10 fichiers : photos JPEG/PNG/HEIC, vidéos MP4/MOV, sons M4A/MP3/AAC — **100 Mo maximum chacun** |
-| `client_uuid` | non | Identifiant généré par l’application : renvoyer le même rend le même relais (pas de doublon après une coupure) |
+| `client_uuid` | non | **Généré automatiquement** s’il est absent. L’application peut en fournir un (uuid créé sur le téléphone) pour qu’un renvoi après une coupure ne crée pas de doublon |
 
 Les champs laissés vides sont ignorés. **201** :
 ```json

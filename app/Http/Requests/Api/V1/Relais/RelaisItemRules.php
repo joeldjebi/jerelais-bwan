@@ -5,6 +5,9 @@ namespace App\Http\Requests\Api\V1\Relais;
 use App\Domain\Contribution\Enums\CreditMode;
 use App\Domain\Contribution\Enums\PeopleConsent;
 use App\Domain\Contribution\Enums\Urgency;
+use App\Domain\Contribution\Models\Category;
+use App\Domain\Territoire\Models\Commune;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -48,6 +51,21 @@ trait RelaisItemRules
      */
     protected function normalizeFlatFields(): void
     {
+        // Catégorie et commune acceptées par leur slug (« vie-de-quartier », « abobo ») comme par leur uuid.
+        $slugs = ['category' => Category::class, 'declared_commune' => Commune::class];
+
+        foreach ($slugs as $field => $model) {
+            $value = $this->input($field);
+
+            if (is_string($value) && $value !== '' && ! Str::isUuid($value)) {
+                $uuid = $model::query()->where('slug', Str::lower(trim($value)))->where('is_active', true)->value('uuid');
+
+                if (is_string($uuid)) {
+                    $this->merge([$field => $uuid]);
+                }
+            }
+        }
+
         // Emplacements de fichiers ou d'uuid laissés vides (« files[2] » vide) : ignorés.
         foreach (['files', 'remove_medias'] as $list) {
             $raw = $this->request->all()[$list] ?? null;
@@ -91,6 +109,21 @@ trait RelaisItemRules
         if ($protections !== []) {
             $this->merge(['protections' => $protections]);
         }
+    }
+
+    /**
+     * Messages pour une catégorie ou une commune inconnue.
+     *
+     * @return array<string, string>
+     */
+    protected function referenceMessages(): array
+    {
+        return [
+            'category.uuid' => __('relais_items.errors.category_unknown'),
+            'category.exists' => __('relais_items.errors.category_unknown'),
+            'declared_commune.uuid' => __('relais_items.errors.commune_unknown'),
+            'declared_commune.exists' => __('relais_items.errors.commune_unknown'),
+        ];
     }
 
     /**
