@@ -34,7 +34,7 @@ class StoreIdentityFile
      * @throws InvalidArgumentException fichier non demandé pour cette pièce, ou format refusé
      * @throws InfectedFile menace détectée par l'antivirus
      */
-    public function handle(IdentityVerification $verification, IdentityFileKind $kind, UploadedFile $file): IdentityFile
+    public function handle(IdentityVerification $verification, IdentityFileKind $kind, UploadedFile $file, bool $autoSubmit = true): IdentityFile
     {
         if (! $verification->status->isEditable()) {
             throw IdentityLocked::make();
@@ -100,7 +100,9 @@ class StoreIdentityFile
         }
 
         // Dernier fichier reçu : le dossier part tout seul en vérification.
-        $this->submit->submitIfComplete($verification->refresh());
+        if ($autoSubmit) {
+            $this->submit->submitIfComplete($verification->refresh());
+        }
 
         return $stored;
     }

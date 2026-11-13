@@ -36,7 +36,7 @@ class SaveIdentityDetails
     /**
      * @param  array{commune?: Commune|null, localite?: Localite|null, document_type?: IdentityDocumentType|null, last_name?: string|null, first_names?: string|null, gender?: string|null, birth_date?: string|null}  $data
      */
-    public function handle(IdentityVerification $verification, array $data): IdentityVerification
+    public function handle(IdentityVerification $verification, array $data, bool $autoSubmit = true): IdentityVerification
     {
         if (! $verification->status->isEditable()) {
             throw IdentityLocked::make();
@@ -69,7 +69,9 @@ class SaveIdentityDetails
         });
 
         // Dossier complet (fichiers déjà envoyés, dernier champ rempli) : il part tout seul en vérification.
-        $this->submit->submitIfComplete($verification->refresh());
+        if ($autoSubmit) {
+            $this->submit->submitIfComplete($verification->refresh());
+        }
 
         return $verification->refresh();
     }

@@ -43,11 +43,11 @@ Numéros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00
 
 Le Relais complète son profil quand il le souhaite ; il est **obligatoire seulement pour recevoir ses commissions**. Ni la connexion ni l’envoi de relais n’en dépendent.
 
-1. `GET /identity` : statut, éléments manquants (`missing`), identité déjà saisie, types de pièces acceptés (`document_types`, aussi en public sur `GET /auth/register/options`) et `gains_eligible`.
-2. `PUT /identity` (**mise à jour partielle** : seuls les champs envoyés changent) : `last_name`, `first_names`, `gender`, `birth_date`, `commune` et/ou `localite`, `document_type` (une `value` de `GET /auth/register/options` ; liste gérée par l’administration, avec ses faces `sides`).
-3. `POST /identity/files` (multipart `kind` + `file`) pour chaque fichier de `required_files` : faces de la pièce (image ou PDF), `selfie` (la personne tenant sa pièce) et `profile_photo` (image). `DELETE /identity/files/{kind}` pour en retirer un.
-4. Envoi automatique : dès que le dossier est complet (dernier fichier ou dernier champ), il passe en `submitted`. `POST /identity/submit` reste facultatif (**422** avec la liste de ce qui manque).
-5. Suivi : `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` : corriger selon `decision_comment` ; le dossier repart tout seul une fois complet. Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).
+**En une seule requête :** `POST /identity` (multipart) avec `last_name`, `first_name`, `gender`, `birth_date` (`26/04/2000`), `commune` et/ou `localite`, `document_type` (une `value` de `GET /auth/register/options`), et les fichiers : faces de la pièce selon `sides` (`recto` + `verso`, ou `page`), `selfie`, `profile_photo`. Le dossier part aussitôt en vérification (`submitted`). Tout ou rien : **422** liste chaque champ ou fichier à corriger, sans rien enregistrer.
+
+Suivi : `GET /identity` — `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` (motif dans `decision_comment` : renvoyer la même requête corrigée). Le statut est aussi dans `GET /me`.
+
+Routes détaillées, facultatives : `PUT /identity` (champs un par un), `POST /identity/files` et `DELETE /identity/files/{kind}`, `POST /identity/submit`.
 
 ## Parcours d’un candidat
 

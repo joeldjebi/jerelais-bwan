@@ -19,6 +19,7 @@ return [
         'not_relais' => 'La vérification d’identité est réservée aux Relais.',
         'file_refused' => 'Ce fichier n’est pas accepté pour « :kind » : formats acceptés : :formats.',
         'file_not_needed' => '« :kind » n’est pas demandé pour cette pièce.',
+        'infected' => '« :kind » a été refusé par l’antivirus : envoyez un autre fichier.',
         'last_name' => 'Indiquez votre nom.',
         'first_names' => 'Indiquez vos prénoms.',
         'gender' => 'Indiquez votre sexe.',
