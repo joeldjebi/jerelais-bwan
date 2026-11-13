@@ -128,8 +128,8 @@ class Rejoindre extends Component
             $this->addError('phone', __('auth.otp_throttled'));
 
             return;
-        } catch (SmsNotSent) {
-            $this->addError('phone', __('auth.sms_failed'));
+        } catch (SmsNotSent $exception) {
+            $this->addError('phone', $exception->userMessage());
 
             return;
         }

@@ -100,7 +100,7 @@ class DomainServiceProvider extends ServiceProvider
             ->by('otp-ip:'.$request->ip())
             ->response($tooMany));
 
-        RateLimiter::for('otp-verify', fn (Request $request) => Limit::perMinute(10)->by('otp-verify:'.$request->ip())->response($tooMany));
+        RateLimiter::for('otp-verify', fn (Request $request) => Limit::perMinute((int) config('jerelais.otp.verify_per_ip_per_minute'))->by('otp-verify:'.$request->ip())->response($tooMany));
 
         RateLimiter::for('password-login', function (Request $request) use ($tooMany): Limit {
             $phone = PhoneNumber::tryParse($request->string('phone')->toString());

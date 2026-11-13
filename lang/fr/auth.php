@@ -10,6 +10,8 @@ return [
     'otp_format' => 'Le code comporte :length chiffres.',
     'staff_use_console' => 'Ce numéro appartient à un compte de l’équipe : connectez-vous depuis la console.',
     'sms_failed' => 'L’envoi du SMS a échoué. Réessayez dans quelques instants.',
+    'sms_busy' => 'Le service d’envoi des codes est très sollicité. Réessayez dans quelques minutes.',
+    'otp_country_not_allowed' => 'Seuls les numéros de Côte d’Ivoire (+225) peuvent recevoir un code.',
     'otp_sent' => 'Si ce numéro est valide, un code de vérification vient de lui être envoyé par SMS.',
     'registration_otp_sent' => 'Un code de vérification vient d’être envoyé par SMS à ce numéro.',
     'phone_already_registered' => 'Ce numéro a déjà un compte. Connectez-vous avec votre mot de passe.',

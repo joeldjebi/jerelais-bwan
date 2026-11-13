@@ -70,7 +70,7 @@
         "/auth/otp": {
             "post": {
                 "operationId": "v1.auth.otp.request",
-                "description": "Pour un compte existant (mot de passe oublié, nouvel appareil). Envoie par SMS un code à 4 chiffres, valable 5 minutes ;\nchaque nouvelle demande annule le code précédent. Tant qu'aucun fournisseur de SMS n'est branché, le code est `1234`.\nL'inscription passe par `POST /auth/register`. La réponse est identique que le numéro soit inscrit ou non.\nNuméro ivoirien à 10 chiffres (`0700000001`) ou format international (`+2250700000001`).",
+                "description": "Pour un compte existant (mot de passe oublié, nouvel appareil). Envoie par SMS un code à 4 chiffres, valable 5 minutes ;\nchaque nouvelle demande annule le code précédent. Tant qu'aucun fournisseur de SMS n'est branché, le code est `1234`.\nL'inscription passe par `POST /auth/register`. La réponse est identique que le numéro soit inscrit ou non.\nNuméro ivoirien à 10 chiffres (`0700000001`) ou `+2250700000001` ; seuls les numéros de Côte d’Ivoire reçoivent un code (422 sinon).",
                 "summary": "Mot de passe oublié : demander un code de connexion",
                 "tags": [
                     "Authentification"
@@ -120,7 +120,7 @@
                         }
                     },
                     "503": {
-                        "description": "Le fournisseur de SMS n’a pas accepté le message : réessayer après le délai `Retry-After`.",
+                        "description": "SMS non envoyé (fournisseur indisponible, ou plafond horaire de la plateforme atteint) : afficher `message` et réessayer après `Retry-After`.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -387,7 +387,7 @@
                         }
                     },
                     "503": {
-                        "description": "Le fournisseur de SMS n’a pas accepté le message : réessayer après le délai `Retry-After`.",
+                        "description": "SMS non envoyé (fournisseur indisponible, ou plafond horaire de la plateforme atteint) : afficher `message` et réessayer après `Retry-After`.",
                         "content": {
                             "application/json": {
                                 "schema": {

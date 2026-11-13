@@ -17,6 +17,7 @@ class AuditPresenter
         'auth.login.locked_out' => ['Connexion bloquée (trop de tentatives)', 'x', 'danger'],
         'auth.logout' => ['Déconnexion', 'log-out', 'neutral'],
         'auth.otp.requested' => ['Code SMS demandé', 'bell', 'neutral'],
+        'auth.otp.global_cap_reached' => ['Plafond horaire de SMS atteint : envois suspendus', 'shield', 'danger'],
         'auth.otp.failed' => ['Code SMS erroné', 'x', 'warning'],
         'auth.otp.locked' => ['Code SMS bloqué après 5 essais', 'x', 'danger'],
         'auth.account.created' => ['Nouveau compte créé', 'users', 'success'],
