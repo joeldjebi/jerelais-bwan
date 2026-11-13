@@ -9,7 +9,7 @@ Référence complète de toutes les routes : Swagger en ligne `https://jerelais.
 |---|---|
 | Adresse | `https://jerelais.com/api/v1` |
 | En-têtes | `Accept: application/json` sur **toutes** les requêtes ; `Content-Type: application/json`, sauf `identity/files` (multipart) |
-| Numéro | 10 chiffres ivoiriens (`0700000001`, espaces acceptés) ou international (`+2250700000001`) |
+| Numéro | 10 chiffres ivoiriens (`0700000001`, espaces acceptés) ou `+2250700000001`. Seuls les numéros de Côte d’Ivoire reçoivent un code (422 « Seuls les numéros de Côte d’Ivoire (+225) peuvent recevoir un code. ») |
 | Codes SMS | 4 chiffres, valables 5 minutes, 5 essais par code, 3 envois par numéro et par 15 minutes. **En production, ils arrivent par SMS.** Sans fournisseur de SMS (développement, recette), le code est toujours `1234` |
 | Mot de passe | Au moins 8 caractères, à saisir deux fois (`password` + `password_confirmation`) |
 | Jeton | `Authorization: Bearer <jeton>` sur les routes protégées ; valable 60 jours |
@@ -48,7 +48,7 @@ curl -X POST "$BASE/auth/register" -H "Accept: application/json" -H "Content-Typ
 | **422** `phone` | « Ce numéro a déjà un compte. Connectez-vous avec votre mot de passe. » | Proposer la connexion |
 | **422** `phone` | « Le numéro de téléphone n’est pas valide. » | Corriger le numéro |
 | **429** | En-tête `Retry-After` | Plus de 3 codes en 15 minutes : patienter |
-| **503** | « L’envoi du SMS a échoué. Réessayez dans quelques instants. » | Réessayer plus tard |
+| **503** | « L’envoi du SMS a échoué… » ou « Le service d’envoi des codes est très sollicité… » : afficher `message` | Réessayer après `Retry-After` |
 
 ### 1.2 Confirmation du code
 
