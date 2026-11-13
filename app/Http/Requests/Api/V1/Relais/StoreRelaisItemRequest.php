@@ -70,7 +70,7 @@ class StoreRelaisItemRequest extends FormRequest
                 'client_uuid' => ['nullable', 'uuid'],
                 ...$content,
                 'files' => ['required', 'array', 'min:1', 'max:'.$maxMedias],
-                'files.*' => ['file', 'max:'.(app(StoreDirectMedia::class)->maxMegabytes() * 1024), 'mimetypes:'.implode(',', MediaKind::allMimeTypes())],
+                'files.*' => $this->fileRules(),
             ];
         }
 
@@ -98,7 +98,6 @@ class StoreRelaisItemRequest extends FormRequest
             ...$this->referenceMessages(),
             'files.required' => __('media.none'),
             'files.*.max' => __('media.too_large_direct', ['max' => app(StoreDirectMedia::class)->maxMegabytes()]),
-            'files.*.mimetypes' => __('media.unsupported_type'),
             'files.*.uploaded' => __('media.too_large_direct', ['max' => app(StoreDirectMedia::class)->maxMegabytes()]),
         ];
     }

@@ -4,7 +4,6 @@ namespace App\Http\Requests\Api\V1\Relais;
 
 use App\Domain\Contribution\Enums\CreditMode;
 use App\Domain\Media\Actions\StoreDirectMedia;
-use App\Domain\Media\Enums\MediaKind;
 use App\Domain\Settings\Settings;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -38,7 +37,7 @@ class UpdateRelaisItemRequest extends FormRequest
             ...$this->relaisRules(),
             'protections.credit_name' => ['nullable', 'string', 'max:80'],
             'files' => ['nullable', 'array', 'max:'.app(Settings::class)->integer('media.max_medias_per_relais')],
-            'files.*' => ['file', 'max:'.(app(StoreDirectMedia::class)->maxMegabytes() * 1024), 'mimetypes:'.implode(',', MediaKind::allMimeTypes())],
+            'files.*' => $this->fileRules(),
             'remove_medias' => ['nullable', 'array'],
             'remove_medias.*' => ['uuid'],
             'message' => ['nullable', 'string', 'max:2000'],
@@ -53,7 +52,6 @@ class UpdateRelaisItemRequest extends FormRequest
         return [
             ...$this->referenceMessages(),
             'files.*.max' => __('media.too_large_direct', ['max' => app(StoreDirectMedia::class)->maxMegabytes()]),
-            'files.*.mimetypes' => __('media.unsupported_type'),
             'files.*.uploaded' => __('media.too_large_direct', ['max' => app(StoreDirectMedia::class)->maxMegabytes()]),
         ];
     }

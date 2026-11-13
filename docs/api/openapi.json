@@ -4516,7 +4516,13 @@
                                     "appel": {
                                         "type": "string",
                                         "format": "uuid",
-                                        "description": "Facultatif — **répondre à un appel à relais** : quand la rédaction ou le coordonnateur demande aux Relais de couvrir un sujet (`GET /appels`), le Relais envoie ici l’`uuid` de cet appel ; son relais est alors rattaché à l’appel et remonte en priorité. Laisser vide pour un relais spontané."
+                                        "description": "Facultatif — **répondre à un appel à relais** : quand la rédaction ou le coordonnateur demande aux Relais de couvrir un sujet, l’application liste les appels de la zone du Relais (`GET /appels`) et envoie ici l’`uuid` de celui auquel il répond ; le relais est rattaché à l’appel et remonte en priorité. **Ne pas envoyer** (cocher « Omit ») pour un relais spontané. Appels ouverts : `01a1d4df-bc28-7126-b719-900b146db904` Appel réel modifié 87055 ; `01a1d4da-9343-71de-99fc-4de2c8ece055` Appel radius 29334 ; `01a1d4da-6bc5-7316-8cc0-579f23494520` Appel communes 29334 ; `01a1d4da-4444-736b-8d20-d1ce6d384df6` Appel regions 29334.",
+                                        "enum": [
+                                            "01a1d4df-bc28-7126-b719-900b146db904",
+                                            "01a1d4da-9343-71de-99fc-4de2c8ece055",
+                                            "01a1d4da-6bc5-7316-8cc0-579f23494520",
+                                            "01a1d4da-4444-736b-8d20-d1ce6d384df6"
+                                        ]
                                     },
                                     "files[0]": {
                                         "type": "string",
@@ -4925,7 +4931,13 @@
                                     "appel": {
                                         "type": "string",
                                         "format": "uuid",
-                                        "description": "Facultatif — **répondre à un appel à relais** : quand la rédaction ou le coordonnateur demande aux Relais de couvrir un sujet (`GET /appels`), le Relais envoie ici l’`uuid` de cet appel ; son relais est alors rattaché à l’appel et remonte en priorité. Laisser vide pour un relais spontané."
+                                        "description": "Facultatif — **répondre à un appel à relais** : quand la rédaction ou le coordonnateur demande aux Relais de couvrir un sujet, l’application liste les appels de la zone du Relais (`GET /appels`) et envoie ici l’`uuid` de celui auquel il répond ; le relais est rattaché à l’appel et remonte en priorité. **Ne pas envoyer** (cocher « Omit ») pour un relais spontané. Appels ouverts : `01a1d4df-bc28-7126-b719-900b146db904` Appel réel modifié 87055 ; `01a1d4da-9343-71de-99fc-4de2c8ece055` Appel radius 29334 ; `01a1d4da-6bc5-7316-8cc0-579f23494520` Appel communes 29334 ; `01a1d4da-4444-736b-8d20-d1ce6d384df6` Appel regions 29334.",
+                                        "enum": [
+                                            "01a1d4df-bc28-7126-b719-900b146db904",
+                                            "01a1d4da-9343-71de-99fc-4de2c8ece055",
+                                            "01a1d4da-6bc5-7316-8cc0-579f23494520",
+                                            "01a1d4da-4444-736b-8d20-d1ce6d384df6"
+                                        ]
                                     },
                                     "files[0]": {
                                         "type": "string",
