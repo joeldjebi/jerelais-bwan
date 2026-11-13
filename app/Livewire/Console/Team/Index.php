@@ -17,6 +17,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -57,6 +58,13 @@ class Index extends Component
 
     public string $assignment = 'titulaire';
 
+    /** Accès d'un nouveau membre : « password » (mot de passe saisi ici) ou « email » (lien envoyé par e-mail). */
+    public string $access = 'password';
+
+    public string $password = '';
+
+    public string $passwordConfirmation = '';
+
     #[Locked]
     public ?string $pendingMember = null;
 
@@ -80,7 +88,7 @@ class Index extends Component
 
     public function openCreate(): void
     {
-        $this->reset('name', 'email', 'newRole', 'communeUuids', 'regionUuids', 'communeSearch', 'assignment', 'editingMember');
+        $this->reset('name', 'email', 'newRole', 'communeUuids', 'regionUuids', 'communeSearch', 'assignment', 'editingMember', 'access', 'password', 'passwordConfirmation');
         $this->resetValidation();
         $this->creating = true;
     }
@@ -95,7 +103,7 @@ class Index extends Component
         abort_unless($member->hasAnyRole(array_map(fn (Role $role): string => $role->value, self::staffRoles())), 404);
 
         $this->resetValidation();
-        $this->reset('communeSearch');
+        $this->reset('communeSearch', 'password', 'passwordConfirmation');
         $this->editingMember = $member->uuid;
         $this->name = (string) $member->name;
         $this->email = (string) $member->email;
@@ -120,7 +128,8 @@ class Index extends Component
             'regionUuids' => [Rule::requiredIf($this->newRole === Role::Superviseur->value), 'array'],
             'regionUuids.*' => ['string', Rule::exists('regions', 'uuid')],
             'assignment' => ['required', Rule::enum(CommuneAssignment::class)],
-        ], attributes: ['name' => __('nom'), 'newRole' => __('rôle'), 'communeUuids' => __('communes'), 'regionUuids' => __('régions')]);
+            'password' => ['nullable', 'string', 'same:passwordConfirmation', Password::defaults()],
+        ], attributes: ['name' => __('nom'), 'newRole' => __('rôle'), 'communeUuids' => __('communes'), 'regionUuids' => __('régions'), 'password' => __('mot de passe'), 'passwordConfirmation' => __('confirmation')]);
 
         /** @var User $actor */
         $actor = Auth::user();
@@ -135,6 +144,7 @@ class Index extends Component
                 array_values(Commune::query()->whereIn('uuid', $this->communeUuids)->pluck('id')->map(fn ($id): int => (int) $id)->all()),
                 array_values(Region::query()->whereIn('uuid', $this->regionUuids)->pluck('id')->map(fn ($id): int => (int) $id)->all()),
                 CommuneAssignment::from($validated['assignment']),
+                $this->password !== '' ? $this->password : null,
             );
         } catch (InvalidArgumentException $exception) {
             $this->addError('newRole', $exception->getMessage());
@@ -144,6 +154,7 @@ class Index extends Component
 
         $this->creating = false;
         $this->editingMember = null;
+        $this->reset('password', 'passwordConfirmation');
         unset($this->members);
         $this->dispatch('toast', message: __(':name a été mis·e à jour.', ['name' => $validated['name']]));
     }
@@ -161,11 +172,15 @@ class Index extends Component
             'regionUuids' => [Rule::requiredIf($this->newRole === Role::Superviseur->value), 'array'],
             'regionUuids.*' => ['string', Rule::exists('regions', 'uuid')],
             'assignment' => ['required', Rule::enum(CommuneAssignment::class)],
+            'access' => ['required', Rule::in(['password', 'email'])],
+            'password' => ['exclude_unless:access,password', 'required', 'string', 'same:passwordConfirmation', Password::defaults()],
         ], attributes: [
             'name' => __('nom'),
             'newRole' => __('rôle'),
             'communeUuids' => __('communes'),
             'regionUuids' => __('régions'),
+            'password' => __('mot de passe'),
+            'passwordConfirmation' => __('confirmation'),
         ]);
 
         /** @var User $actor */
@@ -179,10 +194,15 @@ class Index extends Component
             array_values(Commune::query()->whereIn('uuid', $this->communeUuids)->pluck('id')->map(fn ($id): int => (int) $id)->all()),
             array_values(Region::query()->whereIn('uuid', $this->regionUuids)->pluck('id')->map(fn ($id): int => (int) $id)->all()),
             CommuneAssignment::from($validated['assignment']),
+            $this->access === 'password' ? $this->password : null,
         );
 
         $this->creating = false;
-        $this->dispatch('toast', message: __(':name a été ajouté·e. Un lien d’activation a été envoyé par e-mail.', ['name' => $member->name]));
+        $this->reset('password', 'passwordConfirmation');
+        unset($this->members);
+        $this->dispatch('toast', message: $this->access === 'password'
+            ? __(':name peut se connecter dès maintenant avec :email et le mot de passe choisi ; la double authentification sera activée à la première connexion.', ['name' => $member->name, 'email' => $member->email])
+            : __(':name a été ajouté·e. Un lien d’activation a été envoyé par e-mail.', ['name' => $member->name]));
     }
 
     public function askStatusChange(string $uuid): void

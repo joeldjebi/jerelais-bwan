@@ -14,7 +14,10 @@
             @if ($pending && auth()->user()->can(\App\Domain\Access\Enums\Permission::SettingsManage->value))
                 <x-ui.button variant="success" icon="check" wire:click="approve">{{ __('Approuver et publier') }}</x-ui.button>
             @endif
-            @if ($appel->isOpen())
+            @if ($appel->status->value !== 'closed' && $this->canManage())
+                <x-ui.button variant="secondary" icon="pencil" wire:click="openEdit">{{ __('Modifier') }}</x-ui.button>
+            @endif
+            @if ($appel->isOpen() && $this->canManage())
                 <x-ui.button variant="secondary" wire:click="close">{{ __('Clore l’appel') }}</x-ui.button>
             @endif
         </x-slot:actions>
@@ -27,14 +30,15 @@
         <x-console.stat :label="__('Date limite')" :value="$appel->deadline_at->timezone('Africa/Abidjan')->translatedFormat('j M, H:i')" icon="clock" :tint="$appel->isOpen() ? 'orange' : 'gray'" :hint="$appel->isOpen() ? __('Ouvert') : $appel->status->label()" />
     </div>
 
-    <x-console.group :title="__('Zone')">
-        <p class="px-5 py-4 text-[0.9375rem]">
-            {{ $appel->target->label() }}
-            @if ($appel->communes->isNotEmpty()) : {{ $appel->communes->pluck('name')->join(', ') }}@endif
-            @if ($appel->regions->isNotEmpty()) : {{ $appel->regions->pluck('name')->join(', ') }}@endif
-            @if ($appel->center) : {{ number_format($appel->radius_m / 1000, 1, ',', ' ') }} km {{ __('autour de') }} {{ number_format($appel->center->getLatitude(), 4) }}, {{ number_format($appel->center->getLongitude(), 4) }}@endif
-            @if ($appel->lieuType) · {{ $appel->lieuType->name }}@endif
-        </p>
+    <x-console.group :title="__('Ciblage')">
+        <dl class="divide-y divide-line text-[0.9375rem]">
+            <div class="flex gap-4 px-5 py-3"><dt class="w-40 shrink-0 text-mute">{{ __('Zone ciblée') }}</dt><dd>{{ $appel->zoneSummary() }}</dd></div>
+            <div class="flex gap-4 px-5 py-3"><dt class="w-40 shrink-0 text-mute">{{ __('Type de lieu') }}</dt><dd>{{ $appel->lieuType?->name ?? __('Aucun en particulier') }}</dd></div>
+            <div class="flex gap-4 px-5 py-3"><dt class="w-40 shrink-0 text-mute">{{ __('Relais prévenus') }}</dt><dd @class(['font-semibold text-status-rejected' => $appel->recipients_count === 0 && $appel->isOpen()])>
+                {{ $appel->recipients_count }}
+                @if ($appel->recipients_count === 0 && $appel->isOpen()) — {{ __('aucun Relais dans cette zone : élargissez-la avec « Modifier ».') }}@endif
+            </dd></div>
+        </dl>
     </x-console.group>
 
     <x-console.group :title="trans_choice(':count réponse|:count réponses', $this->responses->count())">
@@ -48,4 +52,12 @@
             </ul>
         @endif
     </x-console.group>
+
+    <x-console.slide-over model="editing" :wide="true" :title="__('Modifier l’appel')" :description="__('Les Relais qui entrent dans la zone sont prévenus ; ceux déjà prévenus ne reçoivent pas de second SMS.')">
+        @include('livewire.console.appels.partials.form', ['formId' => 'appel-edit-form', 'action' => 'update'])
+        <x-slot:footer>
+            <x-ui.button variant="secondary" x-on:click="open = false">{{ __('Annuler') }}</x-ui.button>
+            <x-ui.button type="submit" form="appel-edit-form" wire:loading.attr="disabled" wire:target="update">{{ __('Enregistrer') }}</x-ui.button>
+        </x-slot:footer>
+    </x-console.slide-over>
 </div>

@@ -11,6 +11,12 @@
             <p class="text-[0.8125rem] font-semibold text-tile-purple">{{ __('Jusqu’au :date', ['date' => $appel->deadline_at->timezone('Africa/Abidjan')->translatedFormat('l j F à H:i')]) }}</p>
             <h2 class="mt-1 text-[1.375rem] font-semibold tracking-[-0.02em]">{{ $appel->title }}</h2>
             <p class="mt-2 leading-relaxed whitespace-pre-line text-graphite">{{ $appel->instructions }}</p>
+            <p class="mt-3 flex flex-wrap gap-2 text-[0.8125rem]">
+                <span class="rounded-full bg-mist px-3 py-1 text-graphite">{{ $appel->zoneSummary() }}</span>
+                @if ($appel->lieuType)
+                    <span class="rounded-full bg-tile-purple/10 px-3 py-1 text-tile-purple">{{ __('Lieu : :type', ['type' => $appel->lieuType->name]) }}</span>
+                @endif
+            </p>
             <x-ui.button class="mt-5" :href="route('relais.send', ['appel' => $appel->uuid])" icon="camera">{{ __('Répondre à cet appel') }}</x-ui.button>
         </article>
     @empty

@@ -9,10 +9,12 @@ use App\Domain\AppelRelais\Enums\AppelStatus;
 use App\Domain\AppelRelais\Enums\AppelTarget;
 use App\Domain\AppelRelais\Models\AppelRelais;
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Livewire\Console\Appels\Concerns\EditsAppel;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -24,8 +26,46 @@ use Livewire\Component;
  */
 class Show extends Component
 {
+    use EditsAppel;
+
     #[Locked]
     public AppelRelais $appel;
+
+    public bool $editing = false;
+
+    public function openEdit(): void
+    {
+        abort_unless($this->canManage(), 403);
+        $this->fillAppelForm($this->appel);
+        $this->editing = true;
+    }
+
+    public function update(PublishAppel $publish): void
+    {
+        abort_unless($this->canManage(), 403);
+        $this->validate($this->appelRules(), attributes: $this->appelAttributes());
+
+        try {
+            $publish->update($this->appel, $this->user(), $this->appelPayload());
+        } catch (InvalidArgumentException $exception) {
+            $this->addError($this->target === 'regions' ? 'selectedRegions' : 'selectedCommunes', $exception->getMessage());
+
+            return;
+        }
+
+        $this->appel->refresh();
+        $this->editing = false;
+        $this->dispatch('toast', message: __('Appel mis à jour.'));
+    }
+
+    /**
+     * Auteur de l'appel, ou rédaction nationale (sans restriction de commune).
+     */
+    public function canManage(): bool
+    {
+        return $this->appel->created_by === $this->user()->id
+            || ($this->user()->hasPermissionTo(Permission::AppelsCreate->value) && app(CommuneAccess::class)->communeIdsFor($this->user()) === null);
+    }
 
     public function mount(): void
     {
@@ -42,7 +82,7 @@ class Show extends Component
 
     public function close(PublishAppel $publish): void
     {
-        abort_unless($this->appel->created_by === $this->user()->id || ($this->user()->hasPermissionTo(Permission::AppelsCreate->value) && app(CommuneAccess::class)->communeIdsFor($this->user()) === null), 403);
+        abort_unless($this->canManage(), 403);
         $publish->close($this->appel, $this->user());
         $this->appel->refresh();
         $this->dispatch('toast', message: __('Appel clos.'));

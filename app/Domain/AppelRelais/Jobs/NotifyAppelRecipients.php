@@ -17,7 +17,10 @@ class NotifyAppelRecipients implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public readonly int $appelId) {}
+    /**
+     * @param  list<int>|null  $profileIds  seulement ces Relais (zone élargie après modification) ; null : toute la zone
+     */
+    public function __construct(public readonly int $appelId, public readonly ?array $profileIds = null) {}
 
     public function handle(SmsGateway $sms): void
     {
@@ -29,7 +32,7 @@ class NotifyAppelRecipients implements ShouldQueue
 
         $message = __('appels_relais.sms', ['title' => str($appel->title)->limit(50), 'deadline' => $appel->deadline_at->timezone('Africa/Abidjan')->translatedFormat('j M à H:i')]);
 
-        AppelAudience::profiles($appel)->with('user')->chunkById(200, function ($profiles) use ($sms, $message): void {
+        AppelAudience::profiles($appel)->when($this->profileIds !== null, fn ($query) => $query->whereIn('relais_profiles.id', $this->profileIds))->with('user')->chunkById(200, function ($profiles) use ($sms, $message): void {
             foreach ($profiles as $profile) {
                 /** @var RelaisProfile $profile */
                 $phone = $profile->user->phoneNumber();

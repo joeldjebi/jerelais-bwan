@@ -380,6 +380,44 @@ Pour chaque fichier de `uploads` :
 | `POST /medias/{uuid}/complete` | Clôt l’envoi d’un fichier ; le dernier déclenche la soumission du relais |
 | `POST /relais/{uuid}/medias` | Ajoute un fichier à un relais existant, quand le coordonnateur demande un **complément** ; puis `POST /relais/{uuid}/complement` |
 
+## 7. Appels à relais
+
+```bash
+curl "$BASE/appels" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+```
+
+**200** — appels ouverts qui concernent le Relais : commune de son profil, sinon commune de sa vérification d’identité ou de ses relais récents ; pour un rayon, aussi ses relais géolocalisés dans ce rayon.
+```json
+{
+  "data": [
+    {
+      "uuid": "…",
+      "title": "Rentrée scolaire",
+      "instructions": "Ambiance devant les écoles, sans filmer les enfants de face.",
+      "target": "communes",
+      "target_label": "Communes",
+      "zone": ["Abobo", "Cocody"],
+      "zone_label": "Communes : Abobo, Cocody",
+      "radius": null,
+      "lieu_type": "École",
+      "is_open": true,
+      "deadline_at": "2026-11-14T12:00:00Z",
+      "published_at": "2026-11-13T09:00:00Z"
+    }
+  ]
+}
+```
+
+| Champ | Usage |
+|---|---|
+| `zone_label` | Zone en clair, prête à afficher |
+| `radius` | Pour un appel « rayon » : `{"lat", "lng", "radius_km"}` (carte) ; sinon `null` |
+| `lieu_type` | Type de lieu à couvrir (école, marché…) ou `null` |
+
+Détail : `GET /appels/{uuid}` (404 si l’appel ne concerne pas le Relais). Pour répondre : `POST /relais` avec `"appel": "<uuid>"`. Un appel peut être modifié par l’équipe (sujet, zone, date limite) : recharger la liste à l’ouverture de l’écran.
+
+---
+
 ## Récapitulatif des codes HTTP
 
 | Code | Signification | Que faire |
