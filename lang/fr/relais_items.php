@@ -53,7 +53,10 @@ return [
         'selected' => 'JE RELAIS : la rédaction a retenu votre relais « :title » !',
         'broadcast' => 'JE RELAIS : votre relais « :title » est passé sur REFLET TV. Bravo !',
     ],
+    'complement_by_update' => 'Relais modifié en réponse à la demande de complément.',
+
     'errors' => [
+        'nothing_to_update' => 'Aucun champ ni fichier reçu : envoyez au moins un élément à modifier (multipart/form-data ou JSON).',
         'not_relais' => 'Seul un Relais actif peut envoyer un relais.',
         'client_uuid_taken' => 'Cet identifiant est déjà utilisé.',
         'not_editable' => 'Ce relais a déjà été envoyé : il n’est plus modifiable.',

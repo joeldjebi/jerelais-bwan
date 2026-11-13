@@ -24,6 +24,30 @@ enum MediaKind: string
     }
 
     /**
+     * Nature d'un fichier d'après son type réel (contenu), ou null s'il n'est pas accepté.
+     */
+    public static function fromMime(string $mime): ?self
+    {
+        foreach (self::cases() as $kind) {
+            if (in_array($mime, $kind->mimeTypes(), true)) {
+                return $kind;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Tous les types acceptés.
+     *
+     * @return list<string>
+     */
+    public static function allMimeTypes(): array
+    {
+        return array_merge(...array_map(fn (self $kind): array => $kind->mimeTypes(), self::cases()));
+    }
+
+    /**
      * Paramètre de durée maximale (MOB-11) ; aucun pour les photos.
      */
     public function maxDurationSetting(): ?string

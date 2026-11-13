@@ -7,8 +7,10 @@ use App\Domain\Auth\Models\Device;
 use App\Domain\Auth\Models\OtpCode;
 use App\Livewire\Relais\Rejoindre;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
+use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -284,4 +286,49 @@ it('explique sur le site qu’un numéro étranger ne peut pas recevoir de code'
         ->call('sendCode')
         ->assertHasErrors('phone')
         ->assertSee('Seuls les numéros de Côte d’Ivoire');
+});
+
+it('redéfinit le mot de passe oublié en 3 étapes : code SMS, validation, nouveau mot de passe [MOB-01]', function () {
+    config(['jerelais.otp.fixed_code' => '1234']);
+    $user = existingAccount();
+    $user->forceFill(['password' => 'AncienSecret2026'])->save();
+    $autreAppareil = $user->createToken('autre appareil')->plainTextToken;
+
+    requestOtp()->assertAccepted();
+    $token = verifyOtp('1234')->assertCreated()->json('data.token');
+
+    $this->withToken($token)->postJson(route('api.v1.auth.password.reset'), ['password' => 'NouveauSecret2026', 'password_confirmation' => 'NouveauSecret2026'])
+        ->assertOk()
+        ->assertJsonPath('message', 'Mot de passe enregistré. Utilisez-le désormais pour vous connecter.');
+
+    expect(Hash::check('NouveauSecret2026', $user->fresh()->password))->toBeTrue()
+        ->and(PersonalAccessToken::findToken($autreAppareil))->toBeNull();
+    $this->assertDatabaseHas('audit_logs', ['action' => 'auth.password.reset']);
+
+    $this->app['auth']->forgetGuards();
+    $this->postJson(route('api.v1.auth.login'), ['phone' => '0707070707', 'password' => 'NouveauSecret2026'])->assertCreated();
+});
+
+it('refuse un nouveau mot de passe sans code SMS validé, ou mal confirmé', function () {
+    config(['jerelais.otp.fixed_code' => '1234']);
+    $user = existingAccount();
+    $user->forceFill(['password' => 'AncienSecret2026'])->save();
+
+    $login = $this->postJson(route('api.v1.auth.login'), ['phone' => '0707070707', 'password' => 'AncienSecret2026'])->json('data.token');
+    $this->withToken($login)->postJson(route('api.v1.auth.password.reset'), ['password' => 'NouveauSecret2026', 'password_confirmation' => 'NouveauSecret2026'])
+        ->assertForbidden()
+        ->assertJsonPath('message', 'Validez d’abord le code reçu par SMS (POST /auth/verify), puis choisissez le nouveau mot de passe dans les 15 minutes.');
+
+    $this->app['auth']->forgetGuards();
+    $this->withoutToken();
+    requestOtp()->assertAccepted();
+    $token = verifyOtp('1234')->json('data.token');
+    $this->app['auth']->forgetGuards();
+    $this->withToken($token)->postJson(route('api.v1.auth.password.reset'), ['password' => 'NouveauSecret2026', 'password_confirmation' => 'Autre2026xx'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('password');
+
+    $this->travel(16)->minutes();
+    $this->withToken($token)->postJson(route('api.v1.auth.password.reset'), ['password' => 'NouveauSecret2026', 'password_confirmation' => 'NouveauSecret2026'])
+        ->assertForbidden();
 });
