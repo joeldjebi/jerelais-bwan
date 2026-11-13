@@ -9,7 +9,7 @@
     $missing = $this->missing();
     $files = $v->files->keyBy(fn ($file) => $file->kind->value);
     $type = $this->documentTypes->firstWhere('slug', $documentType) ?? $v->documentType;
-    $kinds = [...($type?->sides() ?? []), IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto];
+    $kinds = [...($type?->sides() ?? []), IdentityFileKind::Selfie];
     $label = 'block text-[0.8125rem] font-medium';
     $field = 'h-12 w-full rounded-2xl border-0 bg-mist px-4 text-[1rem] ring-1 ring-transparent transition-[box-shadow,background-color] duration-300 focus:bg-white focus:ring-2 focus:ring-relais-500/50 focus:outline-none disabled:opacity-60';
     $chip = 'press inline-flex cursor-pointer items-center rounded-full px-4 py-2 text-[0.875rem] font-medium ring-1 transition-colors';

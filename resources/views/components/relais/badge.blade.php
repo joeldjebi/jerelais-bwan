@@ -5,7 +5,7 @@
     use App\Domain\Relais\Support\BadgeQrCode;
     use Illuminate\Support\Facades\URL;
 
-    $photo = $profile->candidature->documents->firstWhere('type', \App\Domain\Candidature\Enums\DocumentType::ProfilePhoto);
+    $photo = \App\Domain\Relais\Support\BadgePhoto::for($profile);
     $photoUrl = $photo ? URL::temporarySignedRoute('relais.badge.photo', now()->addMinutes(15), $profile) : null;
 @endphp
 

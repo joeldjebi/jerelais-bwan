@@ -43,11 +43,11 @@ Numéros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00
 
 Le Relais complète son profil quand il le souhaite ; il est **obligatoire seulement pour recevoir ses commissions**. Ni la connexion ni l’envoi de relais n’en dépendent.
 
-**En une seule requête :** `POST /identity` (multipart) avec `last_name`, `first_name`, `gender`, `birth_date` (`26/04/2000`), `commune` et/ou `localite`, `document_type` (une `value` de `GET /auth/register/options`), et les fichiers : faces de la pièce selon `sides` (`recto` + `verso`, ou `page`), `selfie`, `profile_photo`. Le dossier part aussitôt en vérification (`submitted`). Tout ou rien : **422** liste chaque champ ou fichier à corriger, sans rien enregistrer.
+**En une seule requête :** `POST /identity` (multipart) avec `last_name`, `first_name`, `gender`, `birth_date` (`26/04/2000`), `commune` et/ou `localite`, `document_type` (une `value` de `GET /auth/register/options`), et les fichiers : faces de la pièce selon `sides` (`recto` + `verso`, ou `page`), `selfie`. Le dossier part aussitôt en vérification (`submitted`). Tout ou rien : **422** liste chaque champ ou fichier à corriger, sans rien enregistrer.
 
 Suivi : `GET /identity` — `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` (motif dans `decision_comment` : renvoyer la même requête corrigée). Le statut est aussi dans `GET /me`.
 
-Routes détaillées, facultatives : `PUT /identity` (champs un par un), `POST /identity/files` et `DELETE /identity/files/{kind}`, `POST /identity/submit`.
+`PUT /identity` (facultatif) modifie seulement les champs envoyés, sans fichier. Le `selfie` sert aussi de photo du badge.
 
 ## Parcours d’un candidat
 

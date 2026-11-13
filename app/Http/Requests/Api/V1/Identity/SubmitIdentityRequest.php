@@ -12,7 +12,7 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
  * Vérification d'identité en une seule requête (multipart) : tous les champs sont obligatoires,
- * avec les fichiers demandés par la pièce choisie (recto et verso, ou page), le selfie et la photo de profil.
+ * avec les fichiers demandés par la pièce choisie (recto et verso, ou page) et le selfie.
  */
 class SubmitIdentityRequest extends UpdateIdentityRequest
 {
@@ -67,10 +67,8 @@ class SubmitIdentityRequest extends UpdateIdentityRequest
             'verso' => [Rule::requiredIf($twoSided), Rule::prohibitedIf(! $twoSided), 'nullable', 'file', 'max:'.$maxKb, $document],
             /** Page de la pièce (si `sides` contient `page` : passeport, attestation) : image ou PDF, 10 Mo maximum. */
             'page' => [Rule::requiredIf($onePage), Rule::prohibitedIf(! $onePage), 'nullable', 'file', 'max:'.$maxKb, $document],
-            /** Selfie de la personne tenant sa pièce : image, 10 Mo maximum. */
+            /** Selfie : la personne tenant sa pièce, visage bien visible (sert aussi de photo du badge). Image, 10 Mo maximum. */
             'selfie' => ['required', 'file', 'max:'.$maxKb, $image],
-            /** Photo de profil : image, 10 Mo maximum. */
-            'profile_photo' => ['required', 'file', 'max:'.$maxKb, $image],
         ];
     }
 
@@ -133,7 +131,7 @@ class SubmitIdentityRequest extends UpdateIdentityRequest
     {
         $files = [];
 
-        foreach (IdentityFileKind::cases() as $kind) {
+        foreach ([IdentityFileKind::Recto, IdentityFileKind::Verso, IdentityFileKind::Page, IdentityFileKind::Selfie] as $kind) {
             $file = $this->file($kind->value);
 
             if ($file instanceof UploadedFile) {

@@ -4,7 +4,10 @@ use App\Domain\Access\Enums\Role;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Enums\UserStatus;
 use App\Domain\Identity\Actions\DecideIdentityVerification;
+use App\Domain\Identity\Actions\StoreIdentityFile;
+use App\Domain\Identity\Enums\IdentityFileKind;
 use App\Domain\Identity\Enums\IdentityStatus;
+use App\Domain\Identity\Models\IdentityFile;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Media\Contracts\VirusScanner;
 use App\Domain\Privacy\Actions\PseudonymizeUser;
@@ -43,26 +46,21 @@ function registeredAppRelais(string $phone = '0707070707'): User
     return User::findByPhone(PhoneNumber::parse($phone));
 }
 
-function sendIdentityFile(string $kind, ?UploadedFile $file = null): TestResponse
+/**
+ * Fichier ajouté depuis le site (page « Mon profil »), qui passe par l'action fichier par fichier.
+ */
+function storeIdentityFile(string $kind, ?UploadedFile $file = null): IdentityFile
 {
-    return test()->post(route('api.v1.identity.files.store'), [
-        'kind' => $kind,
-        'file' => $file ?? UploadedFile::fake()->image("{$kind}.jpg", 800, 600),
-    ], ['Accept' => 'application/json']);
+    $verification = IdentityVerification::query()->where('user_id', test()->relais->id)->sole();
+
+    return app(StoreIdentityFile::class)->handle($verification, IdentityFileKind::from($kind), $file ?? UploadedFile::fake()->image("{$kind}.jpg", 800, 600));
 }
 
 function completeIdentity(string $type = 'cni'): void
 {
-    test()->putJson(route('api.v1.identity.update'), [
-        'last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme', 'birth_date' => '2001-04-17',
-        'commune' => test()->commune->uuid, 'document_type' => $type,
-    ])->assertOk();
+    $sides = $type === 'passeport' || $type === 'attestation_identite' ? ['recto' => null, 'verso' => null, 'page' => UploadedFile::fake()->image('page.jpg', 800, 600)] : [];
 
-    $sides = $type === 'passeport' || $type === 'attestation_identite' ? ['page'] : ['recto', 'verso'];
-
-    foreach ([...$sides, 'selfie', 'profile_photo'] as $kind) {
-        sendIdentityFile($kind)->assertCreated();
-    }
+    submitIdentityAtOnce(['first_name' => 'Awa', 'gender' => 'femme', 'document_type' => $type, ...$sides])->assertOk();
 }
 
 it('fait du compte inscrit un Relais sans commune, qui peut envoyer des relais sans profil complété [MOB-01]', function () {
@@ -93,13 +91,8 @@ it('indique tout ce qui manque au profil d’un nouveau Relais', function () {
             'commune' => 'Choisissez votre commune.',
             'document_type' => 'Choisissez le type de votre pièce d’identité.',
             'files.selfie' => 'Ajoutez : Selfie avec la pièce.',
-            'files.profile_photo' => 'Ajoutez : Photo de profil.',
         ])
         ->assertJsonCount(5, 'data.document_types');
-
-    $this->postJson(route('api.v1.identity.submit'))
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['last_name', 'first_names', 'gender', 'birth_date', 'commune', 'document_type', 'files.selfie', 'files.profile_photo']);
 });
 
 it('complète le profil en plusieurs fois : seuls les champs envoyés changent', function () {
@@ -133,7 +126,7 @@ it('refuse une date de naissance mal formée ou un sexe inconnu', function () {
 it('demande recto et verso pour une CNI, une seule page pour un passeport', function (string $type, array $sides) {
     $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'document_type' => $type])
         ->assertOk()
-        ->assertJsonPath('data.required_files', [...$sides, 'selfie', 'profile_photo']);
+        ->assertJsonPath('data.required_files', [...$sides, 'selfie']);
 })->with([
     'CNI' => ['cni', ['recto', 'verso']],
     'permis' => ['permis', ['recto', 'verso']],
@@ -176,13 +169,14 @@ it('refuse une localité d’une autre commune au lieu de l’ignorer en silence
 });
 
 it('accepte la pièce en image ou en PDF, mais le selfie en image seulement', function () {
-    $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'document_type' => 'cni'])->assertOk();
+    submitIdentityAtOnce(['selfie' => UploadedFile::fake()->create('selfie.pdf', 200, 'application/pdf')])->assertJsonValidationErrors('selfie');
+    submitIdentityAtOnce(['page' => UploadedFile::fake()->image('page.jpg')])->assertJsonValidationErrors('page');
+    expect(Storage::disk('identity')->allFiles())->toBeEmpty();
 
-    sendIdentityFile('recto', UploadedFile::fake()->create('cni.pdf', 200, 'application/pdf'))->assertCreated()->assertJsonPath('data.mime', 'application/pdf');
-    sendIdentityFile('selfie', UploadedFile::fake()->create('selfie.pdf', 200, 'application/pdf'))->assertJsonValidationErrors('file');
-    sendIdentityFile('page')->assertUnprocessable()->assertJsonValidationErrors('kind');
-
-    expect(Storage::disk('identity')->allFiles())->toHaveCount(1);
+    submitIdentityAtOnce(['recto' => UploadedFile::fake()->create('cni.pdf', 200, 'application/pdf')])
+        ->assertOk()
+        ->assertJsonPath('data.files.0.kind', 'recto')
+        ->assertJsonPath('data.files.0.mime', 'application/pdf');
 });
 
 it('retire les faces devenues inutiles quand le type de pièce change', function () {
@@ -190,29 +184,29 @@ it('retire les faces devenues inutiles quand le type de pièce change', function
         'last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme', 'birth_date' => '2001-04-17',
         'commune' => $this->commune->uuid, 'document_type' => 'cni',
     ])->assertOk();
-    foreach (['recto', 'verso', 'selfie'] as $kind) {
-        sendIdentityFile($kind)->assertCreated();
+    foreach (['recto', 'verso'] as $kind) {
+        storeIdentityFile($kind);
     }
 
     $this->putJson(route('api.v1.identity.update'), ['document_type' => 'passeport'])
         ->assertOk()
-        ->assertJsonCount(1, 'data.files')
+        ->assertJsonCount(0, 'data.files')
         ->assertJsonPath('data.status', 'draft')
-        ->assertJsonPath('data.missing', ['files.page' => 'Ajoutez : Page de la pièce.', 'files.profile_photo' => 'Ajoutez : Photo de profil.']);
+        ->assertJsonPath('data.missing', ['files.page' => 'Ajoutez : Page de la pièce.', 'files.selfie' => 'Ajoutez : Selfie avec la pièce.']);
 });
 
-it('envoie le dossier tout seul en vérification dès le dernier fichier reçu, sans POST /identity/submit [MOB-01]', function () {
+it('envoie le dossier du site tout seul en vérification dès le dernier fichier reçu [MOB-01]', function () {
     $this->putJson(route('api.v1.identity.update'), [
         'last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme', 'birth_date' => '26/04/2000',
         'commune' => $this->commune->uuid, 'document_type' => 'cni',
     ])->assertOk()->assertJsonPath('data.status', 'draft');
 
-    foreach (['recto', 'verso', 'selfie'] as $kind) {
-        sendIdentityFile($kind)->assertCreated();
+    foreach (['recto', 'verso'] as $kind) {
+        storeIdentityFile($kind);
     }
     $this->getJson(route('api.v1.identity.show'))->assertJsonPath('data.status', 'draft');
 
-    sendIdentityFile('profile_photo')->assertCreated();
+    storeIdentityFile('selfie');
 
     $this->getJson(route('api.v1.identity.show'))
         ->assertOk()
@@ -220,14 +214,12 @@ it('envoie le dossier tout seul en vérification dès le dernier fichier reçu, 
         ->assertJsonPath('data.is_editable', false)
         ->assertJsonPath('data.missing', []);
     $this->assertDatabaseHas('audit_logs', ['action' => 'identity.submitted']);
-
-    $this->postJson(route('api.v1.identity.submit'))->assertOk()->assertJsonPath('data.status', 'submitted');
 });
 
 it('envoie aussi le dossier quand le dernier champ manquant est rempli après les fichiers [MOB-01]', function () {
     $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'document_type' => 'passeport'])->assertOk();
-    foreach (['page', 'selfie', 'profile_photo'] as $kind) {
-        sendIdentityFile($kind)->assertCreated();
+    foreach (['page', 'selfie'] as $kind) {
+        storeIdentityFile($kind);
     }
     $this->getJson(route('api.v1.identity.show'))->assertJsonPath('data.status', 'draft');
 
@@ -236,7 +228,7 @@ it('envoie aussi le dossier quand le dernier champ manquant est rempli après le
         ->assertJsonPath('data.status', 'submitted');
 });
 
-it('renvoie tout seul un dossier refusé une fois le fichier corrigé [MOB-01]', function () {
+it('renvoie tout seul un dossier refusé une fois le fichier corrigé depuis le site [MOB-01]', function () {
     completeIdentity('cni');
     $verification = IdentityVerification::query()->sole();
     expect($verification->status->value)->toBe('submitted');
@@ -244,7 +236,7 @@ it('renvoie tout seul un dossier refusé une fois le fichier corrigé [MOB-01]',
     app(DecideIdentityVerification::class)->reject($verification, User::factory()->withTwoFactor()->withRole(Role::Admin)->create(), 'Selfie flou.');
     $this->getJson(route('api.v1.identity.show'))->assertJsonPath('data.status', 'rejected');
 
-    sendIdentityFile('selfie')->assertCreated();
+    storeIdentityFile('selfie');
 
     $this->getJson(route('api.v1.identity.show'))->assertJsonPath('data.status', 'submitted');
 });
@@ -257,20 +249,16 @@ it('refuse un fichier infecté sans le stocker [§10]', function () {
             return 'Win.Test.EICAR_HDB-1';
         }
     });
-    $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'document_type' => 'cni'])->assertOk();
+    submitIdentityAtOnce()->assertUnprocessable()->assertJsonValidationErrors('recto');
 
-    $before = Storage::disk('identity')->allFiles();
-
-    sendIdentityFile('selfie')->assertUnprocessable()->assertJsonValidationErrors('file');
-
-    expect(Storage::disk('identity')->allFiles())->toBe($before);
+    expect(Storage::disk('identity')->allFiles())->toBeEmpty();
 });
 
 it('envoie la vérification, la verrouille, puis l’administration la valide : éligible aux gains et rattaché à sa commune [MOB-01]', function () {
     completeIdentity();
 
-    $this->postJson(route('api.v1.identity.submit'))->assertOk()->assertJsonPath('data.status', 'submitted');
-    sendIdentityFile('selfie')->assertConflict();
+    $this->getJson(route('api.v1.identity.show'))->assertJsonPath('data.status', 'submitted');
+    submitIdentityAtOnce()->assertConflict();
 
     $admin = User::factory()->withTwoFactor()->withRole(Role::Admin)->create();
     $verification = IdentityVerification::query()->where('user_id', $this->relais->id)->sole();
@@ -287,7 +275,6 @@ it('envoie la vérification, la verrouille, puis l’administration la valide : 
 
 it('renvoie la vérification au Relais avec un commentaire, puis il corrige et renvoie', function () {
     completeIdentity();
-    $this->postJson(route('api.v1.identity.submit'))->assertOk();
 
     $admin = User::factory()->withTwoFactor()->withRole(Role::Admin)->create();
     $verification = IdentityVerification::query()->where('user_id', $this->relais->id)->sole();
@@ -302,8 +289,7 @@ it('renvoie la vérification au Relais avec un commentaire, puis il corrige et r
         ->assertJsonPath('data.decision_comment', 'Le verso est flou.')
         ->assertJsonPath('data.is_editable', true);
 
-    sendIdentityFile('verso')->assertCreated();
-    $this->postJson(route('api.v1.identity.submit'))->assertOk()->assertJsonPath('data.status', 'submitted');
+    submitIdentityAtOnce()->assertOk()->assertJsonPath('data.status', 'submitted');
 });
 
 it('montre les fichiers à l’administration par lien signé, audité, et les refuse sans signature', function () {
@@ -356,7 +342,6 @@ function submitIdentityAtOnce(array $overrides = []): TestResponse
         'recto' => UploadedFile::fake()->image('recto.jpg', 800, 600),
         'verso' => UploadedFile::fake()->image('verso.jpg', 800, 600),
         'selfie' => UploadedFile::fake()->image('selfie.jpg', 800, 600),
-        'profile_photo' => UploadedFile::fake()->image('profil.jpg', 600, 600),
         ...$overrides,
     ], ['Accept' => 'application/json']);
 }
@@ -373,10 +358,10 @@ it('envoie toute la vérification d’identité en une seule requête, aussitôt
         ->assertJsonPath('data.commune.uuid', $this->commune->uuid)
         ->assertJsonPath('data.localite.name', 'Abatta')
         ->assertJsonPath('data.document_type', 'cni')
-        ->assertJsonCount(4, 'data.files')
+        ->assertJsonCount(3, 'data.files')
         ->assertJsonPath('data.missing', []);
 
-    expect(Storage::disk('identity')->allFiles())->toHaveCount(4);
+    expect(Storage::disk('identity')->allFiles())->toHaveCount(3);
 
     // Visible aussitôt dans la file de l'administration.
     $admin = User::factory()->withTwoFactor()->withRole(Role::Admin)->create();
@@ -391,13 +376,13 @@ it('demande « page » au lieu de recto et verso pour un passeport', function ()
     submitIdentityAtOnce(['document_type' => 'passeport', 'recto' => null, 'verso' => null, 'page' => UploadedFile::fake()->create('passeport.pdf', 300, 'application/pdf')])
         ->assertOk()
         ->assertJsonPath('data.status', 'submitted')
-        ->assertJsonCount(3, 'data.files');
+        ->assertJsonCount(2, 'data.files');
 });
 
 it('liste tout ce qui manque et n’enregistre rien si la requête est incomplète', function () {
     $this->post(route('api.v1.identity.store'), ['document_type' => 'cni'], ['Accept' => 'application/json'])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['last_name', 'first_names' => 'Indiquez vos prénoms.', 'gender', 'birth_date', 'commune' => 'Choisissez votre commune.', 'recto', 'verso', 'selfie', 'profile_photo']);
+        ->assertJsonValidationErrors(['last_name', 'first_names' => 'Indiquez vos prénoms.', 'gender', 'birth_date', 'commune' => 'Choisissez votre commune.', 'recto', 'verso', 'selfie']);
 
     expect(Storage::disk('identity')->allFiles())->toBeEmpty()
         ->and(IdentityVerification::query()->where('user_id', $this->relais->id)->value('status'))->not->toBe('submitted');
@@ -427,5 +412,27 @@ it('refuse un nouvel envoi pendant la vérification, et accepte le renvoi corrig
     app(DecideIdentityVerification::class)->reject($verification, User::factory()->withTwoFactor()->withRole(Role::Admin)->create(), 'Selfie flou.');
 
     submitIdentityAtOnce()->assertOk()->assertJsonPath('data.status', 'submitted');
-    expect(Storage::disk('identity')->allFiles())->toHaveCount(4);
+    expect(Storage::disk('identity')->allFiles())->toHaveCount(3);
+});
+
+it('n’expose plus les anciennes routes fichier par fichier', function () {
+    $this->post('/api/v1/identity/files', [], ['Accept' => 'application/json'])->assertNotFound();
+    $this->postJson('/api/v1/identity/submit')->assertNotFound();
+    $this->deleteJson('/api/v1/identity/files/selfie')->assertNotFound();
+});
+
+it('ignore une ancienne « profile_photo » envoyée par une application pas encore à jour', function () {
+    submitIdentityAtOnce(['profile_photo' => UploadedFile::fake()->image('profil.jpg')])
+        ->assertOk()
+        ->assertJsonCount(3, 'data.files');
+});
+
+it('utilise le selfie comme photo du badge d’un Relais inscrit par l’application [MOB-07]', function () {
+    $this->getJson(route('api.v1.me.badge'))->assertOk()->assertJsonPath('data.photo_url', null);
+
+    completeIdentity();
+
+    $url = $this->getJson(route('api.v1.me.badge'))->assertOk()->json('data.photo_url');
+    expect($url)->toBeString();
+    $this->get($url)->assertOk();
 });
