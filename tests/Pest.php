@@ -2,11 +2,13 @@
 
 use App\Domain\Auth\Contracts\SmsGateway;
 use App\Domain\Auth\Sms\FakeSmsGateway;
+use App\Domain\Contribution\Models\Category;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Models\Media;
 use App\Domain\Media\Storage\FakeMultipartStorage;
 use App\Domain\Media\Storage\MultipartStorage;
+use App\Domain\Territoire\Models\Commune;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -85,4 +87,28 @@ function attachReadyMedia(RelaisItem $relais, string $kind = 'photo'): Media
     $relais->medias()->save($media);
 
     return $media;
+}
+
+/**
+ * Contenu complet d'un envoi de relais par l'API (POST /relais) : catégorie, titre, commune, protections, un fichier.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function relaisApiPayload(array $overrides = []): array
+{
+    $category = Category::query()->where('is_active', true)->first()
+        ?? Category::query()->create(['name' => 'Vie de quartier', 'slug' => 'vie-de-quartier-'.Str::random(5), 'is_active' => true]);
+    $commune = Commune::query()->where('is_active', true)->first()
+        ?? Commune::factory()->create();
+
+    return [
+        'client_uuid' => (string) Str::uuid(),
+        'category' => $category->uuid,
+        'title' => 'Route coupée au carrefour',
+        'declared_commune' => $commune->uuid,
+        'protections' => ['has_minors' => false, 'people_consent' => 'not_applicable', 'credit_mode' => 'anonymous'],
+        'medias' => [['client_uuid' => (string) Str::uuid(), 'kind' => 'photo', 'mime' => 'image/jpeg', 'size' => 1000, 'sha256' => str_repeat('a', 64)]],
+        ...$overrides,
+    ];
 }

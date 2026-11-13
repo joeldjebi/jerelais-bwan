@@ -28,8 +28,10 @@ use Illuminate\Validation\ValidationException;
 class MediaController extends Controller
 {
     /**
-     * Annoncer un média.
+     * Ajouter un fichier à un relais existant (complément).
      *
+     * Les fichiers d'un nouveau relais sont déclarés directement dans `POST /relais` : cette route sert à **ajouter un fichier**
+     * quand le coordonnateur demande un complément (statut `complement_requested`), ou à un relais encore en cours d'envoi.
      * Idempotent sur `client_uuid`. Taille, nombre et formats sont contrôlés ici puis de nouveau sur le fichier reçu.
      *
      * `kind` : `photo`, `video` ou `audio` ; `size` en octets ; `sha256` : empreinte hexadécimale du fichier entier.
@@ -67,13 +69,15 @@ class MediaController extends Controller
     }
 
     /**
-     * Clore l'envoi.
+     * Clore l'envoi d'un fichier.
      *
      * Envoyer la liste complète des morceaux : `parts: [{number, etag}]`.
      *
      * Tous les morceaux doivent avoir été déposés et la taille totale reçue doit être exactement celle annoncée :
      * sinon 422 (`parts` ou `size`) et, en cas de taille différente, le média est rejeté. Le contrôle du fichier
      * (type réel, antivirus, empreintes, métadonnées, vignette) se fait ensuite, en tâche de fond. Idempotent.
+     * Quand c'est le **dernier fichier** d'un relais envoyé par `POST /relais`, le relais est **soumis automatiquement**
+     * (statut `received`) : aucun autre appel n'est nécessaire.
      */
     #[Response(403, 'Relais suspendu ou radié : envoi refusé.', type: 'array{message: string}')]
     public function complete(Request $request, Media $media, CompleteMediaUpload $complete): MediaUploadResource

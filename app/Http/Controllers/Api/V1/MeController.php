@@ -26,7 +26,9 @@ class MeController extends Controller
     /**
      * Mon profil.
      *
-     * Nom, numéro masqué, e-mail, statut du compte, rôles (`candidat` ou `relais`), présence d'un mot de passe et communes rattachées.
+     * Prénom (`first_name`) et nom (`last_name`) séparés, genre, date de naissance, numéro masqué, e-mail, statut du compte,
+     * rôles, présence d'un mot de passe, profil Relais (`relais` : numéro, nom affiché, statut, commune, localité) et
+     * vérification d'identité (`identity_status`, `gains_eligible`). Même objet que `user` dans la réponse de connexion.
      */
     public function show(Request $request): UserResource
     {

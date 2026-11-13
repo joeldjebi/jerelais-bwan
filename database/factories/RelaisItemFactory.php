@@ -8,6 +8,7 @@ use App\Domain\Contribution\Enums\Urgency;
 use App\Domain\Contribution\Models\Category;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\Received;
+use App\Domain\Contribution\States\Uploading;
 use App\Domain\Relais\Models\RelaisProfile;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -60,6 +61,15 @@ class RelaisItemFactory extends Factory
     public function urgent(): static
     {
         return $this->state(fn (): array => ['urgency' => Urgency::Urgent, 'sla_due_at' => now()->addMinutes(25)]);
+    }
+
+    /**
+     * Relais en cours d'envoi (fichiers attendus), pas encore soumis.
+     */
+    public function uploading(): static
+    {
+        return $this->state(['state' => Uploading::class])
+            ->afterMaking(fn (RelaisItem $relais) => $relais->forceFill(['submitted_at' => null, 'received_at' => null, 'sla_due_at' => null]));
     }
 
     public function withMinors(): static

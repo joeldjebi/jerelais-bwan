@@ -51,7 +51,7 @@ trait RelaisItemRules
         /** @var array<string, mixed> $data */
         $data = $this->validated();
         $protections = $data['protections'] ?? [];
-        unset($data['protections'], $data['client_uuid']);
+        unset($data['protections'], $data['client_uuid'], $data['medias']);
 
         if (isset($data['location']) && is_array($data['location'])) {
             $data['location_accuracy_m'] = $data['location']['accuracy_m'] ?? null;

@@ -71,7 +71,8 @@ it('connecte juste après l’inscription et permet d’envoyer des relais sans 
         ->assertJsonPath('data.user.gains_eligible', false)
         ->json('data.token');
 
-    $this->withToken($token)->postJson(route('api.v1.relais.store'), ['client_uuid' => (string) Str::uuid()])->assertCreated();
+    fakeMultipart();
+    $this->withToken($token)->postJson(route('api.v1.relais.store'), relaisApiPayload())->assertCreated();
     $this->withToken($token)->getJson(route('api.v1.identity.show'))->assertOk()->assertJsonPath('data.status', 'draft');
 });
 
@@ -295,3 +296,31 @@ it('refuse une date de naissance invalide ou un genre inconnu à l’inscription
     'date future' => [['birth_date' => '01/01/2099'], 'birth_date'],
     'genre inconnu' => [['gender' => 'x'], 'gender'],
 ]);
+
+it('renvoie prénom et nom séparés, sans « name », avec tout le profil, à la connexion et dans GET /me', function () {
+    test()->postJson(route('api.v1.auth.register.request'), ['phone' => '0707070707'])->assertAccepted();
+    test()->postJson(route('api.v1.auth.register.verify'), ['phone' => '0707070707', 'code' => '1234'])->assertOk();
+    $this->postJson(route('api.v1.auth.register.complete'), [
+        'phone' => '0707070707', 'password' => 'MotDePasse2026', 'password_confirmation' => 'MotDePasse2026',
+        'last_name' => 'Traoré', 'first_name' => 'Awa', 'gender' => 'femme', 'birth_date' => '26/04/2000',
+    ])->assertCreated();
+
+    $login = passwordLogin()->assertCreated()
+        ->assertJsonMissingPath('data.user.name')
+        ->assertJsonPath('data.user.first_name', 'Awa')
+        ->assertJsonPath('data.user.last_name', 'Traoré')
+        ->assertJsonPath('data.user.gender', 'femme')
+        ->assertJsonPath('data.user.birth_date', '2000-04-26')
+        ->assertJsonPath('data.user.relais.display_name', 'Awa T.')
+        ->assertJsonPath('data.user.relais.status', 'active')
+        ->assertJsonPath('data.user.relais.commune', null);
+
+    expect($login->json('data.user.relais.number'))->toStartWith('JR-');
+
+    $this->withToken($login->json('data.token'))->getJson(route('api.v1.me.show'))
+        ->assertOk()
+        ->assertJsonMissingPath('data.name')
+        ->assertJsonPath('data.first_name', 'Awa')
+        ->assertJsonPath('data.last_name', 'Traoré')
+        ->assertJsonPath('data.relais.display_name', 'Awa T.');
+});
