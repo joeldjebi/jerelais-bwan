@@ -11,6 +11,8 @@ use App\Domain\Identity\Support\IdentityChecklist;
 
 /**
  * Envoie la vérification d'identité à l'administration (MOB-01). Idempotent une fois envoyée.
+ * Envoi automatique dès que le dossier est complet (dernier champ ou dernier fichier reçu) : l'application
+ * n'a pas besoin d'appeler POST /identity/submit, qui reste disponible.
  */
 class SubmitIdentityVerification
 {
@@ -47,5 +49,21 @@ class SubmitIdentityVerification
         $this->audit->record('identity.submitted', $verification, ['document_type' => $verification->document_type], actor: $verification->user);
 
         return $verification;
+    }
+
+    /**
+     * Envoie le dossier s'il est modifiable et complet ; sinon ne fait rien.
+     *
+     * @return bool vrai si le dossier vient d'être envoyé
+     */
+    public function submitIfComplete(IdentityVerification $verification): bool
+    {
+        if (! $verification->status->isEditable() || IdentityChecklist::missing($verification) !== []) {
+            return false;
+        }
+
+        $this->handle($verification);
+
+        return true;
     }
 }

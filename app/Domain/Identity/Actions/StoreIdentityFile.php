@@ -26,6 +26,7 @@ class StoreIdentityFile
     public function __construct(
         private readonly VirusScanner $scanner,
         private readonly AuditLogger $audit,
+        private readonly SubmitIdentityVerification $submit,
     ) {}
 
     /**
@@ -66,7 +67,7 @@ class StoreIdentityFile
         Storage::disk(self::DISK)->putFileAs(dirname($path), $file, basename($path));
 
         try {
-            return DB::transaction(function () use ($verification, $kind, $file, $mime, $sha256, $path): IdentityFile {
+            $stored = DB::transaction(function () use ($verification, $kind, $file, $mime, $sha256, $path): IdentityFile {
                 $previous = $verification->files()->where('kind', $kind->value)->lockForUpdate()->first();
 
                 if ($previous !== null) {
@@ -97,6 +98,11 @@ class StoreIdentityFile
 
             throw $exception;
         }
+
+        // Dernier fichier reçu : le dossier part tout seul en vérification.
+        $this->submit->submitIfComplete($verification->refresh());
+
+        return $stored;
     }
 
     private function extensionFor(string $mime): string

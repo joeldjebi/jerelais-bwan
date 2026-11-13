@@ -3,6 +3,7 @@
 use App\Domain\Access\Enums\Role;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Enums\UserStatus;
+use App\Domain\Identity\Actions\DecideIdentityVerification;
 use App\Domain\Identity\Enums\IdentityStatus;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Media\Contracts\VirusScanner;
@@ -185,11 +186,67 @@ it('accepte la pièce en image ou en PDF, mais le selfie en image seulement', fu
 });
 
 it('retire les faces devenues inutiles quand le type de pièce change', function () {
-    completeIdentity('cni');
-    $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'document_type' => 'passeport'])
+    $this->putJson(route('api.v1.identity.update'), [
+        'last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme', 'birth_date' => '2001-04-17',
+        'commune' => $this->commune->uuid, 'document_type' => 'cni',
+    ])->assertOk();
+    foreach (['recto', 'verso', 'selfie'] as $kind) {
+        sendIdentityFile($kind)->assertCreated();
+    }
+
+    $this->putJson(route('api.v1.identity.update'), ['document_type' => 'passeport'])
         ->assertOk()
-        ->assertJsonCount(2, 'data.files')
-        ->assertJsonPath('data.missing', ['files.page' => 'Ajoutez : Page de la pièce.']);
+        ->assertJsonCount(1, 'data.files')
+        ->assertJsonPath('data.status', 'draft')
+        ->assertJsonPath('data.missing', ['files.page' => 'Ajoutez : Page de la pièce.', 'files.profile_photo' => 'Ajoutez : Photo de profil.']);
+});
+
+it('envoie le dossier tout seul en vérification dès le dernier fichier reçu, sans POST /identity/submit [MOB-01]', function () {
+    $this->putJson(route('api.v1.identity.update'), [
+        'last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme', 'birth_date' => '26/04/2000',
+        'commune' => $this->commune->uuid, 'document_type' => 'cni',
+    ])->assertOk()->assertJsonPath('data.status', 'draft');
+
+    foreach (['recto', 'verso', 'selfie'] as $kind) {
+        sendIdentityFile($kind)->assertCreated();
+    }
+    $this->getJson(route('api.v1.identity.show'))->assertJsonPath('data.status', 'draft');
+
+    sendIdentityFile('profile_photo')->assertCreated();
+
+    $this->getJson(route('api.v1.identity.show'))
+        ->assertOk()
+        ->assertJsonPath('data.status', 'submitted')
+        ->assertJsonPath('data.is_editable', false)
+        ->assertJsonPath('data.missing', []);
+    $this->assertDatabaseHas('audit_logs', ['action' => 'identity.submitted']);
+
+    $this->postJson(route('api.v1.identity.submit'))->assertOk()->assertJsonPath('data.status', 'submitted');
+});
+
+it('envoie aussi le dossier quand le dernier champ manquant est rempli après les fichiers [MOB-01]', function () {
+    $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'document_type' => 'passeport'])->assertOk();
+    foreach (['page', 'selfie', 'profile_photo'] as $kind) {
+        sendIdentityFile($kind)->assertCreated();
+    }
+    $this->getJson(route('api.v1.identity.show'))->assertJsonPath('data.status', 'draft');
+
+    $this->putJson(route('api.v1.identity.update'), ['last_name' => 'Traoré', 'first_names' => 'Awa', 'gender' => 'femme', 'birth_date' => '26/04/2000'])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'submitted');
+});
+
+it('renvoie tout seul un dossier refusé une fois le fichier corrigé [MOB-01]', function () {
+    completeIdentity('cni');
+    $verification = IdentityVerification::query()->sole();
+    expect($verification->status->value)->toBe('submitted');
+
+    app(DecideIdentityVerification::class)->reject($verification, User::factory()->withTwoFactor()->withRole(Role::Admin)->create(), 'Selfie flou.');
+    $this->getJson(route('api.v1.identity.show'))->assertJsonPath('data.status', 'rejected');
+
+    sendIdentityFile('selfie')->assertCreated();
+
+    $this->getJson(route('api.v1.identity.show'))->assertJsonPath('data.status', 'submitted');
 });
 
 it('refuse un fichier infecté sans le stocker [§10]', function () {

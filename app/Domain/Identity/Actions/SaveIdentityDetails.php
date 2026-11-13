@@ -30,6 +30,7 @@ class SaveIdentityDetails
         private readonly StartCandidature $startCandidature,
         private readonly SaveCandidatureStep $saveStep,
         private readonly AuditLogger $audit,
+        private readonly SubmitIdentityVerification $submit,
     ) {}
 
     /**
@@ -66,6 +67,9 @@ class SaveIdentityDetails
 
             $this->audit->record('identity.details.saved', $verification, ['fields' => array_keys($data)], actor: $verification->user);
         });
+
+        // Dossier complet (fichiers déjà envoyés, dernier champ rempli) : il part tout seul en vérification.
+        $this->submit->submitIfComplete($verification->refresh());
 
         return $verification->refresh();
     }
