@@ -79,6 +79,7 @@ class AuditPresenter
         'editorial.collection_updated' => ['Collection renommée', 'layers', 'neutral'],
         'editorial.collection_deleted' => ['Collection supprimée', 'x', 'warning'],
         'appel.created' => ['Appel à relais créé', 'bell', 'accent'],
+        'appel.updated' => ['Appel à relais modifié', 'bell', 'neutral'],
         'appel.approved' => ['Appel local approuvé', 'check', 'success'],
         'appel.closed' => ['Appel à relais clos', 'x', 'neutral'],
         'message.broadcast' => ['Message groupé aux Relais d’une commune', 'bell', 'neutral'],

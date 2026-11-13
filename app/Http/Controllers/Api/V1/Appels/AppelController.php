@@ -21,10 +21,12 @@ class AppelController extends Controller
     /**
      * Appels ouverts qui me concernent.
      *
-     * Appels à relais encore ouverts dont la zone (tout le réseau, communes, régions ou rayon autour d'un lieu)
-     * et le type de lieu correspondent à mon profil. Liste vide pour un compte qui n'est pas Relais.
+     * Appels à relais encore ouverts dont la zone (tout le réseau, communes, régions ou rayon autour d'un lieu) me concerne :
+     * commune de mon profil, sinon commune de ma vérification d'identité ou de mes relais récents ; pour un rayon, aussi
+     * mes relais géolocalisés dans ce rayon. `zone_label` décrit la zone en clair, `radius` le cercle (pour une carte) ;
+     * `lieu_type` indique le type de lieu à couvrir (école, marché…). Liste vide pour un compte qui n'est pas Relais.
      *
-     * @response array{data: list<array{uuid: string, title: string, instructions: string, target: 'national'|'communes'|'regions'|'radius', target_label: string, zone: list<string>, lieu_type: string|null, is_open: bool, deadline_at: string, published_at: string|null}>}
+     * @response array{data: list<array{uuid: string, title: string, instructions: string, target: 'national'|'communes'|'regions'|'radius', target_label: string, zone: list<string>, zone_label: string, radius: array{lat: float, lng: float, radius_km: float}|null, lieu_type: string|null, is_open: bool, deadline_at: string, published_at: string|null}>}
      */
     public function index(Request $request): JsonResponse
     {
@@ -38,7 +40,7 @@ class AppelController extends Controller
      *
      * Détail d'un appel qui me concerne (404 sinon). Pour y répondre : `POST /relais` avec `appel` = cet `uuid`.
      *
-     * @response array{data: array{uuid: string, title: string, instructions: string, target: 'national'|'communes'|'regions'|'radius', target_label: string, zone: list<string>, lieu_type: string|null, is_open: bool, deadline_at: string, published_at: string|null}}
+     * @response array{data: array{uuid: string, title: string, instructions: string, target: 'national'|'communes'|'regions'|'radius', target_label: string, zone: list<string>, zone_label: string, radius: array{lat: float, lng: float, radius_km: float}|null, lieu_type: string|null, is_open: bool, deadline_at: string, published_at: string|null}}
      */
     public function show(Request $request, AppelRelais $appel): JsonResponse
     {
@@ -60,6 +62,12 @@ class AppelController extends Controller
             'target' => $appel->target->value,
             'target_label' => $appel->target->label(),
             'zone' => $appel->communes->pluck('name')->merge($appel->regions->pluck('name'))->values(),
+            'zone_label' => $appel->zoneSummary(),
+            'radius' => $appel->center === null ? null : [
+                'lat' => $appel->center->getLatitude(),
+                'lng' => $appel->center->getLongitude(),
+                'radius_km' => round(($appel->radius_m ?? 0) / 1000, 1),
+            ],
             'lieu_type' => $appel->lieuType?->name,
             'is_open' => $appel->isOpen(),
             'deadline_at' => $appel->deadline_at->toIso8601ZuluString(),

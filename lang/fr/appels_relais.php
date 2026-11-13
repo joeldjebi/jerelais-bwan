@@ -16,6 +16,8 @@ return [
     'errors' => [
         'forbidden' => 'Vous ne pouvez pas lancer d’appel à relais.',
         'no_commune' => 'Choisissez au moins une commune.',
+        'no_region' => 'Choisissez au moins une région.',
+        'closed' => 'Cet appel est clos : il ne peut plus être modifié.',
         'not_targeted' => 'Cet appel ne concerne pas votre zone ou il est clos.',
     ],
 ];
