@@ -340,3 +340,92 @@ it('accepte la date de naissance au format JJ/MM/AAAA dans le profil', function 
         ->assertOk()
         ->assertJsonPath('data.birth_date', '2000-04-26');
 });
+
+/**
+ * @param  array<string, mixed>  $overrides
+ */
+function submitIdentityAtOnce(array $overrides = []): TestResponse
+{
+    return test()->post(route('api.v1.identity.store'), [
+        'last_name' => 'Traoré',
+        'first_name' => 'Abou',
+        'gender' => 'homme',
+        'birth_date' => '26/04/2000',
+        'commune' => test()->commune->uuid,
+        'document_type' => 'cni',
+        'recto' => UploadedFile::fake()->image('recto.jpg', 800, 600),
+        'verso' => UploadedFile::fake()->image('verso.jpg', 800, 600),
+        'selfie' => UploadedFile::fake()->image('selfie.jpg', 800, 600),
+        'profile_photo' => UploadedFile::fake()->image('profil.jpg', 600, 600),
+        ...$overrides,
+    ], ['Accept' => 'application/json']);
+}
+
+it('envoie toute la vérification d’identité en une seule requête, aussitôt en vérification [MOB-01]', function () {
+    $localite = Localite::query()->create(['commune_id' => $this->commune->id, 'name' => 'Abatta', 'type' => 'village']);
+
+    submitIdentityAtOnce(['localite' => $localite->uuid])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'submitted')
+        ->assertJsonPath('data.is_editable', false)
+        ->assertJsonPath('data.first_name', 'Abou')
+        ->assertJsonPath('data.birth_date', '2000-04-26')
+        ->assertJsonPath('data.commune.uuid', $this->commune->uuid)
+        ->assertJsonPath('data.localite.name', 'Abatta')
+        ->assertJsonPath('data.document_type', 'cni')
+        ->assertJsonCount(4, 'data.files')
+        ->assertJsonPath('data.missing', []);
+
+    expect(Storage::disk('identity')->allFiles())->toHaveCount(4);
+
+    // Visible aussitôt dans la file de l'administration.
+    $admin = User::factory()->withTwoFactor()->withRole(Role::Admin)->create();
+    $this->actingAs($admin)->get(route('console.identity'))->assertOk()->assertSee('Traoré');
+});
+
+it('demande « page » au lieu de recto et verso pour un passeport', function () {
+    submitIdentityAtOnce(['document_type' => 'passeport'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['page' => 'Ajoutez : Page de la pièce.', 'recto', 'verso']);
+
+    submitIdentityAtOnce(['document_type' => 'passeport', 'recto' => null, 'verso' => null, 'page' => UploadedFile::fake()->create('passeport.pdf', 300, 'application/pdf')])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'submitted')
+        ->assertJsonCount(3, 'data.files');
+});
+
+it('liste tout ce qui manque et n’enregistre rien si la requête est incomplète', function () {
+    $this->post(route('api.v1.identity.store'), ['document_type' => 'cni'], ['Accept' => 'application/json'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['last_name', 'first_names' => 'Indiquez vos prénoms.', 'gender', 'birth_date', 'commune' => 'Choisissez votre commune.', 'recto', 'verso', 'selfie', 'profile_photo']);
+
+    expect(Storage::disk('identity')->allFiles())->toBeEmpty()
+        ->and(IdentityVerification::query()->where('user_id', $this->relais->id)->value('status'))->not->toBe('submitted');
+});
+
+it('n’enregistre aucun fichier si l’antivirus en refuse un', function () {
+    app()->instance(VirusScanner::class, new class implements VirusScanner
+    {
+        public function scan(string $path): ?string
+        {
+            return str_contains((string) file_get_contents($path), 'EICAR') ? 'Win.Test.EICAR_HDB-1' : null;
+        }
+    });
+
+    submitIdentityAtOnce(['selfie' => UploadedFile::fake()->createWithContent('selfie.jpg', 'EICAR')])
+        ->assertUnprocessable();
+
+    expect(Storage::disk('identity')->allFiles())->toBeEmpty();
+});
+
+it('refuse un nouvel envoi pendant la vérification, et accepte le renvoi corrigé après un refus [MOB-01]', function () {
+    submitIdentityAtOnce()->assertOk();
+    submitIdentityAtOnce()->assertConflict();
+    $this->post(route('api.v1.identity.store'), ['last_name' => 'X'], ['Accept' => 'application/json'])->assertConflict();
+
+    $verification = IdentityVerification::query()->where('user_id', $this->relais->id)->sole();
+    app(DecideIdentityVerification::class)->reject($verification, User::factory()->withTwoFactor()->withRole(Role::Admin)->create(), 'Selfie flou.');
+
+    submitIdentityAtOnce()->assertOk()->assertJsonPath('data.status', 'submitted');
+    expect(Storage::disk('identity')->allFiles())->toHaveCount(4);
+});
