@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Domain\Access\Enums\Role;
+use App\Domain\AppelRelais\Enums\AppelStatus;
+use App\Domain\AppelRelais\Models\AppelRelais;
 use App\Domain\Contribution\Models\Category;
 use App\Domain\Identity\Models\IdentityDocumentType;
 use App\Domain\Territoire\Models\Commune;
@@ -339,9 +341,18 @@ class ApiDocumentationServiceProvider extends ServiceProvider
         try {
             $categories = Category::query()->active()->get(['slug', 'name']);
             $communes = Commune::query()->active()->orderBy('name')->get(['slug', 'name']);
+            $appels = AppelRelais::query()->where('status', AppelStatus::Open->value)->where('deadline_at', '>', now())->latest('published_at')->take(30)->get(['uuid', 'title']);
         } catch (\Throwable) {
             $categories = collect();
             $communes = collect();
+            $appels = collect();
+        }
+
+        $appel = (new StringType)->format('uuid')->setDescription('Facultatif — **répondre à un appel à relais** : quand la rédaction ou le coordonnateur demande aux Relais de couvrir un sujet, l’application liste les appels de la zone du Relais (`GET /appels`) et envoie ici l’`uuid` de celui auquel il répond ; le relais est rattaché à l’appel et remonte en priorité. **Ne pas envoyer** (cocher « Omit ») pour un relais spontané.'
+            .($appels->isEmpty() ? ' Aucun appel ouvert pour le moment.' : ' Appels ouverts : '.$appels->map(fn (AppelRelais $item): string => '`'.$item->uuid.'` '.$item->title)->implode(' ; ').'.'));
+
+        if ($appels->isNotEmpty()) {
+            $appel->enum($appels->pluck('uuid')->all());
         }
 
         $category = (new StringType)->setDescription('Catégorie du relais'.($send ? ' (obligatoire)' : '').' : choisir dans la liste. L’application peut envoyer le `slug` ou l’`uuid` de `GET /categories`. '
@@ -370,7 +381,7 @@ class ApiDocumentationServiceProvider extends ServiceProvider
             ->addProperty('people_consent', (new StringType)->enum(['not_applicable', 'yes', 'no'])->setDescription('Accord des personnes filmées.'.($send ? ' Obligatoire.' : ''))->example('not_applicable'))
             ->addProperty('credit_mode', (new StringType)->enum(['anonymous', 'name', 'pseudonym'])->setDescription('Mention à l’antenne.'.($send ? ' Obligatoire.' : ''))->example('anonymous'))
             ->addProperty('credit_name', $text('Pseudonyme à afficher, obligatoire si `credit_mode` = `pseudonym`.', 'Awa d’Abobo'))
-            ->addProperty('appel', $uuid('Facultatif — **répondre à un appel à relais** : quand la rédaction ou le coordonnateur demande aux Relais de couvrir un sujet (`GET /appels`), le Relais envoie ici l’`uuid` de cet appel ; son relais est alors rattaché à l’appel et remonte en priorité. Laisser vide pour un relais spontané.'));
+            ->addProperty('appel', $appel);
 
         // Un champ par fichier (« files[0] », « files[1] »…) : l'outil d'essai sait téléverser un fichier par champ,
         // et PHP les regroupe dans la liste « files ». L'application peut envoyer « files[] » autant de fois que nécessaire.

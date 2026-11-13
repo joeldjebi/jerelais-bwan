@@ -436,3 +436,15 @@ it('explique une catégorie ou une commune inconnue', function () {
             'declared_commune' => 'Commune inconnue ou fermée',
         ]);
 });
+
+it('indique le type reçu et les formats acceptés pour un fichier refusé', function () {
+    sendRelaisAtOnce(['files' => [UploadedFile::fake()->createWithContent('photo.jpg', photoBytes()), UploadedFile::fake()->create('image.webp', 20, 'image/webp')]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['files.1' => 'Format non accepté (fichier reçu : image/webp). Formats acceptés : photos JPEG, PNG, HEIC ; vidéos MP4, MOV ; sons M4A, MP3, AAC.']);
+});
+
+it('explique un appel à relais inconnu', function () {
+    sendRelaisAtOnce(['appel' => 'string'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['appel' => 'Appel à relais inconnu : choisissez un appel ouvert de GET /appels']);
+});
