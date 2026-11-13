@@ -12,7 +12,7 @@ use InvalidArgumentException;
 
 /**
  * Modifie un membre de l'équipe (ADM-21, ADM-24) : nom, adresse, rôle, communes coordonnées ou régions supervisées.
- * Un changement de rôle ou de périmètre ferme ses sessions (ses droits changent). Chaque modification est auditée.
+ * Un changement de rôle, de périmètre ou de mot de passe ferme ses sessions. Chaque modification est auditée.
  */
 class UpdateStaffMember
 {
@@ -21,8 +21,9 @@ class UpdateStaffMember
     /**
      * @param  list<int>  $communeIds
      * @param  list<int>  $regionIds
+     * @param  string|null  $newPassword  nouveau mot de passe choisi par l'administrateur ; null : inchangé
      */
-    public function handle(User $member, string $name, string $email, Role $role, User $actor, array $communeIds = [], array $regionIds = [], CommuneAssignment $assignment = CommuneAssignment::Titulaire): void
+    public function handle(User $member, string $name, string $email, Role $role, User $actor, array $communeIds = [], array $regionIds = [], CommuneAssignment $assignment = CommuneAssignment::Titulaire, ?string $newPassword = null): void
     {
         if (in_array($role, [Role::Relais, Role::Candidat], true)) {
             throw new InvalidArgumentException(__('Ce rôle ne correspond pas à un membre de l’équipe.'));
@@ -32,7 +33,7 @@ class UpdateStaffMember
             throw new InvalidArgumentException(__('Vous ne pouvez pas retirer votre propre rôle d’administrateur.'));
         }
 
-        DB::transaction(function () use ($member, $name, $email, $role, $actor, $communeIds, $regionIds, $assignment): void {
+        DB::transaction(function () use ($member, $name, $email, $role, $actor, $communeIds, $regionIds, $assignment, $newPassword): void {
             $before = [
                 'role' => $member->getRoleNames()->first(),
                 'communes' => $member->communes()->pluck('communes.id')->map(fn ($id): int => (int) $id)->sort()->values()->all(),
@@ -41,6 +42,11 @@ class UpdateStaffMember
 
             $member->forceFill(['name' => $name, 'email' => Str::lower($email)]);
             $identityChanged = $member->isDirty(['name', 'email']);
+
+            if ($newPassword !== null) {
+                $member->forceFill(['password' => $newPassword]);
+            }
+
             $member->save();
 
             $member->syncRoles([$role->value]);
@@ -53,16 +59,16 @@ class UpdateStaffMember
                 'regions' => collect($role === Role::Superviseur ? $regionIds : [])->sort()->values()->all(),
             ];
 
-            if (! $identityChanged && $before === $after) {
+            if (! $identityChanged && $before === $after && $newPassword === null) {
                 return;
             }
 
-            if ($before !== $after && ! $member->is($actor)) {
+            if (($before !== $after || $newPassword !== null) && ! $member->is($actor)) {
                 $member->tokens()->delete();
                 DB::table('sessions')->where('user_id', $member->id)->delete();
             }
 
-            $this->audit->record('users.updated', $member, ['name' => $member->name, 'before' => $before, 'after' => $after], $actor);
+            $this->audit->record('users.updated', $member, ['name' => $member->name, 'before' => $before, 'after' => $after, 'password_reset' => $newPassword !== null], $actor);
         });
     }
 }

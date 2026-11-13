@@ -4994,7 +4994,7 @@
         "/appels": {
             "get": {
                 "operationId": "v1.appels.index",
-                "description": "Appels à relais encore ouverts dont la zone (tout le réseau, communes, régions ou rayon autour d'un lieu)\net le type de lieu correspondent à mon profil. Liste vide pour un compte qui n'est pas Relais.",
+                "description": "Appels à relais encore ouverts dont la zone (tout le réseau, communes, régions ou rayon autour d'un lieu) me concerne :\ncommune de mon profil, sinon commune de ma vérification d'identité ou de mes relais récents ; pour un rayon, aussi\nmes relais géolocalisés dans ce rayon. `zone_label` décrit la zone en clair, `radius` le cercle (pour une carte) ;\n`lieu_type` indique le type de lieu à couvrir (école, marché…). Liste vide pour un compte qui n'est pas Relais.",
                 "summary": "Appels ouverts qui me concernent",
                 "tags": [
                     "Appels à relais"
@@ -5044,6 +5044,31 @@
                                                             "type": "string"
                                                         }
                                                     },
+                                                    "zone_label": {
+                                                        "type": "string"
+                                                    },
+                                                    "radius": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "lat": {
+                                                                "type": "number"
+                                                            },
+                                                            "lng": {
+                                                                "type": "number"
+                                                            },
+                                                            "radius_km": {
+                                                                "type": "number"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "lat",
+                                                            "lng",
+                                                            "radius_km"
+                                                        ]
+                                                    },
                                                     "lieu_type": {
                                                         "type": [
                                                             "string",
@@ -5070,6 +5095,8 @@
                                                     "target",
                                                     "target_label",
                                                     "zone",
+                                                    "zone_label",
+                                                    "radius",
                                                     "lieu_type",
                                                     "is_open",
                                                     "deadline_at",
@@ -5186,6 +5213,31 @@
                                                         "type": "string"
                                                     }
                                                 },
+                                                "zone_label": {
+                                                    "type": "string"
+                                                },
+                                                "radius": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "lat": {
+                                                            "type": "number"
+                                                        },
+                                                        "lng": {
+                                                            "type": "number"
+                                                        },
+                                                        "radius_km": {
+                                                            "type": "number"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "lat",
+                                                        "lng",
+                                                        "radius_km"
+                                                    ]
+                                                },
                                                 "lieu_type": {
                                                     "type": [
                                                         "string",
@@ -5212,6 +5264,8 @@
                                                 "target",
                                                 "target_label",
                                                 "zone",
+                                                "zone_label",
+                                                "radius",
                                                 "lieu_type",
                                                 "is_open",
                                                 "deadline_at",

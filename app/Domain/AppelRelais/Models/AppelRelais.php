@@ -110,6 +110,25 @@ class AppelRelais extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * Zone en clair : « Tout le réseau », « Communes : Abobo, Cocody », « Rayon de 8 km autour de 5.3400, -4.0700 ».
+     */
+    public function zoneSummary(): string
+    {
+        return match ($this->target) {
+            AppelTarget::National => $this->target->label(),
+            AppelTarget::Communes => $this->target->label().' : '.($this->communes->pluck('name')->join(', ') ?: '—'),
+            AppelTarget::Regions => $this->target->label().' : '.($this->regions->pluck('name')->join(', ') ?: '—'),
+            AppelTarget::Radius => $this->center === null
+                ? $this->target->label()
+                : __('Rayon de :km km autour de :lat, :lng', [
+                    'km' => number_format(($this->radius_m ?? 0) / 1000, 1, ',', ' '),
+                    'lat' => number_format($this->center->getLatitude(), 4, '.', ''),
+                    'lng' => number_format($this->center->getLongitude(), 4, '.', ''),
+                ]),
+        };
+    }
+
     public function isOpen(): bool
     {
         return $this->status === AppelStatus::Open && $this->deadline_at->isFuture();
