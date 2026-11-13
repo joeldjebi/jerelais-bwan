@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Messagerie\Actions\SendMessage;
 use App\Domain\Messagerie\Models\Conversation;
 use App\Domain\Messagerie\Models\Message;
@@ -107,4 +108,25 @@ it('ouvre la conversation d’un relais depuis sa fiche', function () {
         ->assertRedirectContains('/console/messagerie?c=');
 
     expect(Conversation::query()->sole()->relais_item_id)->toBe($relais->id);
+});
+
+it('refuse proprement d’ouvrir une conversation générale tant qu’aucune commune n’est connue [MOB-22]', function () {
+    $sansCommune = tap(RelaisProfile::factory()->create(), fn (RelaisProfile $profile) => $profile->forceFill(['commune_id' => null])->save());
+    Sanctum::actingAs($sansCommune->user);
+
+    $this->postJson(route('api.v1.conversations.store'), ['body' => 'Bonjour'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['body' => 'Indiquez votre commune']);
+
+    expect(Conversation::query()->count())->toBe(0);
+});
+
+it('adresse la conversation générale à la commune déclarée dans l’identité [MOB-22]', function () {
+    $sansCommune = tap(RelaisProfile::factory()->create(), fn (RelaisProfile $profile) => $profile->forceFill(['commune_id' => null])->save());
+    IdentityVerification::query()->forceCreate(['user_id' => $sansCommune->user_id, 'commune_id' => $this->yopougon->id, 'status' => 'draft']);
+    Sanctum::actingAs($sansCommune->user);
+
+    $this->postJson(route('api.v1.conversations.store'), ['body' => 'Bonjour'])->assertCreated();
+
+    expect(Conversation::query()->sole()->commune_id)->toBe($this->yopougon->id);
 });

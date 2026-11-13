@@ -5,5 +5,6 @@ return [
     'errors' => [
         'empty' => 'Le message est vide.',
         'not_owner' => 'Ce relais n’est pas le vôtre.',
+        'no_commune' => 'Indiquez votre commune dans votre profil pour écrire à l’équipe.',
     ],
 ];
