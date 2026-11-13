@@ -28,6 +28,7 @@ class RelaisItemResource extends JsonResource
             'status_label' => __("relais_items.states.{$public}"),
             'category' => $this->category === null ? null : ['uuid' => $this->category->uuid, 'name' => $this->category->name],
             'urgency' => $this->urgency->value,
+            'appel' => $this->appel === null ? null : ['uuid' => $this->appel->uuid, 'title' => $this->appel->title],
             'title' => $this->title,
             'description' => $this->description,
             'location' => $this->location === null ? null : [
