@@ -11,7 +11,7 @@
     $phone = $v->user?->phoneNumber();
     $name = $v->user?->name ?: __('Sans nom');
     $tone = ['draft' => 'neutral', 'submitted' => 'info', 'verified' => 'success', 'rejected' => 'warning'];
-    $kinds = [...($v->documentType?->sides() ?? []), IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto];
+    $kinds = [...($v->documentType?->sides() ?? []), IdentityFileKind::Selfie, ...($v->files->contains('kind', IdentityFileKind::ProfilePhoto) ? [IdentityFileKind::ProfilePhoto] : [])];
 @endphp
 
 <div class="space-y-7" x-data="{ zoom: null }">

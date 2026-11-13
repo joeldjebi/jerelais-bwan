@@ -67,9 +67,6 @@ Route::name('api.v1.')->group(function () {
             Route::get('identity', [IdentityController::class, 'show'])->name('identity.show');
             Route::post('identity', [IdentityController::class, 'store'])->middleware('throttle:10,1')->name('identity.store');
             Route::put('identity', [IdentityController::class, 'update'])->name('identity.update');
-            Route::post('identity/files', [IdentityController::class, 'storeFile'])->middleware('throttle:30,1')->name('identity.files.store');
-            Route::delete('identity/files/{kind}', [IdentityController::class, 'destroyFile'])->name('identity.files.destroy');
-            Route::post('identity/submit', [IdentityController::class, 'submit'])->name('identity.submit');
 
             Route::get('consents', [LegalController::class, 'consents'])->name('consents.index');
             Route::post('consents', [LegalController::class, 'accept'])->name('consents.store');
