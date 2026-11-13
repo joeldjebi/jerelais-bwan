@@ -349,10 +349,11 @@ class ApiDocumentationServiceProvider extends ServiceProvider
         }
 
         $appel = (new StringType)->format('uuid')->setDescription('Facultatif — **répondre à un appel à relais** : quand la rédaction ou le coordonnateur demande aux Relais de couvrir un sujet, l’application liste les appels de la zone du Relais (`GET /appels`) et envoie ici l’`uuid` de celui auquel il répond ; le relais est rattaché à l’appel et remonte en priorité. **Ne pas envoyer** (cocher « Omit ») pour un relais spontané.'
-            .($appels->isEmpty() ? ' Aucun appel ouvert pour le moment.' : ' Appels ouverts : '.$appels->map(fn (AppelRelais $item): string => '`'.$item->uuid.'` '.$item->title)->implode(' ; ').'.'));
+            .($appels->isEmpty() ? ' Aucun appel ouvert pour le moment.' : ''));
 
         if ($appels->isNotEmpty()) {
-            $appel->enum($appels->pluck('uuid')->all());
+            $appel = (new StringType)->setDescription('Facultatif — **répondre à un appel à relais** (demande de la rédaction ou du coordonnateur de couvrir un sujet). Choisir l’appel dans la liste ; laisser vide (« Omit ») pour un relais spontané. L’application envoie l’`uuid` de l’appel choisi dans `GET /appels`, qui n’affiche que les appels de la zone du Relais.')
+                ->enum($appels->map(fn (AppelRelais $item): string => $item->reference())->values()->all());
         }
 
         $category = (new StringType)->setDescription('Catégorie du relais'.($send ? ' (obligatoire)' : '').' : choisir dans la liste. L’application peut envoyer le `slug` ou l’`uuid` de `GET /categories`. '

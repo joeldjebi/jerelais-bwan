@@ -266,7 +266,7 @@ return [
     'parameters' => [
         'relais' => 'UUID d’un de mes relais.',
         'media' => 'UUID d’un de mes médias.',
-        'appel' => 'UUID d’un appel à relais qui me concerne.',
+        'appel' => 'Appel à relais auquel le relais répond : son `uuid` (de `GET /appels`) ou sa référence « Titre (réf. xxxxxxxx) ».',
         'conversation' => 'UUID d’une de mes conversations.',
         'commune' => 'UUID d’une commune ouverte (`GET /communes`).',
         'step' => 'Étape du dossier : `identite`, `territoire` ou `profil`.',

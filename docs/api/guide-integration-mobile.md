@@ -383,7 +383,7 @@ curl -X POST "$BASE/relais" -H "Authorization: Bearer $TOKEN" -H "Accept: applic
 | `has_minors` | oui | `true` ou `false` |
 | `people_consent` | oui | `yes`, `no`, `not_applicable` |
 | `credit_mode` | oui | `anonymous`, `name`, `pseudonym` (+ `credit_name` si pseudonyme) |
-| `appel` | non | **Réponse à un appel à relais** : quand la rédaction demande de couvrir un sujet (`GET /appels`), `uuid` de cet appel ; le relais y est rattaché et remonte en priorité. Vide pour un relais spontané |
+| `appel` | non | **Réponse à un appel à relais** : quand la rédaction demande de couvrir un sujet, l’écran montre les **titres** des appels de `GET /appels` et l’application envoie l’`uuid` de celui choisi ; le relais y est rattaché (`data.appel`) et remonte en priorité. Vide pour un relais spontané |
 | `files[]` | oui | 1 à 10 fichiers : photos JPEG/PNG/HEIC, vidéos MP4/MOV, sons M4A/MP3/AAC — **100 Mo maximum chacun** |
 | `client_uuid` | non | **Généré automatiquement** s’il est absent. L’application peut en fournir un (uuid créé sur le téléphone) pour qu’un renvoi après une coupure ne crée pas de doublon |
 
