@@ -304,3 +304,18 @@ it('n’ouvre pas à un coordonnateur la fiche d’un appel local d’une autre 
     $this->actingAs($coordo)->get(route('console.appels.show', $appel))->assertNotFound();
     $this->actingAs($other)->get(route('console.appels.show', $appel))->assertOk();
 });
+
+it('accepte l’appel par sa référence lisible « Titre (réf. xxxxxxxx) » proposée dans la documentation', function () {
+    $appel = launch($this->redacteur);
+    Sanctum::actingAs($this->relaisYop->user);
+    fakeMultipart();
+
+    expect($appel->reference())->toBe('Inondations : l’état des routes (réf. '.substr($appel->uuid, -8).')');
+
+    $this->postJson(route('api.v1.relais.store'), relaisApiPayload(['appel' => $appel->reference(), 'declared_commune' => $this->yopougon->uuid]))
+        ->assertCreated()
+        ->assertJsonPath('data.appel.uuid', $appel->uuid)
+        ->assertJsonPath('data.appel.title', 'Inondations : l’état des routes');
+
+    expect(RelaisItem::query()->where('appel_relais_id', $appel->id)->count())->toBe(1);
+});

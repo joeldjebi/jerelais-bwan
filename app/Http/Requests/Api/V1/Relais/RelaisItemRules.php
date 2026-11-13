@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1\Relais;
 
+use App\Domain\AppelRelais\Models\AppelRelais;
 use App\Domain\Contribution\Enums\CreditMode;
 use App\Domain\Contribution\Enums\PeopleConsent;
 use App\Domain\Contribution\Enums\Urgency;
@@ -55,6 +56,17 @@ trait RelaisItemRules
      */
     protected function normalizeFlatFields(): void
     {
+        // Appel accepté par sa référence lisible « Titre (réf. 6d384df6) », comme par son uuid.
+        $appel = $this->input('appel');
+
+        if (is_string($appel) && $appel !== '' && ! Str::isUuid($appel)) {
+            $found = AppelRelais::findByReference($appel);
+
+            if ($found !== null) {
+                $this->merge(['appel' => $found->uuid]);
+            }
+        }
+
         // Catégorie et commune acceptées par leur slug (« vie-de-quartier », « abobo ») comme par leur uuid.
         $slugs = ['category' => Category::class, 'declared_commune' => Commune::class];
 

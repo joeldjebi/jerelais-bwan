@@ -43,7 +43,7 @@ class RelaisItemController extends Controller
         $user = $request->user();
 
         return RelaisItemResource::collection(
-            RelaisItem::withoutCommuneRestriction()->with(['category', 'commune', 'rejectionReason', 'medias'])
+            RelaisItem::withoutCommuneRestriction()->with(['category', 'commune', 'rejectionReason', 'medias', 'appel:id,uuid,title'])
                 ->where('user_id', $user->id)->latest('id')->paginate(20)
         );
     }
@@ -89,7 +89,7 @@ class RelaisItemController extends Controller
             throw ValidationException::withMessages([$exception->field => $exception->getMessage()]);
         }
 
-        $relais->load(['category', 'commune', 'rejectionReason', 'medias']);
+        $relais->load(['category', 'commune', 'rejectionReason', 'medias', 'appel:id,uuid,title']);
         $resource = new RelaisItemResource($relais);
 
         if (! $request->hasDirectFiles()) {
@@ -171,7 +171,7 @@ class RelaisItemController extends Controller
 
     private function respond(RelaisItem $relais, int $status = 200): JsonResponse
     {
-        $relais->load(['category', 'commune', 'rejectionReason', 'medias']);
+        $relais->load(['category', 'commune', 'rejectionReason', 'medias', 'appel:id,uuid,title']);
 
         return (new RelaisItemResource($relais))->response()->setStatusCode($status);
     }

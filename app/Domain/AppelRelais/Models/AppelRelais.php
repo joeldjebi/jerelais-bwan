@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * Appel à relais lancé par la rédaction ou par un coordonnateur (appel local).
@@ -127,6 +128,32 @@ class AppelRelais extends Model
                     'lng' => number_format($this->center->getLongitude(), 4, '.', ''),
                 ]),
         };
+    }
+
+    /**
+     * Libellé lisible et non ambigu : « Titre (réf. 6d384df6) » (fin de l'uuid). Accepté à la place de l'uuid.
+     */
+    public function reference(): string
+    {
+        return $this->title.' (réf. '.substr($this->uuid, -8).')';
+    }
+
+    /**
+     * Retrouve un appel par son uuid ou par sa référence lisible (voir reference()).
+     */
+    public static function findByReference(string $value): ?self
+    {
+        $value = trim($value);
+
+        if (Str::isUuid($value)) {
+            return self::query()->where('uuid', $value)->first();
+        }
+
+        if (preg_match('/\(réf\. ([0-9a-f]{8})\)$/u', $value, $matches) !== 1) {
+            return null;
+        }
+
+        return self::query()->where('uuid', 'like', '%'.$matches[1])->first();
     }
 
     public function isOpen(): bool
