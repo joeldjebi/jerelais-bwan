@@ -47,7 +47,7 @@ Le Relais complète son profil quand il le souhaite ; il est **obligatoire seule
 
 Suivi : `GET /identity` — `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` (motif dans `decision_comment` : renvoyer la même requête corrigée). Le statut est aussi dans `GET /me`.
 
-`PUT /identity` (facultatif) modifie seulement les champs envoyés, sans fichier. Le `selfie` sert aussi de photo du badge.
+**Modifier :** `PUT /identity`, mêmes champs et photos que `POST /identity`, **tous facultatifs** : seuls les éléments envoyés changent ; dès que le dossier est complet, il part en vérification. Le type de pièce décide des photos : `recto` + `verso` ou `page` (`sides`). Le `selfie` sert aussi de photo du badge.
 
 ## Parcours d’un candidat
 

@@ -436,3 +436,94 @@ it('utilise le selfie comme photo du badge d’un Relais inscrit par l’applica
     expect($url)->toBeString();
     $this->get($url)->assertOk();
 });
+
+/**
+ * @param  array<string, mixed>  $data
+ */
+function updateIdentity(array $data): TestResponse
+{
+    return test()->put(route('api.v1.identity.update'), $data, ['Accept' => 'application/json']);
+}
+
+it('modifie un seul champ avec PUT, sans toucher au reste [MOB-01]', function () {
+    updateIdentity(['last_name' => 'Traoré', 'first_name' => 'Abou', 'document_type' => 'cni'])->assertOk();
+
+    updateIdentity(['first_name' => 'Abou Mariam'])
+        ->assertOk()
+        ->assertJsonPath('data.first_name', 'Abou Mariam')
+        ->assertJsonPath('data.last_name', 'Traoré')
+        ->assertJsonPath('data.document_type', 'cni')
+        ->assertJsonPath('data.status', 'draft');
+});
+
+it('ajoute ou remplace des photos avec PUT, et envoie le dossier dès qu’il est complet [MOB-01]', function () {
+    updateIdentity([
+        'last_name' => 'Traoré', 'first_name' => 'Abou', 'gender' => 'homme', 'birth_date' => '26/04/2000',
+        'commune' => $this->commune->uuid, 'document_type' => 'cni',
+        'recto' => UploadedFile::fake()->image('recto.jpg'),
+    ])->assertOk()->assertJsonPath('data.status', 'draft')->assertJsonCount(1, 'data.files');
+
+    updateIdentity(['recto' => UploadedFile::fake()->image('recto-net.jpg'), 'verso' => UploadedFile::fake()->image('verso.jpg')])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'draft')
+        ->assertJsonCount(2, 'data.files')
+        ->assertJsonPath('data.missing', ['files.selfie' => 'Ajoutez : Selfie avec la pièce.']);
+
+    updateIdentity(['selfie' => UploadedFile::fake()->image('selfie.jpg')])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'submitted')
+        ->assertJsonCount(3, 'data.files');
+    expect(Storage::disk('identity')->allFiles())->toHaveCount(3);
+});
+
+it('change de pièce avec PUT : les faces inutiles sont retirées, la nouvelle photo est ajoutée [MOB-01]', function () {
+    updateIdentity(['document_type' => 'cni', 'recto' => UploadedFile::fake()->image('recto.jpg'), 'verso' => UploadedFile::fake()->image('verso.jpg')])
+        ->assertOk()->assertJsonCount(2, 'data.files');
+
+    updateIdentity(['document_type' => 'passeport', 'page' => UploadedFile::fake()->image('page.jpg')])
+        ->assertOk()
+        ->assertJsonPath('data.document_type', 'passeport')
+        ->assertJsonPath('data.required_files', ['page', 'selfie'])
+        ->assertJsonCount(1, 'data.files')
+        ->assertJsonPath('data.files.0.kind', 'page');
+});
+
+it('refuse une photo qui ne correspond pas à la pièce, ou sans pièce choisie', function () {
+    updateIdentity(['recto' => UploadedFile::fake()->image('recto.jpg')])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['recto' => 'Choisissez d’abord le type de pièce']);
+
+    updateIdentity(['document_type' => 'passeport', 'recto' => UploadedFile::fake()->image('recto.jpg')])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['recto' => '« Recto de la pièce » n’est pas demandé pour « Passeport »']);
+
+    submitIdentityAtOnce(['document_type' => 'passeport'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['recto', 'verso', 'page' => 'Ajoutez : Page de la pièce.']);
+
+    expect(Storage::disk('identity')->allFiles())->toBeEmpty();
+});
+
+it('indique la liste des pièces quand le type envoyé est inconnu', function () {
+    updateIdentity(['document_type' => 'carte_etudiant'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['document_type' => 'Choisissez une pièce de la liste GET /auth/register/options : cni, passeport, permis, carte_consulaire, attestation_identite.']);
+});
+
+it('corrige un dossier refusé avec PUT (nouveau selfie) : il repart aussitôt en vérification', function () {
+    submitIdentityAtOnce()->assertOk();
+    $verification = IdentityVerification::query()->where('user_id', $this->relais->id)->sole();
+    app(DecideIdentityVerification::class)->reject($verification, User::factory()->withTwoFactor()->withRole(Role::Admin)->create(), 'Selfie flou.');
+
+    updateIdentity(['selfie' => UploadedFile::fake()->image('selfie-net.jpg')])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'submitted')
+        ->assertJsonCount(3, 'data.files');
+});
+
+it('refuse toute modification pendant la vérification ou après validation (409)', function () {
+    submitIdentityAtOnce()->assertOk();
+
+    updateIdentity(['last_name' => 'Autre'])->assertConflict();
+    updateIdentity(['selfie' => UploadedFile::fake()->image('selfie.jpg')])->assertConflict();
+});
