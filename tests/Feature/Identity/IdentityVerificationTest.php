@@ -150,6 +150,30 @@ it('déduit la commune d’une localité choisie seule', function () {
         ->assertJsonPath('data.localite.uuid', $localite->uuid);
 });
 
+it('enregistre la commune et une localité de cette commune envoyées ensemble [MOB-01]', function () {
+    $localite = Localite::query()->create(['commune_id' => $this->commune->id, 'name' => 'Riviera 2', 'type' => 'quartier']);
+
+    $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'localite' => $localite->uuid])
+        ->assertOk()
+        ->assertJsonPath('data.commune.uuid', $this->commune->uuid)
+        ->assertJsonPath('data.localite.name', 'Riviera 2');
+});
+
+it('explique qu’une localité inconnue doit venir de GET /communes/{commune}/localites', function () {
+    $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'localite' => '9d2c6f0e-2b3a-4c5d-8e7f-0a1b2c3d4e5f'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['localite' => 'Cette localité n’existe pas : utilisez un uuid renvoyé par GET /communes/{commune}/localites.']);
+});
+
+it('refuse une localité d’une autre commune au lieu de l’ignorer en silence', function () {
+    $ailleurs = Commune::factory()->create();
+    $localite = Localite::query()->create(['commune_id' => $ailleurs->id, 'name' => 'Ailleurs', 'type' => 'quartier']);
+
+    $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'localite' => $localite->uuid])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['localite' => 'Cette localité n’appartient pas à la commune choisie.']);
+});
+
 it('accepte la pièce en image ou en PDF, mais le selfie en image seulement', function () {
     $this->putJson(route('api.v1.identity.update'), ['commune' => $this->commune->uuid, 'document_type' => 'cni'])->assertOk();
 
