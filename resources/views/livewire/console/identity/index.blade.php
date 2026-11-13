@@ -41,7 +41,7 @@
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate text-[0.9375rem] font-semibold">{{ $name }}</span>
                                 <span class="block truncate text-[0.8125rem] text-mute">
-                                    {{ collect([$verification->commune?->name, $verification->localite?->name, $verification->document_type?->label()])->filter()->join(' · ') }}
+                                    {{ collect([$verification->commune?->name, $verification->localite?->name, $verification->documentType?->name])->filter()->join(' · ') }}
                                 </span>
                             </span>
                             <x-console.badge :tone="$tone[$verification->status->value] ?? 'neutral'" class="hidden sm:inline-flex">{{ $verification->status->label() }}</x-console.badge>

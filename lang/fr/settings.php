@@ -87,5 +87,6 @@ return [
         'lieux' => 'Types de lieux',
         'categories' => 'Catégories',
         'motifs' => 'Motifs de rejet',
+        'pieces' => 'Pièces d’identité',
     ],
 ];

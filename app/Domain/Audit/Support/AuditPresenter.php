@@ -3,6 +3,7 @@
 namespace App\Domain\Audit\Support;
 
 use App\Domain\Audit\Models\AuditLog;
+use App\Domain\Settings\Enums\ReferenceList;
 
 /**
  * Traduit les entrées techniques du journal en phrases lisibles pour la console.
@@ -26,6 +27,7 @@ class AuditPresenter
         'auth.2fa.recovery_code_used' => ['Code de secours utilisé', 'shield', 'warning'],
         'users.admin_created' => ['Administrateur créé', 'users', 'success'],
         'users.created' => ['Membre de l’équipe ajouté', 'users', 'success'],
+        'users.updated' => ['Membre de l’équipe modifié', 'users', 'accent'],
         'users.suspended' => ['Compte suspendu', 'x', 'danger'],
         'users.reactivated' => ['Compte réactivé', 'check', 'success'],
         'users.profile_updated' => ['Profil mis à jour', 'users', 'neutral'],
@@ -44,6 +46,18 @@ class AuditPresenter
         'candidature.document.deleted' => ['Pièce de candidature retirée', 'photo', 'neutral'],
         'candidature.document.infected' => ['Fichier infecté refusé', 'x', 'danger'],
         'formation.quiz.attempted' => ['Quiz de formation passé', 'book', 'neutral'],
+        'formation.module.created' => ['Fiche de formation créée', 'book', 'accent'],
+        'formation.module.updated' => ['Fiche de formation modifiée', 'book', 'neutral'],
+        'formation.module.published' => ['Fiche de formation publiée', 'book', 'success'],
+        'formation.module.unpublished' => ['Fiche de formation retirée', 'book', 'warning'],
+        'formation.module.moved' => ['Ordre des fiches de formation modifié', 'book', 'neutral'],
+        'formation.module.deleted' => ['Fiche de formation supprimée', 'x', 'danger'],
+        'formation.question.created' => ['Question du quiz créée', 'book', 'accent'],
+        'formation.question.updated' => ['Question du quiz modifiée', 'book', 'neutral'],
+        'formation.question.published' => ['Question du quiz publiée', 'book', 'success'],
+        'formation.question.unpublished' => ['Question du quiz retirée', 'book', 'warning'],
+        'formation.question.moved' => ['Ordre des questions du quiz modifié', 'book', 'neutral'],
+        'formation.question.deleted' => ['Question du quiz supprimée', 'x', 'danger'],
         'media.received' => ['Média contrôlé et enregistré', 'photo', 'neutral'],
         'media.rejected' => ['Média refusé au contrôle', 'x', 'danger'],
         'relais.validated' => ['Relais validé', 'check', 'success'],
@@ -61,6 +75,8 @@ class AuditPresenter
         'editorial.collection_created' => ['Collection créée', 'layers', 'neutral'],
         'editorial.collection_added' => ['Relais ajouté à une collection', 'layers', 'neutral'],
         'editorial.collection_removed' => ['Relais retiré d’une collection', 'layers', 'neutral'],
+        'editorial.collection_updated' => ['Collection renommée', 'layers', 'neutral'],
+        'editorial.collection_deleted' => ['Collection supprimée', 'x', 'warning'],
         'appel.created' => ['Appel à relais créé', 'bell', 'accent'],
         'appel.approved' => ['Appel local approuvé', 'check', 'success'],
         'appel.closed' => ['Appel à relais clos', 'x', 'neutral'],
@@ -84,7 +100,7 @@ class AuditPresenter
 
     public function label(AuditLog $entry): string
     {
-        $label = __(self::ACTIONS[$entry->action][0] ?? $entry->action);
+        $label = __(self::ACTIONS[$entry->action][0] ?? $this->referenceLabel($entry->action) ?? $entry->action);
         $detail = $this->detail($entry);
 
         return $detail === null ? $label : "{$label} · {$detail}";
@@ -115,6 +131,21 @@ class AuditPresenter
         return is_string($text) ? $text : $key;
     }
 
+    /**
+     * « referentiel.pieces.created » → « Pièces d’identité : ajout ».
+     */
+    private function referenceLabel(string $action): ?string
+    {
+        if (preg_match('/^referentiel\.([a-z]+)\.([a-z]+)$/', $action, $matches) !== 1) {
+            return null;
+        }
+
+        $list = ReferenceList::tryFrom($matches[1]);
+        $verb = ['created' => 'ajout', 'renamed' => 'renommage', 'enabled' => 'réactivation', 'disabled' => 'désactivation'][$matches[2]] ?? null;
+
+        return $list === null || $verb === null ? null : $list->label().' : '.$this->text($verb);
+    }
+
     private function settingLabel(string $key): string
     {
         $label = __('settings.labels.'.$key);
@@ -128,6 +159,10 @@ class AuditPresenter
 
         return match (true) {
             isset($payload['name']) && is_string($payload['name']) => $payload['name'],
+            isset($payload['title']) && is_string($payload['title']) => $payload['title'],
+            isset($payload['prompt']) && is_string($payload['prompt']) => $payload['prompt'],
+            isset($payload['label']) && is_string($payload['label']) => $payload['label'],
+            isset($payload['to']) && is_string($payload['to']) => $payload['to'],
             $entry->action === 'settings.updated' && isset($payload['key']) && is_string($payload['key']) => $this->settingLabel($payload['key']),
             isset($payload['method']) && is_string($payload['method']) => match ($payload['method']) {
                 'otp' => $this->text('code SMS'),

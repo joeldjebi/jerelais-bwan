@@ -5,14 +5,15 @@
 
     $current = $this->current();
     $labelColumn = $current->labelColumn();
-    $icons = ['regions' => 'layers', 'localites' => 'map-pin', 'lieux' => 'layers', 'categories' => 'inbox', 'motifs' => 'shield'];
-    $tints = ['regions' => 'green', 'localites' => 'teal', 'lieux' => 'purple', 'categories' => 'blue', 'motifs' => 'pink'];
+    $icons = ['regions' => 'layers', 'localites' => 'map-pin', 'lieux' => 'layers', 'categories' => 'inbox', 'motifs' => 'shield', 'pieces' => 'shield'];
+    $tints = ['regions' => 'green', 'localites' => 'teal', 'lieux' => 'purple', 'categories' => 'blue', 'motifs' => 'pink', 'pieces' => 'gray'];
     $footers = [
         'regions' => __('Régions et districts administratifs. Les communes se créent et se rattachent à une région depuis la page Communes.'),
         'localites' => __('Quartiers, villages et sous-préfectures proposés aux candidats de la commune et utilisés pour la carte de couverture.'),
         'lieux' => __('Écoles, universités, marchés… utilisés par les candidatures et le ciblage des appels à relais.'),
         'categories' => __('Une catégorie désactivée n’est plus proposée aux Relais ; les relais déjà classés la conservent.'),
         'motifs' => __('Motifs proposés aux coordonnateurs lors d’un rejet. Un motif désactivé reste visible dans l’historique.'),
+        'pieces' => __('Pièces proposées aux Relais pour la vérification d’identité (application et site). Une pièce désactivée n’est plus proposée ; les dossiers qui l’utilisent la conservent. Les faces à fournir se choisissent à la création.'),
     ];
 @endphp
 
@@ -49,6 +50,11 @@
                             <x-console.select name="target" :label="__('S’applique aux')" wire:model="target">
                                 <option value="{{ RejectionTarget::Relais->value }}">{{ __('Relais envoyés') }}</option>
                                 <option value="{{ RejectionTarget::Candidature->value }}">{{ __('Candidatures') }}</option>
+                            </x-console.select>
+                        @elseif ($current === ReferenceList::IdentityDocuments)
+                            <x-console.select name="sides" :label="__('Faces à fournir')" wire:model="sides">
+                                <option value="recto_verso">{{ __('Recto et verso') }}</option>
+                                <option value="page">{{ __('Une seule page') }}</option>
                             </x-console.select>
                         @endif
                         <div @class(['sm:col-span-2' => in_array($current, [ReferenceList::LieuTypes, ReferenceList::Categories], true)])>
@@ -88,6 +94,7 @@
                                             @case(ReferenceList::LieuTypes) {{ trans_choice(':count lieu|:count lieux', $entry->lieux_count) }} @break
                                             @case(ReferenceList::Categories) {{ $entry->examples ?: $entry->slug }} @break
                                             @case(ReferenceList::RejectionReasons) {{ $entry->applies_to === RejectionTarget::Relais ? __('Relais envoyés') : __('Candidatures') }} @break
+                                            @case(ReferenceList::IdentityDocuments) {{ $entry->two_sided ? __('Recto et verso') : __('Une seule page') }} · {{ $entry->slug }} @break
                                         @endswitch
                                     </p>
                                 </div>

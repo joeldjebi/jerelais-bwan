@@ -17,7 +17,7 @@ class ManageReferenceList
     public function __construct(private readonly AuditLogger $audit) {}
 
     /**
-     * @param  array<string, mixed>  $attributes  colonnes propres à la liste (commune_id et type, applies_to, examples)
+     * @param  array<string, mixed>  $attributes  colonnes propres à la liste (commune_id et type, applies_to, examples, two_sided)
      */
     public function create(ReferenceList $list, string $label, array $attributes, User $actor): Model
     {
@@ -77,7 +77,10 @@ class ManageReferenceList
      */
     private function uniqueSlug(ReferenceList $list, string $label, array $attributes): string
     {
-        $base = Str::slug($label) ?: 'entree';
+        // Valeur d'une pièce : échangée avec l'application (document_type, 30 caractères), au format « carte_consulaire ».
+        $base = $list === ReferenceList::IdentityDocuments
+            ? (Str::limit(Str::slug($label, '_'), 26, '') ?: 'piece')
+            : (Str::slug($label) ?: 'entree');
         $slug = $base;
         $suffix = 2;
 
@@ -85,7 +88,7 @@ class ManageReferenceList
             ->where('slug', $slug)
             ->when($list === ReferenceList::RejectionReasons, fn ($query) => $query->where('applies_to', $attributes['applies_to']))
             ->exists()) {
-            $slug = $base.'-'.$suffix++;
+            $slug = $base.($list === ReferenceList::IdentityDocuments ? '_' : '-').$suffix++;
         }
 
         return $slug;

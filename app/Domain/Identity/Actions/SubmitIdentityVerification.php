@@ -44,7 +44,7 @@ class SubmitIdentityVerification
             'decision_comment' => null,
         ])->save();
 
-        $this->audit->record('identity.submitted', $verification, ['document_type' => $verification->document_type?->value], actor: $verification->user);
+        $this->audit->record('identity.submitted', $verification, ['document_type' => $verification->document_type], actor: $verification->user);
 
         return $verification;
     }

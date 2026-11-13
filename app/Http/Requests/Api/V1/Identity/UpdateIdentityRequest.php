@@ -5,7 +5,7 @@ namespace App\Http\Requests\Api\V1\Identity;
 use App\Domain\Candidature\Enums\CandidatureStep;
 use App\Domain\Candidature\Support\StepRules;
 use App\Domain\Identity\Actions\SaveIdentityDetails;
-use App\Domain\Identity\Enums\IdentityDocumentType;
+use App\Domain\Identity\Models\IdentityDocumentType;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Localite;
 use App\Http\Requests\Concerns\DescribesIdentity;
@@ -44,7 +44,7 @@ class UpdateIdentityRequest extends FormRequest
             'birth_date' => array_values($identity['birth_date']),
             'commune' => ['bail', 'nullable', 'uuid', Rule::exists('communes', 'uuid')->where('is_active', true)],
             'localite' => ['bail', 'nullable', 'uuid', Rule::exists('localites', 'uuid')],
-            'document_type' => ['nullable', Rule::enum(IdentityDocumentType::class)],
+            'document_type' => ['nullable', 'string', Rule::exists('identity_document_types', 'slug')->where('is_active', true)],
         ];
     }
 
@@ -93,7 +93,7 @@ class UpdateIdentityRequest extends FormRequest
         }
 
         if ($this->exists('document_type')) {
-            $details['document_type'] = IdentityDocumentType::tryFrom($this->string('document_type')->toString());
+            $details['document_type'] = IdentityDocumentType::query()->where('slug', $this->string('document_type')->toString())->first();
         }
 
         return $details;
