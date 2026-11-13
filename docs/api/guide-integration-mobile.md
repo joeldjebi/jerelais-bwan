@@ -26,7 +26,7 @@ Inscription :  register (SMS) → register/verify → register/complete (mot de 
 Connexion   :  login (numéro + mot de passe) → jeton → envoi de relais possible tout de suite
 Oubli       :  auth/otp (SMS) → auth/verify → jeton → me/password (sans l’ancien, 15 min)
 Relais      :  relais (contenu + liste des fichiers) → envoi des fichiers → soumis automatiquement
-Commissions :  plus tard, dans le profil : identity (identité, commune, pièce, selfie, photo) → identity/submit → vérifiée par l’équipe
+Commissions :  plus tard, dans le profil : identity (identité, commune, pièce) → identity/files (faces, selfie, photo) → envoyée automatiquement → vérifiée par l’équipe
 ```
 
 ---
@@ -322,13 +322,15 @@ curl -X POST "$BASE/identity/files" -H "Authorization: Bearer $TOKEN" -H "Accept
 
 `kind` : `recto`, `verso`, `page` (image ou PDF) ; `selfie`, `profile_photo` (image seulement). 10 Mo maximum. **201** : le fichier (`uuid`, `kind`, `label`, `mime`, `size`, `uploaded_at`). **422** `kind` : face non demandée pour cette pièce ; **422** `file` : format, taille ou antivirus. Retirer : `DELETE /identity/files/{kind}` (**204**).
 
-### 5.4 Envoi à l’équipe
+### 5.4 Envoi à l’équipe : automatique
 
-```bash
-curl -X POST "$BASE/identity/submit" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
-```
+**Dès que le dossier est complet** (dernier fichier reçu, ou dernier champ rempli si les fichiers étaient déjà là), il passe tout seul en **`submitted`** et arrive dans la file de vérification de l’administration. Aucun appel supplémentaire : la réponse du dernier envoi et `GET /identity` indiquent `status: "submitted"`, `is_editable: false`, `missing: {}`.
 
-**200** : `status: "submitted"`. **422** : chaque élément manquant dans `errors`. Après décision : `verified` (éligible aux commissions) ou `rejected` (corriger puis renvoyer).
+Tant que `missing` n’est pas vide, le statut reste `draft` : afficher chaque élément manquant.
+
+Après décision de l’équipe : `verified` (éligible aux commissions, `gains_eligible: true`) ou `rejected` (motif dans `decision_comment`). Un dossier refusé redevient modifiable : dès qu’un fichier ou un champ est corrigé, il repart tout seul en vérification.
+
+`POST /identity/submit` reste disponible (facultatif) : **200** si le dossier est complet, **422** avec chaque élément manquant sinon.
 
 ---
 
