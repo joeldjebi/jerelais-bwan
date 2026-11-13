@@ -33,7 +33,7 @@ class IdentityChecklist
             $missing['document_type'] = __('identity.errors.document_type');
         }
 
-        $required = $verification->document_type?->requiredFiles() ?? [IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto];
+        $required = $verification->documentType?->requiredFiles() ?? [IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto];
         $present = $verification->files()->pluck('kind')->map(fn (mixed $kind): string => $kind instanceof IdentityFileKind ? $kind->value : (string) $kind)->all();
 
         foreach ($required as $kind) {

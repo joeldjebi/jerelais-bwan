@@ -2,6 +2,7 @@
 
 namespace App\Domain\Media\Actions;
 
+use App\Domain\Contribution\Actions\SubmitWhenUploaded;
 use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Models\Media;
 use App\Domain\Media\Storage\MultipartStorage;
@@ -15,7 +16,10 @@ class PurgeAbandonedUploads
 {
     public const AFTER_HOURS = 48;
 
-    public function __construct(private readonly MultipartStorage $storage) {}
+    public function __construct(
+        private readonly MultipartStorage $storage,
+        private readonly SubmitWhenUploaded $submitWhenUploaded,
+    ) {}
 
     public function handle(): int
     {
@@ -35,6 +39,9 @@ class PurgeAbandonedUploads
 
                 $media->forceFill(['status' => MediaStatus::Rejected, 'rejection' => 'abandoned', 'upload_id' => null, 'processed_at' => now()])->save();
                 $purged++;
+
+                // Un fichier abandonné ne doit pas bloquer l'envoi automatique d'un relais dont les autres fichiers sont arrivés.
+                $this->submitWhenUploaded->handle($media->relaisItem);
             });
 
         return $purged;

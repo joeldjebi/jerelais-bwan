@@ -6,6 +6,7 @@ use App\Domain\Audit\AuditLogger;
 use App\Domain\Auth\Contracts\SmsGateway;
 use App\Domain\Auth\Sms\NotificationSms;
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Messagerie\Models\Conversation;
 use App\Domain\Messagerie\Models\Message;
 use App\Domain\Relais\Enums\RelaisStatus;
@@ -14,6 +15,7 @@ use App\Domain\Territoire\Models\Commune;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 /**
@@ -31,6 +33,8 @@ class SendMessage
 
     /**
      * Conversation générale du Relais, ou celle d'un de ses relais.
+     *
+     * @throws ValidationException si aucune commune n'est connue (Relais inscrit par l'application, sans commune ni relais)
      */
     public function conversationFor(RelaisProfile $profile, ?RelaisItem $relais = null): Conversation
     {
@@ -38,10 +42,37 @@ class SendMessage
             throw new InvalidArgumentException(__('conversations.errors.not_owner'));
         }
 
-        return Conversation::withoutCommuneRestriction()->firstOrCreate(
-            ['relais_profile_id' => $profile->id, 'relais_item_id' => $relais?->id],
-            ['commune_id' => $relais->commune_id ?? $profile->commune_id],
-        );
+        $existing = Conversation::withoutCommuneRestriction()
+            ->where('relais_profile_id', $profile->id)
+            ->where('relais_item_id', $relais?->id)
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $communeId = $relais->commune_id ?? $this->teamCommuneId($profile);
+
+        if ($communeId === null) {
+            throw ValidationException::withMessages(['body' => __('conversations.errors.no_commune')]);
+        }
+
+        return Conversation::withoutCommuneRestriction()->create([
+            'relais_profile_id' => $profile->id,
+            'relais_item_id' => $relais?->id,
+            'commune_id' => $communeId,
+        ]);
+    }
+
+    /**
+     * Équipe destinataire d'une conversation générale : commune du profil Relais, sinon commune déclarée
+     * dans la vérification d'identité, sinon celle de son dernier relais.
+     */
+    public function teamCommuneId(RelaisProfile $profile): ?int
+    {
+        return $profile->commune_id
+            ?? IdentityVerification::query()->where('user_id', $profile->user_id)->value('commune_id')
+            ?? RelaisItem::withoutCommuneRestriction()->where('user_id', $profile->user_id)->whereNotNull('commune_id')->latest('id')->value('commune_id');
     }
 
     public function send(Conversation $conversation, User $sender, string $body, ?string $broadcastUuid = null): Message

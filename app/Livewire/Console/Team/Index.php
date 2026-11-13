@@ -4,6 +4,7 @@ namespace App\Livewire\Console\Team;
 
 use App\Domain\Access\Actions\ChangeUserStatus;
 use App\Domain\Access\Actions\CreateStaffMember;
+use App\Domain\Access\Actions\UpdateStaffMember;
 use App\Domain\Access\Enums\CommuneAssignment;
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Enums\Role;
@@ -16,6 +17,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -24,7 +26,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Gestion des membres de l'équipe : rédaction, coordination, administration (ADM-21, ADM-24).
+ * Gestion des membres de l'équipe : rédaction, coordination, administration (ADM-21, ADM-24) — ajout, modification, suspension.
  */
 #[Title('Équipe')]
 class Index extends Component
@@ -60,6 +62,10 @@ class Index extends Component
 
     public bool $confirmingStatus = false;
 
+    /** Membre modifié dans le formulaire (null : ajout d'un nouveau membre). */
+    #[Locked]
+    public ?string $editingMember = null;
+
     public function mount(): void
     {
         $this->authorizeAccess();
@@ -74,9 +80,72 @@ class Index extends Component
 
     public function openCreate(): void
     {
-        $this->reset('name', 'email', 'newRole', 'communeUuids', 'regionUuids', 'communeSearch', 'assignment');
+        $this->reset('name', 'email', 'newRole', 'communeUuids', 'regionUuids', 'communeSearch', 'assignment', 'editingMember');
         $this->resetValidation();
         $this->creating = true;
+    }
+
+    /**
+     * Ouvre la fiche d'un membre existant dans le même formulaire, pré-rempli.
+     */
+    public function openEdit(string $uuid): void
+    {
+        $this->authorizeAccess();
+        $member = User::query()->with(['roles', 'communes', 'regions'])->where('uuid', $uuid)->firstOrFail();
+        abort_unless($member->hasAnyRole(array_map(fn (Role $role): string => $role->value, self::staffRoles())), 404);
+
+        $this->resetValidation();
+        $this->reset('communeSearch');
+        $this->editingMember = $member->uuid;
+        $this->name = (string) $member->name;
+        $this->email = (string) $member->email;
+        $this->newRole = (string) $member->getRoleNames()->first();
+        $this->communeUuids = array_values($member->communes->map(fn (Commune $commune): string => $commune->uuid)->all());
+        $this->regionUuids = array_values($member->regions->map(fn (Region $region): string => $region->uuid)->all());
+        $this->assignment = (string) ($member->communes->first()?->getRelationValue('pivot')?->getAttribute('assignment') ?? CommuneAssignment::Titulaire->value);
+        $this->creating = true;
+    }
+
+    public function update(UpdateStaffMember $updateStaffMember): void
+    {
+        $this->authorizeAccess();
+        $member = User::query()->where('uuid', (string) $this->editingMember)->firstOrFail();
+
+        $validated = $this->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($member->id)],
+            'newRole' => ['required', Rule::in(array_map(fn (Role $role) => $role->value, self::staffRoles()))],
+            'communeUuids' => [Rule::requiredIf($this->newRole === Role::Coordonnateur->value), 'array'],
+            'communeUuids.*' => ['string', Rule::exists('communes', 'uuid')],
+            'regionUuids' => [Rule::requiredIf($this->newRole === Role::Superviseur->value), 'array'],
+            'regionUuids.*' => ['string', Rule::exists('regions', 'uuid')],
+            'assignment' => ['required', Rule::enum(CommuneAssignment::class)],
+        ], attributes: ['name' => __('nom'), 'newRole' => __('rôle'), 'communeUuids' => __('communes'), 'regionUuids' => __('régions')]);
+
+        /** @var User $actor */
+        $actor = Auth::user();
+
+        try {
+            $updateStaffMember->handle(
+                $member,
+                $validated['name'],
+                $validated['email'],
+                Role::from($validated['newRole']),
+                $actor,
+                array_values(Commune::query()->whereIn('uuid', $this->communeUuids)->pluck('id')->map(fn ($id): int => (int) $id)->all()),
+                array_values(Region::query()->whereIn('uuid', $this->regionUuids)->pluck('id')->map(fn ($id): int => (int) $id)->all()),
+                CommuneAssignment::from($validated['assignment']),
+            );
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('newRole', $exception->getMessage());
+
+            return;
+        }
+
+        $this->creating = false;
+        $this->editingMember = null;
+        unset($this->members);
+        $this->dispatch('toast', message: __(':name a été mis·e à jour.', ['name' => $validated['name']]));
     }
 
     public function create(CreateStaffMember $createStaffMember): void

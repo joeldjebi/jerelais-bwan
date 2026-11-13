@@ -1,7 +1,6 @@
 <?php
 
 use App\Domain\Audit\Models\AuditLog;
-use App\Domain\Contribution\Models\Category;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Media\Contracts\VirusScanner;
 use App\Domain\Media\Enums\MediaStatus;
@@ -22,10 +21,11 @@ beforeEach(function () {
     $this->profile = RelaisProfile::factory()->create();
     Sanctum::actingAs($this->profile->user);
 
-    $this->relais = $this->postJson(route('api.v1.relais.store'), [
-        'client_uuid' => (string) Str::uuid(),
-        'category' => Category::query()->active()->firstOrFail()->uuid,
-    ])->json('data.uuid');
+    // Relais en cours d'envoi, auquel on ajoute des fichiers (POST /relais/{relais}/medias).
+    $this->relais = RelaisItem::factory()->uploading()->create([
+        'user_id' => $this->profile->user_id,
+        'relais_profile_id' => $this->profile->id,
+    ])->uuid;
 });
 
 function jpeg(int $width = 800, int $height = 600, array $color = [242, 140, 40]): string

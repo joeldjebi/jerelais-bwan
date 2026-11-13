@@ -1,13 +1,6 @@
 <?php
 
 return [
-    'document_types' => [
-        'cni' => 'Carte nationale d’identité (CNI)',
-        'passeport' => 'Passeport',
-        'permis' => 'Permis de conduire',
-        'carte_consulaire' => 'Carte consulaire',
-        'attestation_identite' => 'Attestation d’identité',
-    ],
     'file_kinds' => [
         'recto' => 'Recto de la pièce',
         'verso' => 'Verso de la pièce',

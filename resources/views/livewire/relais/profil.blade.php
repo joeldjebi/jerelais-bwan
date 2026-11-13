@@ -1,6 +1,5 @@
 @php
     use App\Domain\Candidature\Enums\Gender;
-    use App\Domain\Identity\Enums\IdentityDocumentType;
     use App\Domain\Identity\Enums\IdentityFileKind;
     use App\Domain\Identity\Enums\IdentityStatus;
 
@@ -9,7 +8,7 @@
     $editable = $status->isEditable();
     $missing = $this->missing();
     $files = $v->files->keyBy(fn ($file) => $file->kind->value);
-    $type = IdentityDocumentType::tryFrom($documentType) ?? $v->document_type;
+    $type = $this->documentTypes->firstWhere('slug', $documentType) ?? $v->documentType;
     $kinds = [...($type?->sides() ?? []), IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto];
     $label = 'block text-[0.8125rem] font-medium';
     $field = 'h-12 w-full rounded-2xl border-0 bg-mist px-4 text-[1rem] ring-1 ring-transparent transition-[box-shadow,background-color] duration-300 focus:bg-white focus:ring-2 focus:ring-relais-500/50 focus:outline-none disabled:opacity-60';
@@ -103,8 +102,8 @@
                     <label for="document_type" class="{{ $label }}">{{ __('Pièce d’identité') }}</label>
                     <select id="document_type" wire:model.live="documentType" class="{{ $field }} mt-1.5">
                         <option value="">{{ __('Choisir…') }}</option>
-                        @foreach (IdentityDocumentType::cases() as $option)
-                            <option value="{{ $option->value }}">{{ $option->label() }} — {{ count($option->sides()) === 2 ? __('recto et verso') : __('une page') }}</option>
+                        @foreach ($this->documentTypes as $option)
+                            <option value="{{ $option->slug }}">{{ $option->name }} — {{ $option->two_sided ? __('recto et verso') : __('une page') }}</option>
                         @endforeach
                     </select>
                     @error('documentType') <p class="mt-1.5 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror

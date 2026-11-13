@@ -53,6 +53,7 @@ class ConversationController extends Controller
      */
     #[Response(201, 'Message envoyé : la conversation (créée au premier message).', type: 'array{data: array{uuid: string, relais: array{uuid: string, title: string|null}|null, last_message: array{body: string, from_staff: bool, sent_at: string}|null, unread: bool}}')]
     #[Response(403, 'Compte qui n’est pas Relais.', type: 'array{message: string}')]
+    #[Response(422, 'Aucune commune connue (Relais inscrit par l’application, profil à compléter) : « Indiquez votre commune dans votre profil pour écrire à l’équipe. » dans errors.body.', type: 'array{message: string, errors: array{body: list<string>}}')]
     public function store(Request $request, SendMessage $send): JsonResponse
     {
         $profile = $this->profile($request);

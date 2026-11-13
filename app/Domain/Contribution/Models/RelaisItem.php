@@ -116,6 +116,7 @@ class RelaisItem extends Model
     {
         return [
             'state' => RelaisState::class,
+            'submit_on_upload' => 'boolean',
             'urgency' => Urgency::class,
             'location' => Point::class,
             'location_accuracy_m' => 'integer',

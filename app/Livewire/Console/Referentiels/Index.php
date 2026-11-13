@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Console\Referentiels;
 
+use App\Domain\Identity\Models\IdentityDocumentType;
 use App\Domain\Settings\Actions\ManageReferenceList;
 use App\Domain\Settings\Enums\ReferenceList;
 use App\Domain\Territoire\Enums\LocaliteType;
@@ -22,7 +23,8 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * Référentiels de la plateforme : régions, localités et types de lieux (ADM-20), catégories et motifs de rejet (ADM-23, COO-15).
+ * Référentiels de la plateforme : régions, localités et types de lieux (ADM-20), catégories et motifs de rejet (ADM-23, COO-15),
+ * pièces d'identité acceptées pour la vérification (MOB-01).
  *
  * @property-read list<ReferenceList> $lists
  * @property-read Collection<int, Model> $entries
@@ -44,6 +46,9 @@ class Index extends Component
     public string $target = 'relais';
 
     public string $district = '';
+
+    /** Faces d'une nouvelle pièce d'identité : « recto_verso » ou « page ». */
+    public string $sides = 'recto_verso';
 
     #[Locked]
     public ?string $editing = null;
@@ -81,6 +86,7 @@ class Index extends Component
             'localiteType' => [Rule::requiredIf($list === ReferenceList::Localites), Rule::enum(LocaliteType::class)],
             'target' => [Rule::requiredIf($list === ReferenceList::RejectionReasons), Rule::enum(RejectionTarget::class)],
             'district' => ['nullable', 'string', 'max:120'],
+            'sides' => [Rule::requiredIf($list === ReferenceList::IdentityDocuments), Rule::in(['recto_verso', 'page'])],
         ]);
 
         if ($list === ReferenceList::Localites) {
@@ -97,6 +103,16 @@ class Index extends Component
 
         if ($list === ReferenceList::RejectionReasons) {
             $attributes = ['applies_to' => $this->target];
+        }
+
+        if ($list === ReferenceList::IdentityDocuments) {
+            if (IdentityDocumentType::query()->whereRaw('lower(name) = ?', [Str::lower($label)])->exists()) {
+                $this->addError('name', __('Cette pièce existe déjà.'));
+
+                return;
+            }
+
+            $attributes = ['two_sided' => $this->sides === 'recto_verso'];
         }
 
         if ($list === ReferenceList::Regions) {
@@ -182,6 +198,7 @@ class Index extends Component
             ReferenceList::LieuTypes => $list->model()::query()->withCount('lieux')->orderBy('name')->get(),
             ReferenceList::Categories => $list->model()::query()->orderBy('position')->get(),
             ReferenceList::RejectionReasons => $list->model()::query()->orderBy('applies_to')->orderBy('position')->get(),
+            ReferenceList::IdentityDocuments => $list->model()::query()->orderBy('position')->get(),
         };
     }
 

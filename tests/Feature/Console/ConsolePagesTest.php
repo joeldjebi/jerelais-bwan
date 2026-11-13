@@ -199,3 +199,60 @@ it('affiche l’activité récente sur l’accueil de l’administrateur', funct
     Livewire::actingAs($actor)->test(Dashboard::class)
         ->assertSee('Paramètre modifié · Durée maximale d’une vidéo');
 });
+
+it('modifie un membre : nom, communes coordonnées, puis rôle, et ferme ses sessions [ADM-21]', function () {
+    $yopougon = Commune::factory()->create(['name' => 'Yopougon']);
+    $cocody = Commune::factory()->create(['name' => 'Cocody']);
+    $member = User::factory()->withTwoFactor()->coordonnateurOf($yopougon)->create(['name' => 'Kouassi Yao']);
+    $member->createToken('appareil');
+    $actor = admin();
+
+    Livewire::actingAs($actor)->test(TeamPage::class)
+        ->call('openEdit', $member->uuid)
+        ->assertSet('name', 'Kouassi Yao')
+        ->assertSet('newRole', Role::Coordonnateur->value)
+        ->assertSet('communeUuids', [$yopougon->uuid])
+        ->set('name', 'Kouassi Yao Jr')
+        ->set('communeUuids', [$cocody->uuid])
+        ->call('update')
+        ->assertHasNoErrors()
+        ->assertSet('creating', false);
+
+    $member->refresh();
+    expect($member->name)->toBe('Kouassi Yao Jr')
+        ->and($member->communes()->pluck('communes.id')->all())->toBe([$cocody->id])
+        ->and($member->tokens()->count())->toBe(0);
+    $this->assertDatabaseHas('audit_logs', ['action' => 'users.updated', 'actor_id' => $actor->id]);
+
+    Livewire::actingAs($actor)->test(TeamPage::class)
+        ->call('openEdit', $member->uuid)
+        ->set('newRole', Role::Journaliste->value)
+        ->call('update')
+        ->assertHasNoErrors();
+
+    expect($member->fresh()->getRoleNames()->all())->toBe([Role::Journaliste->value])
+        ->and($member->communes()->count())->toBe(0);
+});
+
+it('refuse qu’un administrateur retire son propre rôle d’administrateur [ADM-21]', function () {
+    $actor = admin();
+
+    Livewire::actingAs($actor)->test(TeamPage::class)
+        ->call('openEdit', $actor->uuid)
+        ->set('newRole', Role::Journaliste->value)
+        ->call('update')
+        ->assertHasErrors('newRole');
+
+    expect($actor->fresh()->hasRole(Role::Admin->value))->toBeTrue();
+});
+
+it('refuse une adresse déjà utilisée par un autre membre [ADM-21]', function () {
+    $other = User::factory()->withRole(Role::Journaliste)->create(['email' => 'pris@reflet.tv']);
+    $member = User::factory()->withRole(Role::Journaliste)->create();
+
+    Livewire::actingAs(admin())->test(TeamPage::class)
+        ->call('openEdit', $member->uuid)
+        ->set('email', $other->email)
+        ->call('update')
+        ->assertHasErrors('email');
+});

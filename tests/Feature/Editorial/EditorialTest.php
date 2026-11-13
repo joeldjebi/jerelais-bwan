@@ -13,6 +13,7 @@ use App\Domain\Editorial\Models\ExportLog;
 use App\Domain\Editorial\Models\RelaisCollection;
 use App\Domain\Editorial\Support\CreditLine;
 use App\Livewire\Console\Collections\Index as Collections;
+use App\Livewire\Console\Collections\Show as CollectionShow;
 use App\Livewire\Console\Editorial\Index as Editorial;
 use App\Livewire\Console\Validation\Show;
 use App\Models\User;
@@ -181,4 +182,43 @@ it('produit une fiche avec le crédit choisi et la consigne de floutage', functi
 
     expect($html)->toContain('Le Veilleur / JE RELAIS')->toContain('floutage nécessaire');
     expect(str_starts_with(app(ExportRelaisMedias::class)->fiche($relais), '%PDF'))->toBeTrue();
+});
+
+it('renomme puis supprime une collection sans toucher à ses relais [ADM-15]', function () {
+    $relais = readyRelais();
+    $collection = new RelaisCollection(['name' => 'Inondations']);
+    $collection->creator()->associate($this->redacteur);
+    $collection->save();
+    $collection->relais()->attach($relais->id, ['added_by' => $this->redacteur->id]);
+
+    Livewire::actingAs($this->redacteur)->test(CollectionShow::class, ['collection' => $collection])
+        ->call('openEdit')
+        ->assertSet('name', 'Inondations')
+        ->set('name', 'Inondations 2026')
+        ->set('description', 'Saison des pluies')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertSet('editing', false)
+        ->assertSee('Inondations 2026');
+
+    expect($collection->fresh())->name->toBe('Inondations 2026')->description->toBe('Saison des pluies');
+
+    Livewire::actingAs($this->redacteur)->test(CollectionShow::class, ['collection' => $collection->fresh()])
+        ->call('destroy')
+        ->assertRedirect(route('console.collections'));
+
+    expect(RelaisCollection::query()->count())->toBe(0)
+        ->and(RelaisItem::query()->whereKey($relais->id)->exists())->toBeTrue();
+    $this->assertDatabaseHas('audit_logs', ['action' => 'editorial.collection_deleted', 'actor_id' => $this->redacteur->id]);
+});
+
+it('refuse de renommer une collection à un journaliste sans droit d’arbitrage', function () {
+    $collection = new RelaisCollection(['name' => 'Privée']);
+    $collection->creator()->associate($this->redacteur);
+    $collection->save();
+
+    Livewire::actingAs(User::factory()->withTwoFactor()->withRole(Role::LectureSeule)->create())
+        ->test(CollectionShow::class, ['collection' => $collection])
+        ->call('openEdit')
+        ->assertForbidden();
 });
