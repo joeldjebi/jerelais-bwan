@@ -2482,10 +2482,10 @@
         "/communes/{commune}/localites": {
             "get": {
                 "operationId": "v1.communes.localites",
-                "description": "Quartiers, villages et sous-préfectures de la commune, triés par nom. 404 si la commune est fermée aux Relais.",
-                "summary": "Localités d'une commune ouverte",
+                "description": "Quartiers, villages et sous-préfectures d'une commune ouverte, triés par nom (404 si la commune est fermée).\nL'`uuid` sert au champ `localite` de `PUT /identity` (profil) : une localité suffit, sa commune est déduite.\nListe gérée par l'administration (console → Référentiels → Localités). Mise en cache 5 minutes.",
+                "summary": "Localités d'une commune",
                 "tags": [
-                    "Candidature"
+                    "Référentiels"
                 ],
                 "parameters": [
                     {
