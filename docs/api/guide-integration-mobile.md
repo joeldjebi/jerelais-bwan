@@ -287,7 +287,7 @@ curl -X PUT "$BASE/identity" -H "Authorization: Bearer $TOKEN" \
 | `last_name`, `first_names` | Texte |
 | `gender` | `femme` ou `homme` |
 | `birth_date` | **JJ/MM/AAAA** (`26/04/2000`) ou `AAAA-MM-JJ` ; âge minimum fixé par l’administration |
-| `commune`, `localite` | uuid de `GET /communes` et de `GET /communes/{commune}/localites` (5.2 bis) ; une localité seule suffit, sa commune est déduite |
+| `commune`, `localite` | uuid **renvoyés par** `GET /communes` et `GET /communes/{commune}/localites` (5.2 bis), jamais les exemples du Swagger ; la localité doit appartenir à la commune envoyée (sinon 422) ; une localité seule suffit, sa commune est déduite |
 | `document_type` | Une `value` de 5.0 (pièce active) ; changer de type retire les faces devenues inutiles |
 
 **200** : même forme que 5.1. **422** : champ invalide. **409** si la vérification est envoyée ou déjà vérifiée.

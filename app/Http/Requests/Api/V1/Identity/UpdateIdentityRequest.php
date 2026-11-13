@@ -9,8 +9,10 @@ use App\Domain\Identity\Models\IdentityDocumentType;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Localite;
 use App\Http\Requests\Concerns\DescribesIdentity;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * Profil pour les commissions, en mise à jour partielle : identité, commune ou localité, type de pièce.
@@ -53,7 +55,40 @@ class UpdateIdentityRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['birth_date.date_format' => __('La date de naissance doit être au format JJ/MM/AAAA, par exemple 26/04/2000.')];
+        return [
+            'birth_date.date_format' => __('La date de naissance doit être au format JJ/MM/AAAA, par exemple 26/04/2000.'),
+            'commune.exists' => __('Cette commune n’existe pas ou n’est pas ouverte : utilisez un uuid renvoyé par GET /communes.'),
+            'localite.exists' => __('Cette localité n’existe pas : utilisez un uuid renvoyé par GET /communes/{commune}/localites.'),
+        ];
+    }
+
+    /**
+     * Une localité doit appartenir à la commune envoyée avec elle.
+     *
+     * @return list<Closure(Validator): void>
+     */
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            if ($validator->errors()->hasAny(['commune', 'localite'])) {
+                return;
+            }
+
+            $commune = $this->input('commune');
+            $localite = $this->input('localite');
+
+            if (! is_string($commune) || ! is_string($localite) || $commune === '' || $localite === '') {
+                return;
+            }
+
+            $belongs = Localite::query()->where('uuid', $localite)
+                ->whereHas('commune', fn ($query) => $query->where('uuid', $commune))
+                ->exists();
+
+            if (! $belongs) {
+                $validator->errors()->add('localite', __('Cette localité n’appartient pas à la commune choisie.'));
+            }
+        }];
     }
 
     /**
@@ -111,7 +146,6 @@ class UpdateIdentityRequest extends FormRequest
         $uuid = $this->input('localite');
         $localite = is_string($uuid) ? Localite::query()->where('uuid', $uuid)->first() : null;
 
-        // Une localité d'une autre commune que celle choisie est ignorée : la commune choisie prime.
         return $localite !== null && ($commune === null || $localite->commune_id === $commune->id) ? $localite : null;
     }
 }
