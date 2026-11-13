@@ -95,6 +95,7 @@ class StoreRelaisItemRequest extends FormRequest
     public function messages(): array
     {
         return [
+            ...$this->referenceMessages(),
             'files.required' => __('media.none'),
             'files.*.max' => __('media.too_large_direct', ['max' => app(StoreDirectMedia::class)->maxMegabytes()]),
             'files.*.mimetypes' => __('media.unsupported_type'),

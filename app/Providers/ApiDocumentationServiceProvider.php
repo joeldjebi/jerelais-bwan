@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Domain\Access\Enums\Role;
+use App\Domain\Contribution\Models\Category;
 use App\Domain\Identity\Models\IdentityDocumentType;
+use App\Domain\Territoire\Models\Commune;
 use App\Models\User;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
 use Dedoc\Scramble\Scramble;
@@ -334,21 +336,41 @@ class ApiDocumentationServiceProvider extends ServiceProvider
         $file = (new StringType)->format('binary')->contentMediaType('application/octet-stream');
         $maxMb = (int) config('jerelais.media.direct_upload_max_mb');
 
+        try {
+            $categories = Category::query()->active()->get(['slug', 'name']);
+            $communes = Commune::query()->active()->orderBy('name')->get(['slug', 'name']);
+        } catch (\Throwable) {
+            $categories = collect();
+            $communes = collect();
+        }
+
+        $category = (new StringType)->setDescription('Catégorie du relais'.($send ? ' (obligatoire)' : '').' : choisir dans la liste. L’application peut envoyer le `slug` ou l’`uuid` de `GET /categories`. '
+            .$categories->map(fn (Category $item): string => '`'.$item->slug.'` '.$item->name)->implode(' ; ').'.');
+        $commune = (new StringType)->setDescription('**Commune où s’est passé l’événement**, déclarée par le Relais. À envoyer quand il n’y a pas de position GPS (`lat`/`lng`) ; avec le GPS, c’est le GPS qui choisit la commune. Le relais part au coordonnateur de cette commune. `slug` ou `uuid` de `GET /communes`.');
+
+        if ($categories->isNotEmpty()) {
+            $category->enum($categories->pluck('slug')->all())->example($categories->first()->slug);
+        }
+
+        if ($communes->isNotEmpty()) {
+            $commune->enum($communes->pluck('slug')->all());
+        }
+
         $body = (new ObjectType)
-            ->addProperty('category', $uuid('Catégorie : `uuid` renvoyé par `GET /categories`.'.($send ? ' Obligatoire.' : '')))
+            ->addProperty('category', $category)
             ->addProperty('title', $text('Titre, 120 caractères maximum.'.($send ? ' Obligatoire.' : ''), 'Route coupée au carrefour Siporex'))
             ->addProperty('description', $text('Ce que l’on voit, 2 000 caractères maximum.', 'L’eau arrive aux genoux.'))
             ->addProperty('urgency', (new StringType)->enum(['normal', 'important', 'urgent'])->setDescription('Urgence.')->example('normal'))
             ->addProperty('lat', $text('Latitude GPS. Avec `lng`, ou à la place `declared_commune`.', '5.341'))
             ->addProperty('lng', $text('Longitude GPS.', '-4.069'))
             ->addProperty('accuracy_m', $text('Précision GPS en mètres (facultatif).', '12'))
-            ->addProperty('declared_commune', $uuid('Commune : `uuid` de `GET /communes`, si pas de GPS. Le GPS prime pour router le relais.'))
+            ->addProperty('declared_commune', $commune)
             ->addProperty('declared_place', $text('Lieu précis en clair (facultatif).', 'Carrefour Siporex'))
             ->addProperty('has_minors', (new StringType)->enum(['false', 'true'])->setDescription('Des mineurs identifiables apparaissent-ils ?'.($send ? ' Obligatoire.' : ''))->example('false'))
             ->addProperty('people_consent', (new StringType)->enum(['not_applicable', 'yes', 'no'])->setDescription('Accord des personnes filmées.'.($send ? ' Obligatoire.' : ''))->example('not_applicable'))
             ->addProperty('credit_mode', (new StringType)->enum(['anonymous', 'name', 'pseudonym'])->setDescription('Mention à l’antenne.'.($send ? ' Obligatoire.' : ''))->example('anonymous'))
             ->addProperty('credit_name', $text('Pseudonyme à afficher, obligatoire si `credit_mode` = `pseudonym`.', 'Awa d’Abobo'))
-            ->addProperty('appel', $uuid('Facultatif : `uuid` de l’appel à relais auquel on répond (`GET /appels`).'));
+            ->addProperty('appel', $uuid('Facultatif — **répondre à un appel à relais** : quand la rédaction ou le coordonnateur demande aux Relais de couvrir un sujet (`GET /appels`), le Relais envoie ici l’`uuid` de cet appel ; son relais est alors rattaché à l’appel et remonte en priorité. Laisser vide pour un relais spontané.'));
 
         // Un champ par fichier (« files[0] », « files[1] »…) : l'outil d'essai sait téléverser un fichier par champ,
         // et PHP les regroupe dans la liste « files ». L'application peut envoyer « files[] » autant de fois que nécessaire.
@@ -359,7 +381,6 @@ class ApiDocumentationServiceProvider extends ServiceProvider
         }
 
         if ($send) {
-            $body->addProperty('client_uuid', $uuid('Facultatif : identifiant généré par l’application ; renvoyer le même rend le même relais (pas de doublon après une coupure).'));
             $body->setRequired(['category', 'title', 'has_minors', 'people_consent', 'credit_mode', 'files[0]']);
         } else {
             $body->addProperty('remove_medias[0]', $uuid('Fichier à **retirer** : `uuid` de `medias.N.uuid` (`remove_medias[]`, plusieurs possibles). Il doit en rester au moins un.'));

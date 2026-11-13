@@ -418,3 +418,21 @@ it('accepte des champs facultatifs envoyés vides (urgence, description, emplace
         ->assertJsonPath('data.urgency', 'normal')
         ->assertJsonCount(1, 'data.medias');
 });
+
+it('accepte la catégorie et la commune par leur slug, et génère client_uuid s’il est absent', function () {
+    $response = sendRelaisAtOnce(['category' => $this->category->slug, 'declared_commune' => $this->cocody->slug])
+        ->assertCreated()
+        ->assertJsonPath('data.category.uuid', $this->category->uuid)
+        ->assertJsonPath('data.commune.uuid', $this->cocody->uuid);
+
+    expect(RelaisItem::withoutCommuneRestriction()->where('uuid', $response->json('data.uuid'))->value('client_uuid'))->toBeString();
+});
+
+it('explique une catégorie ou une commune inconnue', function () {
+    sendRelaisAtOnce(['category' => 'inconnue', 'declared_commune' => 'atlantide'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'category' => 'Catégorie inconnue : choisissez-en une de GET /categories',
+            'declared_commune' => 'Commune inconnue ou fermée',
+        ]);
+});
