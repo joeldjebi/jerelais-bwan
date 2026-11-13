@@ -13,6 +13,7 @@ use App\Livewire\Console\Settings\Index as SettingsPage;
 use App\Livewire\Console\Team\Index as TeamPage;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
@@ -81,6 +82,7 @@ it('ajoute un coordonnateur rattaché à sa commune et lui envoie un lien d’ac
 
     Livewire::actingAs(admin())->test(TeamPage::class)
         ->call('openCreate')
+        ->set('access', 'email')
         ->set('name', 'Kouassi Yao')
         ->set('email', 'kouassi@reflet.tv')
         ->set('newRole', Role::Coordonnateur->value)
@@ -105,6 +107,7 @@ it('désigne un coordonnateur suppléant d’une commune [ADM-21]', function () 
 
     Livewire::actingAs(admin())->test(TeamPage::class)
         ->call('openCreate')
+        ->set('access', 'email')
         ->set('name', 'Aya Suppléante')
         ->set('email', 'aya@reflet.tv')
         ->set('newRole', Role::Coordonnateur->value)
@@ -255,4 +258,68 @@ it('refuse une adresse déjà utilisée par un autre membre [ADM-21]', function 
         ->set('email', $other->email)
         ->call('update')
         ->assertHasErrors('email');
+});
+
+it('crée un administrateur avec un mot de passe choisi, sans e-mail, utilisable aussitôt [ADM-21]', function () {
+    Notification::fake();
+    $actor = admin();
+
+    Livewire::actingAs($actor)->test(TeamPage::class)
+        ->call('openCreate')
+        ->assertSet('access', 'password')
+        ->set('name', 'Mariam Admin')
+        ->set('email', 'Mariam@Reflet.tv')
+        ->set('newRole', Role::Admin->value)
+        ->set('password', 'MotDePasseSolide2026')
+        ->set('passwordConfirmation', 'MotDePasseSolide2026')
+        ->call('create')
+        ->assertHasNoErrors()
+        ->assertSet('creating', false)
+        ->assertSee('Mariam Admin');
+
+    $member = User::query()->where('email', 'mariam@reflet.tv')->sole();
+    expect($member->hasRole(Role::Admin->value))->toBeTrue()
+        ->and(Hash::check('MotDePasseSolide2026', $member->password))->toBeTrue()
+        ->and($member->email_verified_at)->not->toBeNull();
+    Notification::assertNothingSent();
+    $this->assertDatabaseHas('audit_logs', ['action' => 'users.created', 'actor_id' => $actor->id]);
+
+    $this->post(route('logout'));
+    $this->post('/login', ['email' => 'mariam@reflet.tv', 'password' => 'MotDePasseSolide2026'])->assertRedirect();
+    $this->assertAuthenticatedAs($member);
+    $this->get(route('console.home'))->assertRedirect(route('console.security'));
+});
+
+it('refuse un mot de passe trop court ou mal confirmé à la création [ADM-21]', function () {
+    Livewire::actingAs(admin())->test(TeamPage::class)
+        ->call('openCreate')
+        ->set('name', 'Yao')
+        ->set('email', 'yao@reflet.tv')
+        ->set('newRole', Role::Admin->value)
+        ->set('password', 'court')
+        ->set('passwordConfirmation', 'court')
+        ->call('create')
+        ->assertHasErrors('password')
+        ->set('password', 'MotDePasseSolide2026')
+        ->set('passwordConfirmation', 'AutreMotDePasse2026')
+        ->call('create')
+        ->assertHasErrors('password');
+
+    expect(User::query()->where('email', 'yao@reflet.tv')->exists())->toBeFalse();
+});
+
+it('redéfinit le mot de passe d’un membre depuis sa fiche et ferme ses sessions [ADM-21]', function () {
+    $member = User::factory()->withTwoFactor()->withRole(Role::Journaliste)->create();
+    $member->createToken('appareil');
+
+    Livewire::actingAs(admin())->test(TeamPage::class)
+        ->call('openEdit', $member->uuid)
+        ->assertSet('password', '')
+        ->set('password', 'NouveauSecret2026')
+        ->set('passwordConfirmation', 'NouveauSecret2026')
+        ->call('update')
+        ->assertHasNoErrors();
+
+    expect(Hash::check('NouveauSecret2026', $member->fresh()->password))->toBeTrue()
+        ->and($member->tokens()->count())->toBe(0);
 });

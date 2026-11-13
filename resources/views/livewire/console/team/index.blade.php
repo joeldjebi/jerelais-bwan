@@ -100,7 +100,7 @@
     </x-console.group>
 
     {{-- Ajout d'un membre --}}
-    <x-console.slide-over model="creating" :title="$editingMember ? __('Modifier le membre') : __('Nouveau membre')" :description="$editingMember ? __('Un changement de rôle ou de communes ferme ses sessions : ses nouveaux droits s’appliquent à la reconnexion.') : __('Il recevra un e-mail pour définir son mot de passe.')">
+    <x-console.slide-over model="creating" :title="$editingMember ? __('Modifier le membre') : __('Nouveau membre')" :description="$editingMember ? __('Un changement de rôle ou de communes ferme ses sessions : ses nouveaux droits s’appliquent à la reconnexion.') : __('Administrateur, rédaction, coordonnateur… Choisissez son rôle et son accès.')">
         <form id="create-member" wire:submit="{{ $editingMember ? 'update' : 'create' }}" class="space-y-6">
             <x-console.group>
                 <div class="space-y-4 p-4">
@@ -108,6 +108,29 @@
                     <x-console.input :label="__('Adresse e-mail professionnelle')" name="email" type="email" wire:model="email" autocomplete="off" />
                 </div>
             </x-console.group>
+
+            @if ($editingMember)
+                <x-console.group :title="__('Mot de passe')" :footer="__('Laisser vide pour ne rien changer. Un nouveau mot de passe ferme ses sessions ouvertes.')">
+                    <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
+                        <x-console.input :label="__('Nouveau mot de passe')" name="password" type="password" wire:model="password" autocomplete="new-password" />
+                        <x-console.input :label="__('Confirmation')" name="passwordConfirmation" type="password" wire:model="passwordConfirmation" autocomplete="new-password" />
+                    </div>
+                </x-console.group>
+            @else
+                <x-console.group :title="__('Accès')" :footer="$access === 'password'
+                    ? __('Communiquez ce mot de passe au membre. 10 caractères minimum. La double authentification lui sera demandée à la première connexion.')
+                    : __('Le membre reçoit un e-mail pour choisir son mot de passe (l’envoi d’e-mails doit être configuré).')">
+                    <div class="space-y-4 p-4">
+                        <x-console.segmented property="access" :current="$access" :options="['password' => __('Choisir le mot de passe'), 'email' => __('Lien par e-mail')]" class="w-full" />
+                        @if ($access === 'password')
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <x-console.input :label="__('Mot de passe')" name="password" type="password" wire:model="password" autocomplete="new-password" />
+                                <x-console.input :label="__('Confirmation')" name="passwordConfirmation" type="password" wire:model="passwordConfirmation" autocomplete="new-password" />
+                            </div>
+                        @endif
+                    </div>
+                </x-console.group>
+            @endif
 
             <x-console.group :title="__('Rôle')">
                 <ul>
@@ -165,7 +188,7 @@
         <x-slot:footer>
             <x-ui.button variant="secondary" x-on:click="open = false">{{ __('Annuler') }}</x-ui.button>
             <x-ui.button type="submit" form="create-member" wire:loading.attr="disabled" wire:target="create,update">
-                <span wire:loading.remove wire:target="create,update">{{ $editingMember ? __('Enregistrer') : __('Ajouter et inviter') }}</span>
+                <span wire:loading.remove wire:target="create,update">{{ $editingMember ? __('Enregistrer') : ($access === 'password' ? __('Créer le compte') : __('Ajouter et inviter')) }}</span>
                 <span wire:loading wire:target="create,update">{{ __('Envoi…') }}</span>
             </x-ui.button>
         </x-slot:footer>
