@@ -7,8 +7,8 @@ use App\Domain\Candidature\Actions\SaveCandidatureStep;
 use App\Domain\Candidature\Actions\StartCandidature;
 use App\Domain\Candidature\Enums\CandidatureStep;
 use App\Domain\Candidature\Exceptions\CandidatureLocked;
-use App\Domain\Identity\Enums\IdentityDocumentType;
 use App\Domain\Identity\Exceptions\IdentityLocked;
+use App\Domain\Identity\Models\IdentityDocumentType;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Relais\Actions\CreateRelaisProfile;
 use App\Domain\Relais\Models\RelaisProfile;
@@ -51,7 +51,8 @@ class SaveIdentityDetails
             }
 
             if (array_key_exists('document_type', $data)) {
-                $verification->document_type = $data['document_type'];
+                $verification->document_type = $data['document_type']?->slug;
+                $verification->setRelation('documentType', $data['document_type']);
                 $this->removeUnneededSides($verification);
             }
 
@@ -94,11 +95,13 @@ class SaveIdentityDetails
 
     private function removeUnneededSides(IdentityVerification $verification): void
     {
-        if ($verification->document_type === null) {
+        $type = $verification->documentType;
+
+        if ($type === null) {
             return;
         }
 
-        $kept = array_map(fn ($kind): string => $kind->value, $verification->document_type->requiredFiles());
+        $kept = array_map(fn ($kind): string => $kind->value, $type->requiredFiles());
 
         foreach ($verification->files()->whereNotIn('kind', $kept)->get() as $file) {
             Storage::disk($file->disk)->delete($file->path);

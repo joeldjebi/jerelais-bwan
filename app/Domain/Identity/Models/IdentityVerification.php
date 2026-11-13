@@ -2,7 +2,6 @@
 
 namespace App\Domain\Identity\Models;
 
-use App\Domain\Identity\Enums\IdentityDocumentType;
 use App\Domain\Identity\Enums\IdentityStatus;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Localite;
@@ -24,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $user_id
  * @property int|null $commune_id
  * @property int|null $localite_id
- * @property IdentityDocumentType|null $document_type
+ * @property string|null $document_type valeur (slug) de la pièce choisie
  * @property IdentityStatus $status
  * @property CarbonImmutable|null $submitted_at
  * @property CarbonImmutable|null $decided_at
@@ -32,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $decision_comment
  * @property CarbonImmutable|null $created_at
  * @property-read User $user
+ * @property-read IdentityDocumentType|null $documentType
  * @property-read Commune|null $commune
  * @property-read Localite|null $localite
  * @property-read Collection<int, IdentityFile> $files
@@ -50,7 +50,6 @@ class IdentityVerification extends Model
     protected function casts(): array
     {
         return [
-            'document_type' => IdentityDocumentType::class,
             'status' => IdentityStatus::class,
             'submitted_at' => 'immutable_datetime',
             'decided_at' => 'immutable_datetime',
@@ -63,6 +62,16 @@ class IdentityVerification extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Pièce choisie (même désactivée depuis : le dossier garde son type).
+     *
+     * @return BelongsTo<IdentityDocumentType, $this>
+     */
+    public function documentType(): BelongsTo
+    {
+        return $this->belongsTo(IdentityDocumentType::class, 'document_type', 'slug');
     }
 
     /**

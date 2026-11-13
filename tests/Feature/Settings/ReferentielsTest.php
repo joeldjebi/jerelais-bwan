@@ -2,6 +2,7 @@
 
 use App\Domain\Access\Enums\Role;
 use App\Domain\Contribution\Models\Category;
+use App\Domain\Identity\Models\IdentityDocumentType;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\LieuType;
 use App\Domain\Territoire\Models\Region;
@@ -9,6 +10,7 @@ use App\Domain\Validation\Models\RejectionReason;
 use App\Livewire\Console\Communes\Index as CommunesPage;
 use App\Livewire\Console\Referentiels\Index as ReferentielsPage;
 use App\Models\User;
+use Laravel\Sanctum\Sanctum;
 use Livewire\Livewire;
 
 function referentielsAdmin(): User
@@ -162,4 +164,50 @@ it('refuse la création de commune à un coordonnateur [Annexe A]', function () 
     Livewire::actingAs(User::factory()->withTwoFactor()->coordonnateurOf($commune)->create())
         ->test(CommunesPage::class)
         ->assertForbidden();
+});
+
+it('ajoute une pièce d’identité proposée aussitôt à l’application [MOB-01]', function () {
+    $actor = referentielsAdmin();
+
+    Livewire::actingAs($actor)->test(ReferentielsPage::class)
+        ->set('list', 'pieces')
+        ->set('name', 'Carte de séjour')
+        ->set('sides', 'page')
+        ->call('add')
+        ->assertHasNoErrors()
+        ->assertSee('Carte de séjour');
+
+    $this->assertDatabaseHas('identity_document_types', ['slug' => 'carte_de_sejour', 'two_sided' => false, 'is_active' => true]);
+    $this->assertDatabaseHas('audit_logs', ['action' => 'referentiel.pieces.created', 'actor_id' => $actor->id]);
+
+    $this->getJson(route('api.v1.auth.register.options'))
+        ->assertOk()
+        ->assertJsonFragment(['value' => 'carte_de_sejour', 'label' => 'Carte de séjour', 'sides' => ['page']]);
+});
+
+it('renomme une pièce sans changer sa valeur, et la retire des choix une fois désactivée [MOB-01]', function () {
+    $actor = referentielsAdmin();
+    $permis = IdentityDocumentType::query()->where('slug', 'permis')->sole();
+
+    Livewire::actingAs($actor)->test(ReferentielsPage::class)
+        ->set('list', 'pieces')
+        ->call('startEdit', $permis->uuid)
+        ->set('editingName', 'Permis de conduire biométrique')
+        ->call('saveEdit')
+        ->call('toggle', $permis->uuid)
+        ->assertHasNoErrors();
+
+    expect($permis->fresh())->slug->toBe('permis')->name->toBe('Permis de conduire biométrique')->is_active->toBeFalse();
+
+    $this->getJson(route('api.v1.auth.register.options'))->assertOk()->assertJsonMissing(['value' => 'permis']);
+    $this->assertDatabaseHas('audit_logs', ['action' => 'referentiel.pieces.disabled', 'actor_id' => $actor->id]);
+});
+
+it('refuse une pièce désactivée dans la vérification d’identité [MOB-01]', function () {
+    IdentityDocumentType::query()->where('slug', 'permis')->update(['is_active' => false]);
+    $relais = User::factory()->withRole(Role::Relais)->create();
+    Sanctum::actingAs($relais);
+
+    $this->putJson(route('api.v1.identity.update'), ['document_type' => 'permis'])->assertUnprocessable()->assertJsonValidationErrors('document_type');
+    $this->putJson(route('api.v1.identity.update'), ['document_type' => 'passeport'])->assertOk()->assertJsonPath('data.required_files', ['page', 'selfie', 'profile_photo']);
 });

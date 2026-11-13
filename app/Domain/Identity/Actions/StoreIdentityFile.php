@@ -39,7 +39,7 @@ class StoreIdentityFile
             throw IdentityLocked::make();
         }
 
-        if ($kind->isDocumentSide() && ! in_array($kind, $verification->document_type?->sides() ?? [], true)) {
+        if ($kind->isDocumentSide() && ! in_array($kind, $verification->documentType?->sides() ?? [], true)) {
             throw new InvalidArgumentException(__('identity.errors.file_not_needed', ['kind' => $kind->label()]));
         }
 

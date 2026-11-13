@@ -77,6 +77,7 @@
                             @endif
                             <p class="mt-0.5 text-[0.75rem] text-mute">{{ $member->last_login_at ? __('Vu :when', ['when' => $member->last_login_at->diffForHumans()]) : __('Jamais connecté·e') }}</p>
                         </div>
+                        <x-ui.button size="sm" variant="ghost" wire:click="openEdit('{{ $member->uuid }}')">{{ __('Modifier') }}</x-ui.button>
                         @unless ($member->is(auth()->user()))
                             <x-ui.button size="sm" :variant="$suspended ? 'secondary' : 'ghost'" wire:click="askStatusChange('{{ $member->uuid }}')" @class(['text-status-rejected!' => ! $suspended])>
                                 {{ $suspended ? __('Réactiver') : __('Suspendre') }}
@@ -99,8 +100,8 @@
     </x-console.group>
 
     {{-- Ajout d'un membre --}}
-    <x-console.slide-over model="creating" :title="__('Nouveau membre')" :description="__('Il recevra un e-mail pour définir son mot de passe.')">
-        <form id="create-member" wire:submit="create" class="space-y-6">
+    <x-console.slide-over model="creating" :title="$editingMember ? __('Modifier le membre') : __('Nouveau membre')" :description="$editingMember ? __('Un changement de rôle ou de communes ferme ses sessions : ses nouveaux droits s’appliquent à la reconnexion.') : __('Il recevra un e-mail pour définir son mot de passe.')">
+        <form id="create-member" wire:submit="{{ $editingMember ? 'update' : 'create' }}" class="space-y-6">
             <x-console.group>
                 <div class="space-y-4 p-4">
                     <x-console.input :label="__('Nom complet')" name="name" wire:model="name" autocomplete="off" />
@@ -163,9 +164,9 @@
 
         <x-slot:footer>
             <x-ui.button variant="secondary" x-on:click="open = false">{{ __('Annuler') }}</x-ui.button>
-            <x-ui.button type="submit" form="create-member" wire:loading.attr="disabled" wire:target="create">
-                <span wire:loading.remove wire:target="create">{{ __('Ajouter et inviter') }}</span>
-                <span wire:loading wire:target="create">{{ __('Envoi…') }}</span>
+            <x-ui.button type="submit" form="create-member" wire:loading.attr="disabled" wire:target="create,update">
+                <span wire:loading.remove wire:target="create,update">{{ $editingMember ? __('Enregistrer') : __('Ajouter et inviter') }}</span>
+                <span wire:loading wire:target="create,update">{{ __('Envoi…') }}</span>
             </x-ui.button>
         </x-slot:footer>
     </x-console.slide-over>

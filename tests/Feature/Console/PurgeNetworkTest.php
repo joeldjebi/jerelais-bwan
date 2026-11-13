@@ -33,7 +33,8 @@ it('vide tous les comptes du réseau et leurs données, sans toucher à l’équ
     Sanctum::actingAs($relais);
     $this->putJson(route('api.v1.identity.update'), ['document_type' => 'passeport', 'last_name' => 'Traoré'])->assertOk();
     $this->post(route('api.v1.identity.files.store'), ['kind' => 'page', 'file' => UploadedFile::fake()->image('page.jpg')], ['Accept' => 'application/json'])->assertCreated();
-    $this->postJson(route('api.v1.relais.store'), ['client_uuid' => (string) Str::uuid()])->assertCreated();
+    fakeMultipart();
+    $this->postJson(route('api.v1.relais.store'), relaisApiPayload())->assertCreated();
 
     $candidat = User::factory()->withRole(Role::Candidat)->create();
     $coordinator = User::factory()->withTwoFactor()->withRole(Role::Coordonnateur)->create();

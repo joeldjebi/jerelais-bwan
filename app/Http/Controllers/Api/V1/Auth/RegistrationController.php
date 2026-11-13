@@ -8,8 +8,8 @@ use App\Domain\Auth\Actions\VerifyRegistrationCode;
 use App\Domain\Auth\Exceptions\AuthenticationRefused;
 use App\Domain\Auth\Exceptions\SmsNotSent;
 use App\Domain\Auth\Support\VerifiedRegistrations;
-use App\Domain\Identity\Enums\IdentityDocumentType;
 use App\Domain\Identity\Enums\IdentityFileKind;
+use App\Domain\Identity\Models\IdentityDocumentType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\CompleteRegistrationRequest;
 use App\Http\Requests\Api\V1\Auth\RequestOtpRequest;
@@ -37,14 +37,14 @@ class RegistrationController extends Controller
     public function options(): JsonResponse
     {
         return response()->json([
-            'data' => array_map(fn (IdentityDocumentType $type): array => [
+            'data' => IdentityDocumentType::query()->active()->get()->map(fn (IdentityDocumentType $type): array => [
                 /** Valeur à envoyer dans `document_type`. */
-                'value' => $type->value,
+                'value' => $type->slug,
                 /** Libellé prêt à afficher. */
-                'label' => $type->label(),
+                'label' => $type->name,
                 /** Fichiers à joindre : `recto` et `verso`, ou `page`. */
                 'sides' => array_map(fn (IdentityFileKind $kind): string => $kind->value, $type->sides()),
-            ], IdentityDocumentType::cases()),
+            ])->values()->all(),
             'meta' => [
                 /** Types de fichiers acceptés pour les faces de la pièce. */
                 'accepted_mime_types' => IdentityFileKind::Recto->mimeTypes(),

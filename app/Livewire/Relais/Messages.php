@@ -7,6 +7,7 @@ use App\Domain\Messagerie\Models\Conversation;
 use App\Livewire\Relais\Concerns\InteractsWithRelaisSpace;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -33,7 +34,7 @@ class Messages extends Component
 
     public function mount(SendMessage $send): void
     {
-        if ($this->selected === '') {
+        if ($this->selected === '' && $send->teamCommuneId($this->profile()) !== null) {
             $this->selected = $send->conversationFor($this->profile())->uuid;
         }
     }
@@ -77,6 +78,10 @@ class Messages extends Component
     #[Computed]
     public function current(): ?Conversation
     {
+        if (! Str::isUuid($this->selected)) {
+            return null;
+        }
+
         $conversation = Conversation::withoutCommuneRestriction()
             ->where('relais_profile_id', $this->profile()->id)
             ->where('uuid', $this->selected)

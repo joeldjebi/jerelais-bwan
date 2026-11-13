@@ -7,10 +7,10 @@ use App\Domain\Identity\Actions\DeleteIdentityFile;
 use App\Domain\Identity\Actions\SaveIdentityDetails;
 use App\Domain\Identity\Actions\StoreIdentityFile;
 use App\Domain\Identity\Actions\SubmitIdentityVerification;
-use App\Domain\Identity\Enums\IdentityDocumentType;
 use App\Domain\Identity\Enums\IdentityFileKind;
 use App\Domain\Identity\Exceptions\IdentityIncomplete;
 use App\Domain\Identity\Exceptions\IdentityLocked;
+use App\Domain\Identity\Models\IdentityDocumentType;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Identity\Support\IdentityChecklist;
 use App\Domain\Media\Exceptions\InfectedFile;
@@ -44,6 +44,7 @@ use Livewire\WithFileUploads;
  * @property-read RelaisProfile|null $relaisProfile
  * @property-read Collection<int, Commune> $communes
  * @property-read Collection<int, Localite> $localites
+ * @property-read Collection<int, IdentityDocumentType> $documentTypes
  */
 #[Layout('layouts::relais')]
 #[Title('Mon profil')]
@@ -83,7 +84,7 @@ class Profil extends Component
         ];
         $this->commune = (string) $verification->commune?->uuid;
         $this->localite = (string) $verification->localite?->uuid;
-        $this->documentType = (string) $verification->document_type?->value;
+        $this->documentType = (string) $verification->document_type;
     }
 
     public function updatedCommune(): void
@@ -148,7 +149,7 @@ class Profil extends Component
                 ...$changedIdentity,
                 'commune' => $commune,
                 'localite' => $localite !== null && ($commune === null || $localite->commune_id === $commune->id) ? $localite : null,
-                'document_type' => IdentityDocumentType::tryFrom($this->documentType),
+                'document_type' => $this->documentType !== '' ? IdentityDocumentType::query()->where('slug', $this->documentType)->first() : null,
             ]);
         } catch (IdentityLocked $exception) {
             $this->addError('form', $exception->getMessage());
@@ -225,6 +226,22 @@ class Profil extends Component
     public function communes(): Collection
     {
         return Commune::query()->active()->orderBy('name')->get(['id', 'uuid', 'name']);
+    }
+
+    /**
+     * Pièces proposées : celles actives, plus celle déjà choisie si l'administration l'a désactivée depuis.
+     *
+     * @return Collection<int, IdentityDocumentType>
+     */
+    #[Computed]
+    public function documentTypes(): Collection
+    {
+        $chosen = $this->verification->document_type;
+
+        return IdentityDocumentType::query()
+            ->where(fn ($query) => $query->where('is_active', true)->when($chosen !== null, fn ($query) => $query->orWhere('slug', $chosen)))
+            ->orderBy('position')
+            ->get();
     }
 
     /**

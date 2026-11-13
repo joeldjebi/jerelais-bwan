@@ -20,6 +20,11 @@ trait DescribesIdentity
      */
     protected function normalizeBirthDate(): void
     {
+        // Alias : l'application peut envoyer « first_name » (comme dans les réponses) au lieu de « first_names ».
+        if ($this->has('first_name') && ! $this->has('first_names')) {
+            $this->merge(['first_names' => $this->input('first_name')]);
+        }
+
         $value = $this->input('birth_date');
 
         if (is_string($value) && preg_match('#^\s*(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\s*$#', $value, $parts) === 1

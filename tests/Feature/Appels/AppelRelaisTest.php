@@ -4,7 +4,6 @@ use App\Domain\Access\Enums\Role;
 use App\Domain\AppelRelais\Actions\PublishAppel;
 use App\Domain\AppelRelais\Enums\AppelStatus;
 use App\Domain\AppelRelais\Models\AppelRelais;
-use App\Domain\Contribution\Models\Category;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Settings\Settings;
@@ -18,7 +17,6 @@ use Clickbar\Magellan\Data\Geometries\MultiPolygon;
 use Clickbar\Magellan\Data\Geometries\Point;
 use Clickbar\Magellan\Data\Geometries\Polygon;
 use Database\Seeders\ListsSeeder;
-use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Livewire\Livewire;
 
@@ -100,12 +98,13 @@ it('rattache la réponse à l’appel et la fait remonter en priorité dans la f
     $appel = launch($this->redacteur);
     Sanctum::actingAs($this->relaisYop->user);
 
-    $this->postJson(route('api.v1.relais.store'), ['client_uuid' => (string) Str::uuid(), 'appel' => $appel->uuid, 'category' => Category::query()->value('uuid')])
+    fakeMultipart();
+    $this->postJson(route('api.v1.relais.store'), relaisApiPayload(['appel' => $appel->uuid, 'declared_commune' => $this->yopougon->uuid]))
         ->assertCreated();
     expect(RelaisItem::query()->where('appel_relais_id', $appel->id)->count())->toBe(1);
 
     Sanctum::actingAs($this->relaisBouake->user);
-    $this->postJson(route('api.v1.relais.store'), ['client_uuid' => (string) Str::uuid(), 'appel' => $appel->uuid])
+    $this->postJson(route('api.v1.relais.store'), relaisApiPayload(['appel' => $appel->uuid]))
         ->assertJsonValidationErrors(['appel' => 'Cet appel ne concerne pas votre zone ou il est clos.']);
 
     $sansAppel = RelaisItem::factory()->create(['commune_id' => $this->yopougon->id, 'title' => 'Sans appel', 'received_at' => now()->subHour()]);

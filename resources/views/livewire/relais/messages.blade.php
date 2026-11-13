@@ -36,5 +36,10 @@
             </form>
             @error('body') <p class="px-4 pb-3 text-xs font-medium text-status-rejected">{{ $message }}</p> @enderror
         </section>
+    @elseif ($this->conversations->isEmpty())
+        <section class="rounded-[1.75rem] bg-white p-8 text-center shadow-[0_1px_2px_rgb(0_0_0/0.04),0_24px_48px_-28px_rgb(0_0_0/0.18)]" data-enter>
+            <p class="text-[0.9375rem] text-graphite">{{ __('conversations.errors.no_commune') }}</p>
+            <x-ui.button :href="route('relais.profile')" wire:navigate class="mt-4">{{ __('Compléter mon profil') }}</x-ui.button>
+        </section>
     @endif
 </div>

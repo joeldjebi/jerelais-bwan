@@ -72,7 +72,8 @@ it('fait du compte inscrit un Relais sans commune, qui peut envoyer des relais s
         ->and($profile->commune_id)->toBeNull()
         ->and($profile->number)->toStartWith('JR-');
 
-    $this->postJson(route('api.v1.relais.store'), ['client_uuid' => (string) Str::uuid()])->assertCreated();
+    fakeMultipart();
+    $this->postJson(route('api.v1.relais.store'), relaisApiPayload())->assertCreated();
     $this->getJson(route('api.v1.me.show'))->assertJsonPath('data.identity_status', null)->assertJsonPath('data.gains_eligible', false);
 });
 
@@ -104,7 +105,7 @@ it('complète le profil en plusieurs fois : seuls les champs envoyés changent',
     $this->putJson(route('api.v1.identity.update'), ['last_name' => 'Traoré', 'first_names' => 'Awa Mariam'])
         ->assertOk()
         ->assertJsonPath('data.last_name', 'Traoré')
-        ->assertJsonPath('data.first_names', 'Awa Mariam');
+        ->assertJsonPath('data.first_name', 'Awa Mariam');
 
     $this->putJson(route('api.v1.identity.update'), ['gender' => 'femme', 'birth_date' => '2001-04-17'])
         ->assertOk()

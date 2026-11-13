@@ -4,6 +4,7 @@ namespace App\Domain\Settings\Enums;
 
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Contribution\Models\Category;
+use App\Domain\Identity\Models\IdentityDocumentType;
 use App\Domain\Territoire\Models\LieuType;
 use App\Domain\Territoire\Models\Localite;
 use App\Domain\Territoire\Models\Region;
@@ -11,7 +12,7 @@ use App\Domain\Validation\Models\RejectionReason;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Listes de référence gérées depuis la console (ADM-20, ADM-23, COO-15). Les communes ont leur propre page.
+ * Listes de référence gérées depuis la console (ADM-20, ADM-23, COO-15, MOB-01). Les communes ont leur propre page.
  */
 enum ReferenceList: string
 {
@@ -20,6 +21,7 @@ enum ReferenceList: string
     case LieuTypes = 'lieux';
     case Categories = 'categories';
     case RejectionReasons = 'motifs';
+    case IdentityDocuments = 'pieces';
 
     public function label(): string
     {
@@ -30,7 +32,7 @@ enum ReferenceList: string
     {
         return match ($this) {
             self::Regions, self::Localites, self::LieuTypes => Permission::TerritoireManage,
-            self::Categories, self::RejectionReasons => Permission::SettingsManage,
+            self::Categories, self::RejectionReasons, self::IdentityDocuments => Permission::SettingsManage,
         };
     }
 
@@ -45,6 +47,7 @@ enum ReferenceList: string
             self::LieuTypes => LieuType::class,
             self::Categories => Category::class,
             self::RejectionReasons => RejectionReason::class,
+            self::IdentityDocuments => IdentityDocumentType::class,
         };
     }
 
@@ -57,10 +60,10 @@ enum ReferenceList: string
     }
 
     /**
-     * Les catégories et les motifs se désactivent (l'historique les référence) ; les autres se renomment seulement.
+     * Les catégories, les motifs et les pièces se désactivent (l'historique les référence) ; les autres se renomment seulement.
      */
     public function canBeDisabled(): bool
     {
-        return in_array($this, [self::Categories, self::RejectionReasons], true);
+        return in_array($this, [self::Categories, self::RejectionReasons, self::IdentityDocuments], true);
     }
 }

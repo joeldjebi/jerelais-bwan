@@ -56,7 +56,7 @@ class IdentityController extends Controller
      * **Mise à jour partielle** : seuls les champs envoyés sont modifiés, l'application peut compléter le profil en plusieurs fois.
      * `last_name`, `first_names`, `gender` (`femme` ou `homme`), `birth_date` (AAAA-MM-JJ) ;
      * `commune` (uuid de `GET /communes`) et/ou `localite` (uuid de `GET /communes/{commune}/localites`) : une localité suffit,
-     * sa commune est déduite ; `document_type` : `cni`, `passeport`, `permis`, `carte_consulaire` ou `attestation_identite`.
+     * sa commune est déduite ; `document_type` : une `value` de `GET /auth/register/options` (`cni`, `passeport`, `permis`…, liste gérée par l'administration).
      * Changer de type de pièce retire les faces devenues inutiles. 409 si la vérification est envoyée ou déjà vérifiée.
      *
      * @response IdentityVerificationResource

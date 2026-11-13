@@ -3,9 +3,9 @@
 namespace App\Http\Resources\V1;
 
 use App\Domain\Candidature\Models\Candidature;
-use App\Domain\Identity\Enums\IdentityDocumentType;
 use App\Domain\Identity\Enums\IdentityFileKind;
 use App\Domain\Identity\Enums\IdentityStatus;
+use App\Domain\Identity\Models\IdentityDocumentType;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Identity\Support\IdentityChecklist;
 use Illuminate\Http\Request;
@@ -33,26 +33,23 @@ class IdentityVerificationResource extends JsonResource
             'is_editable' => $this->status->isEditable(),
             'gains_eligible' => $this->status === IdentityStatus::Verified,
             'last_name' => $identity?->last_name,
-            'first_names' => $identity?->first_names,
+            'first_name' => $identity?->first_names,
             'gender' => $identity?->gender?->value,
             'birth_date' => $identity?->birth_date?->toDateString(),
             'commune' => $this->commune === null ? null : ['uuid' => $this->commune->uuid, 'name' => $this->commune->name],
             'localite' => $this->localite === null ? null : ['uuid' => $this->localite->uuid, 'name' => $this->localite->name],
-            'document_type' => $this->document_type?->value,
+            'document_type' => $this->document_type,
             'required_files' => array_map(
                 fn (IdentityFileKind $kind): string => $kind->value,
-                $this->document_type?->requiredFiles() ?? [IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto],
+                $this->documentType?->requiredFiles() ?? [IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto],
             ),
             'files' => IdentityFileResource::collection($this->files),
             'missing' => $this->status->isEditable() ? IdentityChecklist::missing($this->resource) : (object) [],
             'decision_comment' => $this->status === IdentityStatus::Rejected ? $this->decision_comment : null,
             'submitted_at' => $this->submitted_at?->toIso8601ZuluString(),
             'decided_at' => $this->decided_at?->toIso8601ZuluString(),
-            'document_types' => array_map(fn (IdentityDocumentType $type): array => [
-                'value' => $type->value,
-                'label' => $type->label(),
-                'sides' => array_map(fn (IdentityFileKind $kind): string => $kind->value, $type->sides()),
-            ], IdentityDocumentType::cases()),
+            'document_types' => IdentityDocumentType::query()->active()->get()
+                ->map(fn (IdentityDocumentType $type): array => $type->toOption())->values()->all(),
         ];
     }
 }

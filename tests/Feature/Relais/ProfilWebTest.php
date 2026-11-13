@@ -68,5 +68,5 @@ it('laisse un Relais recruté par candidature compléter sa commune et sa pièce
         ->call('save')
         ->assertHasNoErrors();
 
-    expect(IdentityVerification::query()->where('user_id', $this->relais->id)->first()->document_type?->value)->toBe('passeport');
+    expect(IdentityVerification::query()->where('user_id', $this->relais->id)->first()->document_type)->toBe('passeport');
 });

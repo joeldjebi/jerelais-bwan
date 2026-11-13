@@ -11,7 +11,7 @@
     $phone = $v->user?->phoneNumber();
     $name = $v->user?->name ?: __('Sans nom');
     $tone = ['draft' => 'neutral', 'submitted' => 'info', 'verified' => 'success', 'rejected' => 'warning'];
-    $kinds = [...($v->document_type?->sides() ?? []), IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto];
+    $kinds = [...($v->documentType?->sides() ?? []), IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto];
 @endphp
 
 <div class="space-y-7" x-data="{ zoom: null }">
@@ -20,7 +20,7 @@
         {{ __('Vérifications d’identité') }}
     </a>
 
-    <x-console.page-header :eyebrow="__('Vérification d’identité')" :title="$name" :subtitle="$v->document_type?->label() ?? __('Type de pièce non choisi')">
+    <x-console.page-header :eyebrow="__('Vérification d’identité')" :title="$name" :subtitle="$v->documentType?->name ?? __('Type de pièce non choisi')">
         <x-slot:actions>
             <x-console.badge :tone="$tone[$v->status->value] ?? 'neutral'">{{ $v->status->label() }}</x-console.badge>
         </x-slot:actions>

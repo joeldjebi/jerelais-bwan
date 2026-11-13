@@ -120,6 +120,14 @@ it('écrit à son coordonnateur depuis le site [MOB-22]', function () {
     expect(Message::query()->sole()->from_staff)->toBeFalse();
 });
 
+it('ouvre la messagerie d’un Relais inscrit sans commune en l’invitant à compléter son profil [MOB-22]', function () {
+    $this->profile->forceFill(['commune_id' => null])->save();
+
+    $this->actingAs($this->user)->get(route('relais.messages'))
+        ->assertOk()
+        ->assertSee('Indiquez votre commune dans votre profil');
+});
+
 it('réserve l’espace Relais aux Relais recrutés', function () {
     $candidat = User::factory()->withRole(Role::Candidat)->create();
 

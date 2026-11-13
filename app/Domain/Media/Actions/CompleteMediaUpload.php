@@ -2,6 +2,7 @@
 
 namespace App\Domain\Media\Actions;
 
+use App\Domain\Contribution\Actions\SubmitWhenUploaded;
 use App\Domain\Contribution\Support\RelaisSender;
 use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Exceptions\MediaRefused;
@@ -16,7 +17,10 @@ use Throwable;
  */
 class CompleteMediaUpload
 {
-    public function __construct(private readonly MultipartStorage $storage) {}
+    public function __construct(
+        private readonly MultipartStorage $storage,
+        private readonly SubmitWhenUploaded $submitWhenUploaded,
+    ) {}
 
     /**
      * @param  list<array{number: int, etag: string}>  $parts
@@ -58,6 +62,10 @@ class CompleteMediaUpload
         }
 
         $media->forceFill(['status' => MediaStatus::Uploaded, 'upload_id' => null, 'uploaded_at' => now()])->save();
+
+        // Relais envoyé en un seul appel depuis l'application : soumis dès que son dernier fichier est reçu
+        // (avant le contrôle du fichier, qui se fait en tâche de fond comme pour un envoi classique).
+        $this->submitWhenUploaded->handle($media->relaisItem);
 
         ProcessMedia::dispatch($media->id);
 

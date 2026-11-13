@@ -44,7 +44,7 @@ Numéros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00
 Le Relais complète son profil quand il le souhaite ; il est **obligatoire seulement pour recevoir ses commissions**. Ni la connexion ni l’envoi de relais n’en dépendent.
 
 1. `GET /identity` : statut, éléments manquants (`missing`), identité déjà saisie, types de pièces acceptés (`document_types`, aussi en public sur `GET /auth/register/options`) et `gains_eligible`.
-2. `PUT /identity` (**mise à jour partielle** : seuls les champs envoyés changent) : `last_name`, `first_names`, `gender`, `birth_date`, `commune` et/ou `localite`, `document_type` (`cni`, `permis`, `carte_consulaire` : recto et verso ; `passeport`, `attestation_identite` : une page).
+2. `PUT /identity` (**mise à jour partielle** : seuls les champs envoyés changent) : `last_name`, `first_names`, `gender`, `birth_date`, `commune` et/ou `localite`, `document_type` (une `value` de `GET /auth/register/options` ; liste gérée par l’administration, avec ses faces `sides`).
 3. `POST /identity/files` (multipart `kind` + `file`) pour chaque fichier de `required_files` : faces de la pièce (image ou PDF), `selfie` (la personne tenant sa pièce) et `profile_photo` (image). `DELETE /identity/files/{kind}` pour en retirer un.
 4. `POST /identity/submit` : envoi à l’administration (**422** avec la liste de ce qui manque sinon).
 5. Suivi : `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` : corriger selon `decision_comment`, puis renvoyer. Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).
@@ -64,21 +64,25 @@ Statuts d’une candidature : `draft` (à compléter) · `submitted` (reçue) ·
 
 ## Envoyer un relais
 
-1. `POST /relais` crée le brouillon. Le champ `client_uuid` est généré par l’application : renvoyer la même requête (réseau coupé, nouvel essai) rend le **même** relais (200) au lieu d’en créer un second (201).
-2. Pour chaque fichier, l’envoi se fait **directement vers le stockage**, en morceaux :
-   1. `POST /relais/{relais}/medias` annonce le fichier (`client_uuid`, `kind`, `mime`, `size` en octets, `sha256`). La réponse donne `upload.part_size` et, dans `upload.missing_parts`, une URL signée par morceau (valable 30 minutes).
-   2. Découper le fichier en morceaux de `part_size` octets (le dernier est plus petit) et envoyer chacun par `PUT` brut sur son URL, **sans** en-tête `Authorization`. Conserver l’en-tête `ETag` de chaque réponse.
-   3. Après une coupure : `GET /medias/{media}` renvoie les morceaux déjà reçus (`uploaded_parts`) et de nouvelles URL pour les manquants. Seuls ceux-là sont à renvoyer.
-   4. `POST /medias/{media}/complete` avec `parts: [{number, etag}]`. La taille totale reçue doit être exactement celle annoncée.
-   5. Le serveur contrôle ensuite le fichier (type réel, antivirus, empreinte, métadonnées, vignette) : `status` passe de `uploaded` à `processing`, puis `ready` ou `rejected` (avec la raison dans `rejection`). Interroger `GET /medias/{media}` toutes les quelques secondes jusqu’à `ready`.
-3. `POST /relais/{relais}/submit` envoie le relais. Il faut : au moins un média entièrement envoyé (clôturé, non rejeté ; son contrôle peut encore être en cours), la catégorie, le titre, une position GPS ou une commune déclarée, et les trois réponses de protection (`has_minors`, `people_consent`, `credit_mode`, plus `credit_name` si le Relais choisit un pseudonyme). Sinon **422** avec la liste des champs manquants. L’appel est idempotent.
-4. Le relais apparaît dans `GET /relais` avec son statut, mis à jour à chaque décision.
+**Pas de brouillon, pas d’appel d’envoi séparé.** Un relais s’envoie en un seul appel ; les fichiers suivent, et le relais part tout seul quand le dernier est reçu.
+
+1. `POST /relais` avec **tout le contenu** et la **liste des fichiers** : `client_uuid` (généré par l’application), `category`, `title`, `location` (GPS) ou `declared_commune`, `protections` (`has_minors`, `people_consent`, `credit_mode`, plus `credit_name` pour un pseudonyme), et `medias` : 1 à 10 fichiers, chacun avec `client_uuid`, `kind` (`photo`, `video`, `audio`), `mime`, `size` en octets et `sha256`. Tout est contrôlé d’emblée : **422** avec la liste des champs (par exemple `medias.0.size`), et **rien n’est créé**.
+2. La réponse (**201**) contient le relais (statut `uploading`, « envoi en cours ») et, dans **`uploads`**, pour chaque fichier : son `uuid`, `upload.part_size` et une URL signée par morceau dans `upload.missing_parts` (valable 30 minutes).
+3. Pour chaque fichier, l’envoi se fait **directement vers le stockage**, en morceaux :
+   1. Découper le fichier en morceaux de `part_size` octets (le dernier est plus petit) et envoyer chacun par `PUT` brut sur son URL, **sans** en-tête `Authorization`. Conserver l’en-tête `ETag` de chaque réponse.
+   2. Après une coupure : `GET /medias/{media}` renvoie les morceaux déjà reçus (`uploaded_parts`) et de nouvelles URL pour les manquants. Seuls ceux-là sont à renvoyer. Renvoyer `POST /relais` avec le même `client_uuid` redonne aussi le relais et des URL à jour (200), sans doublon.
+   3. `POST /medias/{media}/complete` avec `parts: [{number, etag}]`. La taille totale reçue doit être exactement celle annoncée.
+4. **Dès que le dernier fichier est clos, le relais est soumis automatiquement** : statut `received`, routé vers la commune du GPS (sinon la commune déclarée), dans la file du coordonnateur. Aucun autre appel n’est nécessaire. Un fichier jamais terminé est abandonné au bout de 48 heures, et le relais part avec les fichiers reçus.
+5. Chaque fichier est ensuite contrôlé en tâche de fond (type réel, antivirus, empreinte, métadonnées, vignette) : `uploaded` → `processing` → `ready` ou `rejected` (raison dans `rejection`), visible avec `GET /medias/{media}` ou `GET /relais/{relais}`.
+6. Le relais apparaît dans `GET /relais` avec son statut, mis à jour à chaque décision.
+
+**Complément demandé par le coordonnateur** (`complement_requested`) : `POST /relais/{relais}/medias` ajoute un fichier (mêmes étapes 3), puis `POST /relais/{relais}/complement` envoie la réponse.
 
 Statuts d’un média : `pending` (en attente des morceaux) · `uploaded` (reçu, à contrôler) · `processing` · `ready` · `rejected`.
 
 Raisons de rejet d’un média : format non accepté, antivirus, fichier incomplet ou altéré, durée dépassée, taille dépassée, fichier illisible, envoi jamais terminé, taille différente de celle annoncée. Le texte affichable est dans `rejection`.
 
-Statuts d’un relais vus par le Relais : `uploading` (brouillon, envoi en cours) · `received` (reçu, en vérification) · `complement_requested` (le coordonnateur pose une question : `complement_request`, réponse par `POST /relais/{relais}/complement`) · `validated` · `rejected` (motif dans `rejection`) · `selected` (choisi par la rédaction) · `broadcast` (diffusé) · `archived`.
+Statuts d’un relais vus par le Relais : `uploading` (fichiers en cours d’envoi) · `received` (reçu, en vérification) · `complement_requested` (le coordonnateur pose une question : `complement_request`, réponse par `POST /relais/{relais}/complement`) · `validated` · `rejected` (motif dans `rejection`) · `selected` (choisi par la rédaction) · `broadcast` (diffusé) · `archived`.
 
 Limites par défaut, modifiables par l’administration et lisibles dans `GET /settings` : vidéo de 3 minutes, audio de 10 minutes, 10 médias par relais, 500 Mo par fichier.
 

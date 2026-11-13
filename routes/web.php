@@ -29,6 +29,7 @@ use App\Livewire\Console\Communes\Index as CommunesPage;
 use App\Livewire\Console\Dashboard;
 use App\Livewire\Console\Editorial\Index as EditorialPage;
 use App\Livewire\Console\Flux\Index as FluxPage;
+use App\Livewire\Console\Formation\Index as FormationPage;
 use App\Livewire\Console\Identity\Index as IdentityPage;
 use App\Livewire\Console\Identity\Show as IdentityShowPage;
 use App\Livewire\Console\Legal\Index as LegalPage;
@@ -138,6 +139,7 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::livewire('donnees-personnelles', PrivacyPage::class)->middleware('permission:'.Permission::UsersManage->value)->name('privacy');
         Route::get('donnees-personnelles/{user}/export', PrivacyExportController::class)->middleware('permission:'.Permission::UsersManage->value)->name('privacy.export');
         Route::livewire('textes', LegalPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('legal');
+        Route::livewire('formation', FormationPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('formation');
         Route::livewire('journal', AuditPage::class)->middleware('permission:'.Permission::AuditView->value)->name('audit');
     });
 });

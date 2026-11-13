@@ -25,6 +25,7 @@ BASE=https://jerelais.com/api/v1
 Inscription :  register (SMS) → register/verify → register/complete (mot de passe) → écran de connexion
 Connexion   :  login (numéro + mot de passe) → jeton → envoi de relais possible tout de suite
 Oubli       :  auth/otp (SMS) → auth/verify → jeton → me/password (sans l’ancien, 15 min)
+Relais      :  relais (contenu + liste des fichiers) → envoi des fichiers → soumis automatiquement
 Commissions :  plus tard, dans le profil : identity (identité, commune, pièce, selfie, photo) → identity/submit → vérifiée par l’équipe
 ```
 
@@ -76,7 +77,7 @@ curl -X POST "$BASE/auth/register/complete" -H "Accept: application/json" -H "Co
 |---|---|
 | `phone` | Le numéro vérifié en 1.2, dans les 30 minutes |
 | `password` + `password_confirmation` | Au moins 8 caractères, identiques |
-| `last_name`, `first_names` | Facultatifs |
+| `last_name`, `first_names` | Facultatifs (`first_name` est aussi accepté) |
 | `gender` | Facultatif : `femme` ou `homme` |
 | `birth_date` | Facultatif : **JJ/MM/AAAA** (`26/04/2000`) ; `2000-04-26` est aussi accepté ; âge minimum fixé par l’administration |
 
@@ -121,9 +122,27 @@ Facultatif : `device_name`, `platform` (`android` ou `ios`), `app_version`. Sans
     "password_required": false,
     "device": { "uuid": "0b1c…", "name": "Appareil mobile", "platform": "android", "app_version": null, "push_enabled": false, "last_seen_at": "2026-11-11T10:15:00Z" },
     "user": {
-      "uuid": "9d6a1c2e-…", "name": "Awa Traoré", "phone_masked": "+22507 •• •• •• 01",
-      "email": null, "status": "active", "roles": ["relais"], "has_password": true,
-      "identity_status": "draft", "gains_eligible": false, "created_at": "2026-11-10T09:00:00Z"
+      "uuid": "9d6a1c2e-…",
+      "first_name": "Awa",
+      "last_name": "Traoré",
+      "gender": "femme",
+      "birth_date": "2000-04-26",
+      "phone_masked": "+22507 •• •• •• 01",
+      "email": null,
+      "status": "active",
+      "roles": ["relais"],
+      "has_password": true,
+      "relais": {
+        "number": "JR-000003",
+        "display_name": "Awa T.",
+        "status": "active",
+        "commune": null,
+        "localite": null,
+        "activated_at": "2026-11-12T10:00:00Z"
+      },
+      "identity_status": null,
+      "gains_eligible": false,
+      "created_at": "2026-11-12T10:00:00Z"
     }
   }
 }
@@ -181,7 +200,7 @@ curl "$BASE/me" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
 curl -X POST "$BASE/auth/logout" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
 ```
 
-`GET /me` (200) : mêmes champs que `user` en 2, dont `identity_status` et `gains_eligible`. `logout` : **204**.
+`GET /me` (200) : mêmes champs que `user` en 2 : `first_name` et `last_name` séparés (pas de `name`), `gender`, `birth_date`, profil `relais` (numéro, nom affiché, statut, commune), `identity_status` et `gains_eligible`. Les champs non renseignés valent `null`. `logout` : **204**.
 
 **401** `{"message": "Unauthenticated."}` sur n’importe quelle route : jeton expiré ou révoqué → revenir à l’écran de connexion.
 
@@ -197,7 +216,7 @@ curl -X POST "$BASE/auth/logout" -H "Authorization: Bearer $TOKEN" -H "Accept: a
 curl "$BASE/auth/register/options" -H "Accept: application/json"
 ```
 
-**200** (public, mis en cache 5 minutes)
+**200** (public, mis en cache 5 minutes). **La liste est gérée par l’administration** (console → Référentiels → Pièces d’identité) : une pièce peut être ajoutée ou retirée à tout moment. Ne pas la coder en dur : l’afficher telle que reçue, et demander les fichiers indiqués par `sides`.
 ```json
 {
   "data": [
@@ -226,7 +245,7 @@ curl "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: application/
     "is_editable": true,
     "gains_eligible": false,
     "last_name": null,
-    "first_names": null,
+    "first_name": null,
     "gender": null,
     "birth_date": null,
     "commune": null,
@@ -269,7 +288,7 @@ curl -X PUT "$BASE/identity" -H "Authorization: Bearer $TOKEN" \
 | `gender` | `femme` ou `homme` |
 | `birth_date` | **JJ/MM/AAAA** (`26/04/2000`) ou `AAAA-MM-JJ` ; âge minimum fixé par l’administration |
 | `commune`, `localite` | uuid de `GET /communes` et `GET /communes/{commune}/localites` ; une localité seule suffit |
-| `document_type` | Une valeur de 5.0 ; changer de type retire les faces devenues inutiles |
+| `document_type` | Une `value` de 5.0 (pièce active) ; changer de type retire les faces devenues inutiles |
 
 **200** : même forme que 5.1. **422** : champ invalide. **409** si la vérification est envoyée ou déjà vérifiée.
 
@@ -292,6 +311,75 @@ curl -X POST "$BASE/identity/submit" -H "Authorization: Bearer $TOKEN" -H "Accep
 
 ---
 
+## 6. Envoyer un relais (un seul appel, pas de brouillon)
+
+### 6.1 Contenu et liste des fichiers
+
+```bash
+curl -X POST "$BASE/relais" -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" -H "Content-Type: application/json" \
+  -d '{
+    "client_uuid": "01a1c6a8-6f00-7000-8000-000000000001",
+    "category": "<uuid de GET /categories>",
+    "title": "Route coupée au carrefour Siporex",
+    "description": "L’eau arrive aux genoux.",
+    "urgency": "urgent",
+    "location": {"lat": 5.341, "lng": -4.069, "accuracy_m": 12},
+    "declared_commune": "<uuid de GET /communes>",
+    "protections": {"has_minors": false, "people_consent": "not_applicable", "credit_mode": "anonymous"},
+    "medias": [
+      {"client_uuid": "01a1c6a8-6f00-7000-8000-0000000000a1", "kind": "video", "mime": "video/mp4",
+       "size": 48211337, "sha256": "e3b0c442…"}
+    ]
+  }'
+```
+
+| Champ | Règle |
+|---|---|
+| `client_uuid` | Généré par l’application : renvoyer le même rend le même relais (reprise sans doublon) |
+| `category`, `title` | Obligatoires |
+| `location` ou `declared_commune` | Au moins l’un des deux ; le GPS prime pour choisir la commune |
+| `protections` | `has_minors` (oui/non), `people_consent` (`yes`, `no`, `not_applicable`), `credit_mode` (`name`, `pseudonym`, `anonymous`), `credit_name` si pseudonyme |
+| `medias` | 1 à 10 fichiers : `client_uuid`, `kind` (`photo`, `video`, `audio`), `mime`, `size` (octets), `sha256` |
+| `appel` | Facultatif : `uuid` de l’appel à relais auquel on répond |
+
+**201** — relais créé (`status: "uploading"`) et, dans `uploads`, les URL d’envoi de chaque fichier :
+```json
+{
+  "data": { "uuid": "…", "status": "uploading", "status_label": "Envoi en cours", "title": "Route coupée au carrefour Siporex", "…": "…" },
+  "uploads": [
+    {
+      "uuid": "<uuid du fichier>",
+      "status": "pending",
+      "upload": {
+        "part_size": 8388608,
+        "part_count": 6,
+        "missing_parts": [ { "number": 1, "url": "https://…" }, { "number": 2, "url": "https://…" } ]
+      }
+    }
+  ]
+}
+```
+
+**422** : contenu incomplet ou fichier refusé, rien n’est créé (`errors` : `category`, `title`, `location`, `declared_commune`, `protections.*`, `medias`, `medias.0.size`…). **409** : `client_uuid` déjà utilisé par un autre compte. **403** : Relais suspendu.
+
+### 6.2 Envoi des fichiers (directement vers le stockage, reprenable)
+
+Pour chaque fichier de `uploads` :
+1. Découper le fichier en morceaux de `part_size` octets et envoyer chacun par `PUT` brut sur son URL (`missing_parts`), **sans** en-tête `Authorization`. Garder l’en-tête `ETag` de chaque réponse.
+2. Après une coupure : `GET /medias/{uuid}` redonne les morceaux reçus et des URL neuves pour les manquants.
+3. Clore : `POST /medias/{uuid}/complete` avec `{"parts": [{"number": 1, "etag": "…"}, …]}`.
+
+**Quand le dernier fichier est clos, le relais est soumis automatiquement** (`status: "received"`, en vérification) : aucun autre appel. Suivi : `GET /relais` et `GET /relais/{uuid}`.
+
+### 6.3 À quoi servent les routes de fichiers
+
+| Route | Rôle |
+|---|---|
+| `GET /medias/{uuid}` | État d’un fichier : morceaux reçus et nouvelles URL après une coupure ; puis contrôle (`processing`, `ready`, `rejected` avec la raison) |
+| `POST /medias/{uuid}/complete` | Clôt l’envoi d’un fichier ; le dernier déclenche la soumission du relais |
+| `POST /relais/{uuid}/medias` | Ajoute un fichier à un relais existant, quand le coordonnateur demande un **complément** ; puis `POST /relais/{uuid}/complement` |
+
 ## Récapitulatif des codes HTTP
 
 | Code | Signification | Que faire |
@@ -301,6 +389,6 @@ curl -X POST "$BASE/identity/submit" -H "Authorization: Bearer $TOKEN" -H "Accep
 | 403 `password_required` | Compte sans mot de passe | Écran « Choisissez votre mot de passe » |
 | 403 | Action non permise | Afficher le message |
 | 409 | Vérification d’identité verrouillée | Recharger `GET /identity` |
-| 422 | Saisie invalide | Afficher chaque message sous son champ |
+| 422 | Saisie invalide | Afficher chaque message sous son champ (messages en français, prêts à afficher) |
 | 429 | Trop de tentatives (`Retry-After`) | Patienter |
 | 503 | SMS ou antivirus momentanément indisponible (`Retry-After`) | Réessayer plus tard |
