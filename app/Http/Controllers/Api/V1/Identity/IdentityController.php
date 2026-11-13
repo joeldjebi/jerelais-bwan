@@ -6,6 +6,7 @@ use App\Domain\Access\Enums\Role;
 use App\Domain\Identity\Actions\DeleteIdentityFile;
 use App\Domain\Identity\Actions\SaveIdentityDetails;
 use App\Domain\Identity\Actions\StoreIdentityFile;
+use App\Domain\Identity\Actions\SubmitIdentityAtOnce;
 use App\Domain\Identity\Actions\SubmitIdentityVerification;
 use App\Domain\Identity\Enums\IdentityFileKind;
 use App\Domain\Identity\Exceptions\IdentityIncomplete;
@@ -15,6 +16,7 @@ use App\Domain\Media\Exceptions\InfectedFile;
 use App\Domain\Media\Exceptions\VirusScanUnavailable;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Identity\StoreIdentityFileRequest;
+use App\Http\Requests\Api\V1\Identity\SubmitIdentityRequest;
 use App\Http\Requests\Api\V1\Identity\UpdateIdentityRequest;
 use App\Http\Resources\V1\IdentityFileResource;
 use App\Http\Resources\V1\IdentityVerificationResource;
@@ -48,6 +50,42 @@ class IdentityController extends Controller
     public function show(Request $request): JsonResponse
     {
         return $this->resource($this->verificationOf($request));
+    }
+
+    /**
+     * Envoyer ma vérification d'identité en une seule requête.
+     *
+     * **Méthode recommandée.** Requête `multipart/form-data` avec tous les champs et tous les fichiers ; le dossier part
+     * aussitôt en vérification (`status: "submitted"`), puis l'administration le valide (`verified`) ou le refuse (`rejected`,
+     * motif dans `decision_comment` : renvoyer alors la même requête corrigée).
+     *
+     * Champs : `last_name`, `first_names` (ou `first_name`), `gender` (`femme` ou `homme`), `birth_date` (JJ/MM/AAAA ou AAAA-MM-JJ),
+     * `commune` (uuid de `GET /communes`) et/ou `localite` (uuid de `GET /communes/{commune}/localites`, de la même commune),
+     * `document_type` (une `value` de `GET /auth/register/options`).
+     * Fichiers : les faces de la pièce indiquées par `sides` (`recto` et `verso`, ou `page` ; image ou PDF), `selfie`
+     * (la personne tenant sa pièce) et `profile_photo` (images) ; 10 Mo maximum chacun.
+     *
+     * Tout ou rien : en cas d'erreur (422), rien n'est enregistré et `errors` indique chaque champ ou fichier à corriger.
+     *
+     * @response IdentityVerificationResource
+     */
+    #[ApiResponse(409, 'Vérification déjà envoyée (en cours) ou déjà vérifiée.', type: 'array{message: string}')]
+    #[ApiResponse(503, 'Antivirus momentanément indisponible : réessayer plus tard (`Retry-After`).', type: 'array{message: string}')]
+    public function store(SubmitIdentityRequest $request, SubmitIdentityAtOnce $submit): JsonResponse
+    {
+        try {
+            $verification = $submit->handle($this->verificationOf($request), $request->details(), $request->identityFiles());
+        } catch (IdentityLocked $exception) {
+            throw new ConflictHttpException($exception->getMessage());
+        } catch (VirusScanUnavailable) {
+            throw new ServiceUnavailableHttpException(60, __('media.scan_unavailable'));
+        } catch (IdentityIncomplete $exception) {
+            throw ValidationException::withMessages(array_map(fn (string $message): array => [$message], $exception->missing));
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages(['document_type' => $exception->getMessage()]);
+        }
+
+        return $this->resource($verification);
     }
 
     /**

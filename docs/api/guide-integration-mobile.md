@@ -8,7 +8,7 @@ Référence complète de toutes les routes : Swagger en ligne `https://jerelais.
 | Sujet | Règle |
 |---|---|
 | Adresse | `https://jerelais.com/api/v1` |
-| En-têtes | `Accept: application/json` sur **toutes** les requêtes ; `Content-Type: application/json`, sauf `identity/files` (multipart) |
+| En-têtes | `Accept: application/json` sur **toutes** les requêtes ; `Content-Type: application/json`, sauf `POST /identity` (multipart : champs + fichiers) |
 | Numéro | 10 chiffres ivoiriens (`0700000001`, espaces acceptés) ou `+2250700000001`. Seuls les numéros de Côte d’Ivoire reçoivent un code (422 « Seuls les numéros de Côte d’Ivoire (+225) peuvent recevoir un code. ») |
 | Codes SMS | 4 chiffres, valables 5 minutes, 5 essais par code, 3 envois par numéro et par 15 minutes. **En production, ils arrivent par SMS.** Sans fournisseur de SMS (développement, recette), le code est toujours `1234` |
 | Mot de passe | Au moins 8 caractères, à saisir deux fois (`password` + `password_confirmation`) |
@@ -26,7 +26,7 @@ Inscription :  register (SMS) → register/verify → register/complete (mot de 
 Connexion   :  login (numéro + mot de passe) → jeton → envoi de relais possible tout de suite
 Oubli       :  auth/otp (SMS) → auth/verify → jeton → me/password (sans l’ancien, 15 min)
 Relais      :  relais (contenu + liste des fichiers) → envoi des fichiers → soumis automatiquement
-Commissions :  plus tard, dans le profil : identity (identité, commune, pièce) → identity/files (faces, selfie, photo) → envoyée automatiquement → vérifiée par l’équipe
+Commissions :  plus tard, dans le profil : POST /identity (identité, commune, pièce, photos en une requête) → vérifiée par l’équipe
 ```
 
 ---
@@ -206,17 +206,23 @@ curl -X POST "$BASE/auth/logout" -H "Authorization: Bearer $TOKEN" -H "Accept: a
 
 ---
 
-## 5. Profil et vérification d’identité (pour les commissions)
+## 5. Vérification d’identité (pour les commissions) — une seule requête
 
-À compléter **quand le Relais le souhaite** : obligatoire seulement pour recevoir ses commissions. Ni la connexion ni l’envoi de relais n’en dépendent. Le profil peut se remplir en plusieurs fois.
+Facultative : nécessaire seulement pour recevoir les commissions. Ni la connexion ni l’envoi de relais n’en dépendent.
 
-### 5.0 Pièces d’identité acceptées
+**Le principe :** l’écran du profil réunit tout (identité, commune, pièce, photos), puis l’application envoie **une seule requête** `POST /identity`. Le dossier part aussitôt chez l’administration (`submitted`), qui le valide (`verified`) ou le refuse (`rejected`, avec un motif).
+
+```
+Écran profil (listes 5.1 et 5.2) → POST /identity (tout en une fois) → submitted → verified ou rejected
+```
+
+### 5.1 Listes pour l’écran : pièces acceptées
 
 ```bash
 curl "$BASE/auth/register/options" -H "Accept: application/json"
 ```
 
-**200** (public, mis en cache 5 minutes). **La liste est gérée par l’administration** (console → Référentiels → Pièces d’identité) : une pièce peut être ajoutée ou retirée à tout moment. Ne pas la coder en dur : l’afficher telle que reçue, et demander les fichiers indiqués par `sides`.
+**200** (public). Liste **gérée par l’administration** : l’afficher telle que reçue. `sides` indique les photos de la pièce à demander.
 ```json
 {
   "data": [
@@ -230,107 +236,95 @@ curl "$BASE/auth/register/options" -H "Accept: application/json"
 }
 ```
 
-### 5.1 État et éléments manquants
-
-```bash
-curl "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
-```
-
-**200**
-```json
-{
-  "data": {
-    "status": "draft",
-    "status_label": "À compléter",
-    "is_editable": true,
-    "gains_eligible": false,
-    "last_name": null,
-    "first_name": null,
-    "gender": null,
-    "birth_date": null,
-    "commune": null,
-    "localite": null,
-    "document_type": null,
-    "required_files": ["selfie", "profile_photo"],
-    "files": [],
-    "missing": {
-      "last_name": "Indiquez votre nom.",
-      "first_names": "Indiquez vos prénoms.",
-      "gender": "Indiquez votre sexe.",
-      "birth_date": "Indiquez votre date de naissance.",
-      "commune": "Choisissez votre commune.",
-      "document_type": "Choisissez le type de votre pièce d’identité.",
-      "files.selfie": "Ajoutez : Selfie avec la pièce.",
-      "files.profile_photo": "Ajoutez : Photo de profil."
-    },
-    "decision_comment": null,
-    "document_types": [ "… (comme 5.0)" ]
-  }
-}
-```
-
-Statuts : `draft` (à compléter) · `submitted` (en cours de vérification) · `verified` (vérifiée, `gains_eligible: true`) · `rejected` (à corriger selon `decision_comment`).
-
-### 5.2 Identité, commune ou localité, type de pièce (mise à jour partielle)
-
-Seuls les champs envoyés sont modifiés : chaque écran du profil peut envoyer uniquement ses champs.
-
-```bash
-curl -X PUT "$BASE/identity" -H "Authorization: Bearer $TOKEN" \
-  -H "Accept: application/json" -H "Content-Type: application/json" \
-  -d '{"last_name":"Traoré","first_names":"Awa","gender":"femme","birth_date":"2001-04-17",
-       "commune":"<uuid>","localite":"<uuid>","document_type":"cni"}'
-```
-
-| Champ | Règle |
-|---|---|
-| `last_name`, `first_names` | Texte |
-| `gender` | `femme` ou `homme` |
-| `birth_date` | **JJ/MM/AAAA** (`26/04/2000`) ou `AAAA-MM-JJ` ; âge minimum fixé par l’administration |
-| `commune`, `localite` | uuid **renvoyés par** `GET /communes` et `GET /communes/{commune}/localites` (5.2 bis), jamais les exemples du Swagger ; la localité doit appartenir à la commune envoyée (sinon 422) ; une localité seule suffit, sa commune est déduite |
-| `document_type` | Une `value` de 5.0 (pièce active) ; changer de type retire les faces devenues inutiles |
-
-**200** : même forme que 5.1. **422** : champ invalide. **409** si la vérification est envoyée ou déjà vérifiée.
-
-### 5.2 bis Communes et localités (référentiels publics)
-
-La **localité** est le quartier, le village ou la sous-préfecture où vit le Relais, à l’intérieur de sa commune. Elle est facultative : la commune suffit. Écran conseillé : choisir la commune, puis (facultatif) la localité.
+### 5.2 Listes pour l’écran : communes et localités
 
 ```bash
 curl "$BASE/communes" -H "Accept: application/json"
 curl "$BASE/communes/<uuid de la commune>/localites" -H "Accept: application/json"
 ```
 
-**200** (public, mis en cache 5 minutes)
+La **localité** (quartier, village, sous-préfecture) est facultative : la commune suffit. Liste vide si l’administration n’en a pas encore saisi. Utiliser **les uuid renvoyés par ces routes**, jamais les exemples du Swagger.
+
+### 5.3 Envoyer la vérification (une seule requête)
+
+Requête **multipart/form-data** (champs texte + fichiers) :
+
+```bash
+curl -X POST "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  -F "last_name=Traoré" \
+  -F "first_name=Abou" \
+  -F "gender=homme" \
+  -F "birth_date=26/04/2000" \
+  -F "commune=<uuid de GET /communes>" \
+  -F "localite=<uuid de GET /communes/{commune}/localites>" \
+  -F "document_type=cni" \
+  -F "recto=@recto.jpg" \
+  -F "verso=@verso.jpg" \
+  -F "selfie=@selfie.jpg" \
+  -F "profile_photo=@photo.jpg"
+```
+
+| Champ | Obligatoire | Règle |
+|---|---|---|
+| `last_name` | oui | Nom |
+| `first_name` (ou `first_names`) | oui | Prénoms |
+| `gender` | oui | `femme` ou `homme` |
+| `birth_date` | oui | `26/04/2000` (ou `2000-04-26`) ; âge minimum fixé par l’administration |
+| `commune` | oui, sauf si `localite` | uuid de `GET /communes` |
+| `localite` | non | uuid de `GET /communes/{commune}/localites`, de la même commune |
+| `document_type` | oui | Une `value` de 5.1 |
+| `recto` + `verso` | si `sides` = recto, verso | Photo (ou PDF) de chaque face |
+| `page` | si `sides` = page | Photo (ou PDF) de la page (passeport, attestation) |
+| `selfie` | oui | Photo de la personne tenant sa pièce |
+| `profile_photo` | oui | Photo de profil |
+
+Fichiers : JPEG, PNG, HEIC (et PDF pour la pièce), **10 Mo maximum** chacun.
+
+**200** — dossier envoyé à l’équipe :
 ```json
 {
-  "data": [
-    { "uuid": "01a1…", "name": "Abobo-Gare", "type": "quartier" },
-    { "uuid": "01a1…", "name": "Anonkoua-Kouté", "type": "village" }
-  ]
+  "data": {
+    "status": "submitted",
+    "status_label": "En cours de vérification",
+    "is_editable": false,
+    "gains_eligible": false,
+    "last_name": "Traoré",
+    "first_name": "Abou",
+    "gender": "homme",
+    "birth_date": "2000-04-26",
+    "commune": { "uuid": "…", "name": "Abobo" },
+    "localite": { "uuid": "…", "name": "Abatta" },
+    "document_type": "cni",
+    "files": [ { "kind": "recto", "…": "…" }, { "kind": "verso" }, { "kind": "selfie" }, { "kind": "profile_photo" } ],
+    "missing": {},
+    "decision_comment": null,
+    "submitted_at": "2026-11-13T15:00:00Z"
+  }
 }
 ```
 
-`type` : `quartier`, `village` ou `sous_prefecture`. Liste vide si l’administration n’a pas encore saisi de localité pour cette commune : n’afficher alors que la commune. **404** si la commune est fermée aux Relais.
+| Erreur | Signification | Écran |
+|---|---|---|
+| **422** | Champ ou fichier manquant ou invalide : **rien n’est enregistré**. `errors` donne un message par champ (`recto` : « Ajoutez : Recto de la pièce. », `localite` : « Cette localité n’appartient pas à la commune choisie. »…) | Afficher chaque message sous son champ, puis renvoyer |
+| **409** | Dossier déjà en cours de vérification ou déjà vérifié | Afficher le statut (5.4) |
+| **503** | Antivirus momentanément indisponible | Réessayer plus tard |
 
-### 5.3 Fichiers (multipart)
+### 5.4 Suivre le statut
 
 ```bash
-curl -X POST "$BASE/identity/files" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
-  -F "kind=selfie" -F "file=@selfie.jpg"
+curl "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
 ```
 
-`kind` : `recto`, `verso`, `page` (image ou PDF) ; `selfie`, `profile_photo` (image seulement). 10 Mo maximum. **201** : le fichier (`uuid`, `kind`, `label`, `mime`, `size`, `uploaded_at`). **422** `kind` : face non demandée pour cette pièce ; **422** `file` : format, taille ou antivirus. Retirer : `DELETE /identity/files/{kind}` (**204**).
+| `status` | Écran |
+|---|---|
+| `draft` | Rien d’envoyé : afficher le formulaire (5.3) |
+| `submitted` | « En cours de vérification » |
+| `verified` | « Identité vérifiée » ; `gains_eligible: true` |
+| `rejected` | Afficher `decision_comment`, puis **renvoyer la même requête 5.3 corrigée** |
 
-### 5.4 Envoi à l’équipe : automatique
+Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).
 
-**Dès que le dossier est complet** (dernier fichier reçu, ou dernier champ rempli si les fichiers étaient déjà là), il passe tout seul en **`submitted`** et arrive dans la file de vérification de l’administration. Aucun appel supplémentaire : la réponse du dernier envoi et `GET /identity` indiquent `status: "submitted"`, `is_editable: false`, `missing: {}`.
-
-Tant que `missing` n’est pas vide, le statut reste `draft` : afficher chaque élément manquant.
-
-Après décision de l’équipe : `verified` (éligible aux commissions, `gains_eligible: true`) ou `rejected` (motif dans `decision_comment`). Un dossier refusé redevient modifiable : dès qu’un fichier ou un champ est corrigé, il repart tout seul en vérification.
-
-`POST /identity/submit` reste disponible (facultatif) : **200** si le dossier est complet, **422** avec chaque élément manquant sinon.
+> Routes détaillées, toujours acceptées mais **inutiles avec 5.3** : `PUT /identity` (champs un par un), `POST /identity/files` et `DELETE /identity/files/{kind}` (fichier par fichier), `POST /identity/submit`. Un dossier rempli par ces routes part aussi tout seul en vérification dès qu’il est complet.
 
 ---
 
