@@ -20,6 +20,7 @@ return [
         'file_refused' => 'Ce fichier n’est pas accepté pour « :kind » : formats acceptés : :formats.',
         'file_not_needed' => '« :kind » n’est pas demandé pour cette pièce.',
         'file_not_needed_for' => '« :kind » n’est pas demandé pour « :type » : envoyez seulement les faces indiquées par sides.',
+        'nothing_to_update' => 'Aucun champ ni photo reçu : envoyez au moins un élément à modifier (multipart/form-data ou JSON).',
         'document_type_first' => 'Choisissez d’abord le type de pièce (document_type) pour envoyer ses faces.',
         'document_type_unknown' => 'Choisissez une pièce de la liste GET /auth/register/options : :values.',
         'infected' => '« :kind » a été refusé par l’antivirus : envoyez un autre fichier.',

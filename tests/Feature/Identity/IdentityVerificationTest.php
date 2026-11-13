@@ -527,3 +527,26 @@ it('refuse toute modification pendant la vérification ou après validation (409
     updateIdentity(['last_name' => 'Autre'])->assertConflict();
     updateIdentity(['selfie' => UploadedFile::fake()->image('selfie.jpg')])->assertConflict();
 });
+
+it('refuse un PUT vide au lieu de répondre sans rien changer', function () {
+    updateIdentity([])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['identity' => 'Aucun champ ni photo reçu']);
+});
+
+it('n’efface rien quand un formulaire envoie aussi ses champs vides, puis envoie le dossier une fois complet', function () {
+    updateIdentity(['last_name' => 'Traoré', 'first_name' => 'Abou', 'gender' => 'homme', 'birth_date' => '26/04/2000', 'commune' => $this->commune->uuid])
+        ->assertOk()->assertJsonPath('data.last_name', 'Traoré');
+
+    // Comme l'outil d'essai de la documentation : tous les champs, vides sauf la pièce et ses photos.
+    updateIdentity([
+        'last_name' => '', 'first_name' => '', 'gender' => '', 'birth_date' => '', 'commune' => '', 'localite' => '',
+        'document_type' => 'passeport', 'recto' => '', 'verso' => '',
+        'page' => UploadedFile::fake()->image('page.jpg'), 'selfie' => UploadedFile::fake()->image('selfie.jpg'),
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.last_name', 'Traoré')
+        ->assertJsonPath('data.first_name', 'Abou')
+        ->assertJsonPath('data.commune.uuid', $this->commune->uuid)
+        ->assertJsonPath('data.status', 'submitted');
+});
