@@ -247,7 +247,14 @@ La **localité** (quartier, village, sous-préfecture) est facultative : la comm
 
 ### 5.3 Envoyer la vérification (une seule requête)
 
-Requête **multipart/form-data** (champs texte + fichiers) :
+**L’écran suit le type de pièce choisi** : l’utilisateur choisit d’abord `document_type` dans la liste 5.1, puis l’application affiche les photos demandées par ses `sides` :
+
+| `sides` de la pièce | Photos à demander |
+|---|---|
+| `["recto", "verso"]` (CNI, permis, carte consulaire…) | `recto` et `verso` |
+| `["page"]` (passeport, attestation…) | `page` |
+
+Plus, toujours, le `selfie`. Requête **multipart/form-data** (champs texte + fichiers) :
 
 ```bash
 curl -X POST "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
@@ -272,8 +279,8 @@ curl -X POST "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: appl
 | `commune` | oui, sauf si `localite` | uuid de `GET /communes` |
 | `localite` | non | uuid de `GET /communes/{commune}/localites`, de la même commune |
 | `document_type` | oui | Une `value` de 5.1 |
-| `recto` + `verso` | si `sides` = recto, verso | Photo (ou PDF) de chaque face |
-| `page` | si `sides` = page | Photo (ou PDF) de la page (passeport, attestation) |
+| `recto` + `verso` | si `sides` = recto, verso | Photo (ou PDF) de chaque face ; refusées pour une pièce à une page |
+| `page` | si `sides` = page | Photo (ou PDF) de la page ; refusée pour une pièce recto-verso |
 | `selfie` | oui | Photo de la personne tenant sa pièce, visage bien visible ; sert aussi de **photo du badge** |
 
 Fichiers : JPEG, PNG, HEIC (et PDF pour la pièce), **10 Mo maximum** chacun.
@@ -322,7 +329,27 @@ curl "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: application/
 
 Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).
 
-> `PUT /identity` (facultatif) modifie seulement les champs envoyés, sans fichier : par exemple pour pré-remplir l’écran ou corriger l’identité d’un dossier refusé.
+### 5.5 Modifier (tout est facultatif)
+
+`PUT /identity` accepte **les mêmes champs et photos que 5.3, tous facultatifs** : seuls les éléments envoyés changent, le reste est conservé. Possible tant que le statut est `draft` ou `rejected` (sinon **409**).
+
+```bash
+# Corriger un dossier refusé : nouveau selfie seulement
+curl -X PUT "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  -F "selfie=@selfie.jpg"
+
+# Changer de pièce : passer au passeport avec sa page (les photos recto/verso sont retirées)
+curl -X PUT "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  -F "document_type=passeport" -F "page=@passeport.jpg"
+
+# Un champ texte seulement (JSON accepté quand il n’y a pas de photo)
+curl -X PUT "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  -H "Content-Type: application/json" -d '{"first_name":"Abou Mariam"}'
+```
+
+- Les photos de la pièce doivent correspondre au type de pièce (celui envoyé, sinon celui déjà enregistré) : sinon **422** (« « Page de la pièce » n’est pas demandé pour « Carte nationale d’identité (CNI) » »).
+- **Dès que le dossier devient complet, il part aussitôt en vérification** (`status: "submitted"`), comme avec 5.3.
+- Réponse **200** : même forme que 5.3.
 
 ---
 
