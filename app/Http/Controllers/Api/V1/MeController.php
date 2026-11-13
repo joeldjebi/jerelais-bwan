@@ -109,8 +109,8 @@ class MeController extends Controller
      *
      * Mot de passe d'au moins 8 caractères dans `password`, répété dans `password_confirmation`. Un compte sans mot de passe
      * (créé sur le site web) doit le définir : en attendant, les autres routes protégées répondent 403 avec `code: "password_required"`.
-     * Pour le changer, `current_password` (l'ancien) est obligatoire, sauf dans les 15 minutes qui suivent une connexion
-     * par code SMS (`POST /auth/verify`, mot de passe oublié). `has_password` dans `GET /me` indique s'il en existe un.
+     * Pour le changer depuis les réglages, `current_password` (l'ancien) est obligatoire. Mot de passe oublié : utiliser
+     * `POST /auth/password/reset` après le code SMS. `has_password` dans `GET /me` indique s'il en existe un.
      */
     public function updatePassword(UpdatePasswordRequest $request, AuditLogger $audit): Response
     {

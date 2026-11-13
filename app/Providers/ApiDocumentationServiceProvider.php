@@ -75,6 +75,10 @@ class ApiDocumentationServiceProvider extends ServiceProvider
                     $operation->addRequestBodyObject($this->candidatureStepBody());
                 }
 
+                if (in_array($routeInfo->route->getName(), ['api.v1.relais.store', 'api.v1.relais.update'], true)) {
+                    $operation->addRequestBodyObject($this->relaisBody($routeInfo->route->getName() === 'api.v1.relais.store'));
+                }
+
                 if (in_array($routeInfo->route->getName(), ['api.v1.identity.store', 'api.v1.identity.update'], true)) {
                     $operation->addRequestBodyObject($this->identityBody($routeInfo->route->getName() === 'api.v1.identity.store'));
                 }
@@ -317,6 +321,58 @@ class ApiDocumentationServiceProvider extends ServiceProvider
             ->setContent('application/json', Schema::fromType($body))
             ->description('Champs de l’étape `identite`, `territoire` ou `profil`.')
             ->required();
+    }
+
+    /**
+     * Corps multipart de POST /relais (envoi en une requête) et PUT /relais/{relais} (tout facultatif), à plat :
+     * l'outil d'essai de la documentation n'envoie rien quand le corps est découpé en variantes.
+     */
+    private function relaisBody(bool $send): RequestBodyObject
+    {
+        $text = fn (string $description, string $example): Type => (new StringType)->setDescription($description)->example($example);
+        $uuid = fn (string $description): Type => (new StringType)->format('uuid')->setDescription($description);
+        $file = (new StringType)->format('binary')->contentMediaType('application/octet-stream');
+        $maxMb = (int) config('jerelais.media.direct_upload_max_mb');
+
+        $body = (new ObjectType)
+            ->addProperty('category', $uuid('Catégorie : `uuid` renvoyé par `GET /categories`.'.($send ? ' Obligatoire.' : '')))
+            ->addProperty('title', $text('Titre, 120 caractères maximum.'.($send ? ' Obligatoire.' : ''), 'Route coupée au carrefour Siporex'))
+            ->addProperty('description', $text('Ce que l’on voit, 2 000 caractères maximum.', 'L’eau arrive aux genoux.'))
+            ->addProperty('urgency', (new StringType)->enum(['normal', 'important', 'urgent'])->setDescription('Urgence.')->example('normal'))
+            ->addProperty('lat', $text('Latitude GPS. Avec `lng`, ou à la place `declared_commune`.', '5.341'))
+            ->addProperty('lng', $text('Longitude GPS.', '-4.069'))
+            ->addProperty('accuracy_m', $text('Précision GPS en mètres (facultatif).', '12'))
+            ->addProperty('declared_commune', $uuid('Commune : `uuid` de `GET /communes`, si pas de GPS. Le GPS prime pour router le relais.'))
+            ->addProperty('declared_place', $text('Lieu précis en clair (facultatif).', 'Carrefour Siporex'))
+            ->addProperty('has_minors', (new StringType)->enum(['false', 'true'])->setDescription('Des mineurs identifiables apparaissent-ils ?'.($send ? ' Obligatoire.' : ''))->example('false'))
+            ->addProperty('people_consent', (new StringType)->enum(['not_applicable', 'yes', 'no'])->setDescription('Accord des personnes filmées.'.($send ? ' Obligatoire.' : ''))->example('not_applicable'))
+            ->addProperty('credit_mode', (new StringType)->enum(['anonymous', 'name', 'pseudonym'])->setDescription('Mention à l’antenne.'.($send ? ' Obligatoire.' : ''))->example('anonymous'))
+            ->addProperty('credit_name', $text('Pseudonyme à afficher, obligatoire si `credit_mode` = `pseudonym`.', 'Awa d’Abobo'))
+            ->addProperty('appel', $uuid('Facultatif : `uuid` de l’appel à relais auquel on répond (`GET /appels`).'));
+
+        // Un champ par fichier (« files[0] », « files[1] »…) : l'outil d'essai sait téléverser un fichier par champ,
+        // et PHP les regroupe dans la liste « files ». L'application peut envoyer « files[] » autant de fois que nécessaire.
+        for ($index = 0; $index < 5; $index++) {
+            $body->addProperty("files[{$index}]", (clone $file)->setDescription($index === 0
+                ? ($send ? '**Fichier 1 (obligatoire).** ' : 'Fichier à **ajouter**. ').'Photo JPEG/PNG/HEIC, vidéo MP4/MOV ou son M4A/MP3/AAC, **'.$maxMb.' Mo maximum par fichier**. Jusqu’à 10 fichiers (`files[]`). Au-delà de '.$maxMb.' Mo : envoi en morceaux (voir le guide).'
+                : 'Fichier '.($index + 1).' (facultatif).'));
+        }
+
+        if ($send) {
+            $body->addProperty('client_uuid', $uuid('Facultatif : identifiant généré par l’application ; renvoyer le même rend le même relais (pas de doublon après une coupure).'));
+            $body->setRequired(['category', 'title', 'has_minors', 'people_consent', 'credit_mode', 'files[0]']);
+        } else {
+            $body->addProperty('remove_medias[0]', $uuid('Fichier à **retirer** : `uuid` de `medias.N.uuid` (`remove_medias[]`, plusieurs possibles). Il doit en rester au moins un.'));
+            $body->addProperty('remove_medias[1]', $uuid('Autre fichier à retirer (facultatif).'));
+            $body->addProperty('message', $text('Réponse au coordonnateur quand un complément est demandé (facultatif).', 'Voici une vue plus large.'));
+        }
+
+        return RequestBodyObject::make()
+            ->setContent('multipart/form-data', Schema::fromType($body))
+            ->description($send
+                ? 'Tout en une requête : contenu et fichiers. Le relais est aussitôt envoyé au coordonnateur.'
+                : 'Tout est facultatif : seuls les éléments envoyés et non vides changent.')
+            ->required($send);
     }
 
     /**

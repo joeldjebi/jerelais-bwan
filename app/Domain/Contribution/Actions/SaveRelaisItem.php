@@ -58,6 +58,19 @@ class SaveRelaisItem
     }
 
     /**
+     * Modifie un relais déjà envoyé (UpdateRelaisItem contrôle son état) : seuls les champs fournis changent.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function amend(RelaisItem $relais, array $data): RelaisItem
+    {
+        $this->fill($relais, $data);
+        $relais->save();
+
+        return $relais;
+    }
+
+    /**
      * Réponse à un appel (MOB-23) : l'appel doit être ouvert et concerner ce Relais.
      */
     private function appelFor(RelaisItem $relais, mixed $uuid): ?int

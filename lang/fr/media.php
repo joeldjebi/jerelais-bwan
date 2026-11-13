@@ -5,6 +5,8 @@ return [
     'scan_unavailable' => 'Nous ne pouvons pas vérifier ce fichier pour le moment. Réessayez dans quelques minutes.',
     'unsupported_type' => 'Ce format de fichier n’est pas accepté.',
     'too_large' => 'Ce fichier dépasse la taille maximale de :max Mo.',
+    'not_in_relais' => 'Ce fichier n’appartient pas à ce relais : utilisez l’uuid d’un de ses médias (`medias.N.uuid`).',
+    'too_large_direct' => 'Ce fichier dépasse :max Mo : envoyez-le en morceaux (envoi reprenable, voir la documentation).',
     'too_many' => 'Un relais contient au plus :max médias.',
     'parts_incomplete' => 'L’envoi n’est pas terminé : :count morceaux sont attendus.',
     'size_mismatch' => 'La taille du fichier reçu ne correspond pas à celle annoncée : recommencez l’envoi.',

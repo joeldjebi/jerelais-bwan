@@ -24,8 +24,8 @@ BASE=https://jerelais.com/api/v1
 ```
 Inscription :  register (SMS) → register/verify → register/complete (mot de passe) → écran de connexion
 Connexion   :  login (numéro + mot de passe) → jeton → envoi de relais possible tout de suite
-Oubli       :  auth/otp (SMS) → auth/verify → jeton → me/password (sans l’ancien, 15 min)
-Relais      :  relais (contenu + liste des fichiers) → envoi des fichiers → soumis automatiquement
+Oubli       :  auth/otp (SMS) → auth/verify (jeton) → auth/password/reset (nouveau mot de passe, 15 min)
+Relais      :  POST /relais (contenu + fichiers, une requête) → reçu ; PUT /relais/{uuid} pour le modifier
 Commissions :  plus tard, dans le profil : POST /identity (identité, commune, pièce, photos en une requête) → vérifiée par l’équipe
 ```
 
@@ -179,17 +179,17 @@ curl -X POST "$BASE/auth/verify" -H "Accept: application/json" -H "Content-Type:
 
 ### 3.3 Nouveau mot de passe
 
-Dans les **15 minutes** qui suivent 3.2, sans l’ancien mot de passe :
+Avec le jeton reçu en 3.2, **dans les 15 minutes**, sans l’ancien mot de passe :
 
 ```bash
-curl -X PUT "$BASE/me/password" -H "Authorization: Bearer $TOKEN" \
+curl -X POST "$BASE/auth/password/reset" -H "Authorization: Bearer $TOKEN" \
   -H "Accept: application/json" -H "Content-Type: application/json" \
   -d '{"password":"NouveauSecret!8","password_confirmation":"NouveauSecret!8"}'
 ```
 
-Changement ordinaire (depuis les réglages) : ajouter `"current_password": "MotDePasse2026"`.
+**200** `{"message": "Mot de passe enregistré. Utilisez-le désormais pour vous connecter."}` — le Relais reste connecté sur cet appareil ; ses autres appareils sont déconnectés. **422** `password` : règles de 1.3. **403** : jeton qui ne vient pas d’un code SMS validé, ou plus de 15 minutes écoulées → recommencer en 3.1.
 
-**204** sans contenu. **422** `current_password` : « Le mot de passe est incorrect. » ; **422** `password` : règles de 1.3.
+Changer son mot de passe depuis les réglages (en connaissant l’ancien) : `PUT /me/password` avec `current_password`, `password`, `password_confirmation` (**204**).
 
 ---
 
@@ -353,9 +353,86 @@ curl -X PUT "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: appli
 
 ---
 
-## 6. Envoyer un relais (un seul appel, pas de brouillon)
+## 6. Envoyer un relais (une seule requête)
 
-### 6.1 Contenu et liste des fichiers
+### 6.1 Envoyer : contenu et fichiers ensemble
+
+Requête **multipart/form-data**. Le relais est **aussitôt envoyé au coordonnateur** (`status: "received"`).
+
+```bash
+curl -X POST "$BASE/relais" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  -F "category=<uuid de GET /categories>" \
+  -F "title=Route coupée au carrefour Siporex" \
+  -F "description=L’eau arrive aux genoux." \
+  -F "urgency=urgent" \
+  -F "lat=5.341" -F "lng=-4.069" -F "accuracy_m=12" \
+  -F "has_minors=false" -F "people_consent=not_applicable" -F "credit_mode=anonymous" \
+  -F "files[]=@video.mp4" \
+  -F "files[]=@photo.jpg"
+```
+
+| Champ | Obligatoire | Règle |
+|---|---|---|
+| `category` | oui | uuid de `GET /categories` |
+| `title` | oui | 120 caractères maximum |
+| `description` | non | 2 000 caractères maximum |
+| `urgency` | non | `normal` (par défaut), `important`, `urgent` |
+| `lat` + `lng` (`accuracy_m`) | oui, sauf `declared_commune` | Position GPS ; elle prime pour choisir la commune |
+| `declared_commune` | si pas de GPS | uuid de `GET /communes` |
+| `declared_place` | non | Lieu en clair |
+| `has_minors` | oui | `true` ou `false` |
+| `people_consent` | oui | `yes`, `no`, `not_applicable` |
+| `credit_mode` | oui | `anonymous`, `name`, `pseudonym` (+ `credit_name` si pseudonyme) |
+| `appel` | non | uuid d’un appel à relais (`GET /appels`) |
+| `files[]` | oui | 1 à 10 fichiers : photos JPEG/PNG/HEIC, vidéos MP4/MOV, sons M4A/MP3/AAC — **100 Mo maximum chacun** |
+| `client_uuid` | non | Identifiant généré par l’application : renvoyer le même rend le même relais (pas de doublon après une coupure) |
+
+Les champs laissés vides sont ignorés. **201** :
+```json
+{
+  "data": {
+    "uuid": "…", "status": "received", "status_label": "Reçu", "title": "Route coupée au carrefour Siporex",
+    "urgency": "urgent", "commune": { "uuid": "…", "name": "Yopougon" },
+    "medias": [ { "uuid": "…", "kind": "video", "status": "uploaded" }, { "uuid": "…", "kind": "photo", "status": "uploaded" } ]
+  }
+}
+```
+
+Chaque fichier est ensuite contrôlé en arrière-plan (antivirus, durée) : `medias.N.status` passe à `ready`, ou `rejected` avec la raison (`GET /relais/{uuid}`).
+
+| Erreur | Signification |
+|---|---|
+| **422** | Champ ou fichier invalide : **rien n’est créé** ; `errors` donne un message par champ (`title`, `declared_commune`, `protections.credit_name`, `files.0` : « Ce fichier dépasse 100 Mo : envoyez-le en morceaux… ») |
+| **403** | Relais suspendu |
+| **409** | `client_uuid` déjà utilisé par un autre compte |
+
+### 6.2 Modifier un relais envoyé
+
+`PUT /relais/{uuid}` : **mêmes champs, tous facultatifs** — seuls les éléments envoyés et non vides changent. Ajouter des fichiers : `files[]`. Retirer des fichiers : `remove_medias[]` (uuid de `medias.N.uuid`) ; il doit en rester au moins un.
+
+```bash
+# Corriger le titre et ajouter une photo
+curl -X PUT "$BASE/relais/<uuid>" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  -F "title=Route coupée à Siporex" -F "files[]=@plan-large.jpg"
+
+# Retirer un fichier
+curl -X PUT "$BASE/relais/<uuid>" -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  -F "remove_medias[]=<uuid du média>"
+```
+
+| `status` du relais | Modification |
+|---|---|
+| `received` (pas encore pris en charge par le coordonnateur) | Possible ; un nouveau lieu peut changer la commune |
+| `complement_requested` | Possible : **la modification sert de réponse** (`message` facultatif) et le relais revient dans la file (`received`) |
+| `in_review`, `validated`, `rejected`, … | **409** : plus modifiable |
+
+**200** : le relais à jour. **422** : champ ou fichier invalide, ou requête vide.
+
+### 6.3 Vidéos de plus de 100 Mo : envoi en morceaux (facultatif)
+
+Pour une vidéo lourde ou un réseau instable, l’envoi en morceaux reprend là où il s’est arrêté après une coupure. `POST /relais` en **JSON** avec la liste des fichiers (`medias`) au lieu de `files[]` :
+
+#### Annonce du relais et de ses fichiers (JSON)
 
 ```bash
 curl -X POST "$BASE/relais" -H "Authorization: Bearer $TOKEN" \
@@ -405,7 +482,7 @@ curl -X POST "$BASE/relais" -H "Authorization: Bearer $TOKEN" \
 
 **422** : contenu incomplet ou fichier refusé, rien n’est créé (`errors` : `category`, `title`, `location`, `declared_commune`, `protections.*`, `medias`, `medias.0.size`…). **409** : `client_uuid` déjà utilisé par un autre compte. **403** : Relais suspendu.
 
-### 6.2 Envoi des fichiers (directement vers le stockage, reprenable)
+#### Envoi des morceaux
 
 Pour chaque fichier de `uploads` :
 1. Découper le fichier en morceaux de `part_size` octets et envoyer chacun par `PUT` brut sur son URL (`missing_parts`), **sans** en-tête `Authorization`. Garder l’en-tête `ETag` de chaque réponse.
@@ -414,7 +491,7 @@ Pour chaque fichier de `uploads` :
 
 **Quand le dernier fichier est clos, le relais est soumis automatiquement** (`status: "received"`, en vérification) : aucun autre appel. Suivi : `GET /relais` et `GET /relais/{uuid}`.
 
-### 6.3 À quoi servent les routes de fichiers
+#### Routes de fichiers
 
 | Route | Rôle |
 |---|---|
