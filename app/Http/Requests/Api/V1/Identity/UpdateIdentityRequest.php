@@ -2,33 +2,46 @@
 
 namespace App\Http\Requests\Api\V1\Identity;
 
-use App\Domain\Candidature\Enums\CandidatureStep;
-use App\Domain\Candidature\Support\StepRules;
 use App\Domain\Identity\Actions\SaveIdentityDetails;
+use App\Domain\Identity\Enums\IdentityFileKind;
 use App\Domain\Identity\Models\IdentityDocumentType;
+use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\Localite;
 use App\Http\Requests\Concerns\DescribesIdentity;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
- * Profil pour les commissions, en mise à jour partielle : identité, commune ou localité, type de pièce.
- * Seuls les champs présents dans la requête sont modifiés. Une localité suffit : sa commune est déduite.
+ * PUT /identity : modifier la vérification d'identité, tout est facultatif (champs et fichiers, multipart ou JSON).
+ * Seuls les éléments envoyés changent. Les faces de la pièce doivent correspondre au type de pièce choisi
+ * (celui envoyé, sinon celui déjà enregistré). Une localité suffit : sa commune est déduite.
  */
 class UpdateIdentityRequest extends FormRequest
 {
     use DescribesIdentity;
+
+    /** Fichiers acceptés dans la requête. */
+    public const array FILE_KINDS = ['recto', 'verso', 'page', 'selfie'];
 
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * Dossier déjà en vérification ou vérifié : 409 avant toute validation.
+     */
     protected function prepareForValidation(): void
     {
+        if ($this->verification()?->status->isEditable() === false) {
+            throw new ConflictHttpException(__('identity.errors.locked'));
+        }
+
         $this->normalizeBirthDate();
     }
 
@@ -37,16 +50,23 @@ class UpdateIdentityRequest extends FormRequest
      */
     public function rules(): array
     {
-        $identity = app(StepRules::class)->for(CandidatureStep::Identite);
+        $identity = $this->identityRules();
+        $maxKb = (int) config('jerelais.candidature.document_max_kb');
+        $document = 'mimetypes:'.implode(',', IdentityFileKind::Recto->mimeTypes());
+        $image = 'mimetypes:'.implode(',', IdentityFileKind::Selfie->mimeTypes());
 
         return [
-            'last_name' => array_values($identity['last_name']),
-            'first_names' => array_values($identity['first_names']),
-            'gender' => array_values($identity['gender']),
-            'birth_date' => array_values($identity['birth_date']),
+            'last_name' => $identity['last_name'],
+            'first_names' => $identity['first_names'],
+            'gender' => $identity['gender'],
+            'birth_date' => $identity['birth_date'],
             'commune' => ['bail', 'nullable', 'uuid', Rule::exists('communes', 'uuid')->where('is_active', true)],
             'localite' => ['bail', 'nullable', 'uuid', Rule::exists('localites', 'uuid')],
-            'document_type' => ['nullable', 'string', Rule::exists('identity_document_types', 'slug')->where('is_active', true)],
+            'document_type' => ['nullable', 'string', Rule::in(self::documentTypeValues())],
+            'recto' => ['nullable', 'file', 'max:'.$maxKb, $document],
+            'verso' => ['nullable', 'file', 'max:'.$maxKb, $document],
+            'page' => ['nullable', 'file', 'max:'.$maxKb, $document],
+            'selfie' => ['nullable', 'file', 'max:'.$maxKb, $image],
         ];
     }
 
@@ -55,40 +75,67 @@ class UpdateIdentityRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
+        $messages = [
             'birth_date.date_format' => __('La date de naissance doit être au format JJ/MM/AAAA, par exemple 26/04/2000.'),
             'commune.exists' => __('Cette commune n’existe pas ou n’est pas ouverte : utilisez un uuid renvoyé par GET /communes.'),
             'localite.exists' => __('Cette localité n’existe pas : utilisez un uuid renvoyé par GET /communes/{commune}/localites.'),
+            'document_type.in' => __('identity.errors.document_type_unknown', ['values' => implode(', ', self::documentTypeValues())]),
         ];
+
+        foreach (IdentityFileKind::cases() as $kind) {
+            $messages[$kind->value.'.required'] = __('identity.errors.file_missing', ['kind' => $kind->label()]);
+            $messages[$kind->value.'.file'] = __('identity.errors.file_missing', ['kind' => $kind->label()]);
+            $messages[$kind->value.'.mimetypes'] = __('identity.errors.file_refused', [
+                'kind' => $kind->label(),
+                'formats' => $kind->isDocumentSide() ? 'JPEG, PNG, HEIC, PDF' : 'JPEG, PNG, HEIC',
+            ]);
+        }
+
+        return $messages;
     }
 
     /**
-     * Une localité doit appartenir à la commune envoyée avec elle.
+     * Localité de la commune envoyée ; faces de la pièce conformes au type de pièce.
      *
      * @return list<Closure(Validator): void>
      */
     public function after(): array
     {
-        return [function (Validator $validator): void {
-            if ($validator->errors()->hasAny(['commune', 'localite'])) {
-                return;
-            }
+        return [
+            function (Validator $validator): void {
+                $commune = $this->input('commune');
+                $localite = $this->input('localite');
 
-            $commune = $this->input('commune');
-            $localite = $this->input('localite');
+                if ($validator->errors()->hasAny(['commune', 'localite']) || ! is_string($commune) || ! is_string($localite) || $commune === '' || $localite === '') {
+                    return;
+                }
 
-            if (! is_string($commune) || ! is_string($localite) || $commune === '' || $localite === '') {
-                return;
-            }
+                $belongs = Localite::query()->where('uuid', $localite)->whereHas('commune', fn ($query) => $query->where('uuid', $commune))->exists();
 
-            $belongs = Localite::query()->where('uuid', $localite)
-                ->whereHas('commune', fn ($query) => $query->where('uuid', $commune))
-                ->exists();
+                if (! $belongs) {
+                    $validator->errors()->add('localite', __('Cette localité n’appartient pas à la commune choisie.'));
+                }
+            },
+            function (Validator $validator): void {
+                if ($validator->errors()->has('document_type')) {
+                    return;
+                }
 
-            if (! $belongs) {
-                $validator->errors()->add('localite', __('Cette localité n’appartient pas à la commune choisie.'));
-            }
-        }];
+                $type = $this->documentType();
+
+                foreach ([IdentityFileKind::Recto, IdentityFileKind::Verso, IdentityFileKind::Page] as $side) {
+                    if (! $this->hasFile($side->value)) {
+                        continue;
+                    }
+
+                    if ($type === null) {
+                        $validator->errors()->add($side->value, __('identity.errors.document_type_first'));
+                    } elseif (! in_array($side, $type->sides(), true)) {
+                        $validator->errors()->add($side->value, __('identity.errors.file_not_needed_for', ['kind' => $side->label(), 'type' => $type->name]));
+                    }
+                }
+            },
+        ];
     }
 
     /**
@@ -96,12 +143,13 @@ class UpdateIdentityRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return [
-            'last_name' => __('nom'),
-            'first_names' => __('prénoms'),
-            'gender' => __('sexe'),
-            'birth_date' => __('date de naissance'),
-        ];
+        $attributes = [...$this->identityAttributes(), 'commune' => __('commune'), 'localite' => __('localité'), 'document_type' => __('type de pièce')];
+
+        foreach (IdentityFileKind::cases() as $kind) {
+            $attributes[$kind->value] = mb_strtolower($kind->label());
+        }
+
+        return $attributes;
     }
 
     /**
@@ -122,9 +170,8 @@ class UpdateIdentityRequest extends FormRequest
 
         if ($this->exists('commune') || $this->exists('localite')) {
             $commune = $this->commune();
-            $localite = $this->localite($commune);
             $details['commune'] = $commune;
-            $details['localite'] = $localite;
+            $details['localite'] = $this->localite($commune);
         }
 
         if ($this->exists('document_type')) {
@@ -132,6 +179,57 @@ class UpdateIdentityRequest extends FormRequest
         }
 
         return $details;
+    }
+
+    /**
+     * Fichiers envoyés, par type.
+     *
+     * @return array<string, UploadedFile>
+     */
+    public function identityFiles(): array
+    {
+        $files = [];
+
+        foreach (self::FILE_KINDS as $kind) {
+            $file = $this->file($kind);
+
+            if ($file instanceof UploadedFile) {
+                $files[$kind] = $file;
+            }
+        }
+
+        return $files;
+    }
+
+    /**
+     * Valeurs acceptées pour document_type : pièces actives (console → Référentiels → Pièces d'identité).
+     *
+     * @return list<string>
+     */
+    public static function documentTypeValues(): array
+    {
+        return array_values(IdentityDocumentType::query()->active()->pluck('slug')->map(fn ($slug): string => (string) $slug)->all());
+    }
+
+    /**
+     * Pièce visée : celle envoyée, sinon celle déjà enregistrée.
+     */
+    protected function documentType(): ?IdentityDocumentType
+    {
+        $slug = $this->input('document_type');
+
+        if (is_string($slug) && $slug !== '') {
+            return IdentityDocumentType::query()->active()->where('slug', $slug)->first();
+        }
+
+        return $this->verification()?->documentType;
+    }
+
+    protected function verification(): ?IdentityVerification
+    {
+        $userId = $this->user()?->getAuthIdentifier();
+
+        return $userId === null ? null : IdentityVerification::query()->where('user_id', $userId)->first();
     }
 
     private function commune(): ?Commune

@@ -66,7 +66,7 @@ Route::name('api.v1.')->group(function () {
 
             Route::get('identity', [IdentityController::class, 'show'])->name('identity.show');
             Route::post('identity', [IdentityController::class, 'store'])->middleware('throttle:10,1')->name('identity.store');
-            Route::put('identity', [IdentityController::class, 'update'])->name('identity.update');
+            Route::put('identity', [IdentityController::class, 'update'])->middleware(['multipart.updates', 'throttle:10,1'])->name('identity.update');
 
             Route::get('consents', [LegalController::class, 'consents'])->name('consents.index');
             Route::post('consents', [LegalController::class, 'accept'])->name('consents.store');

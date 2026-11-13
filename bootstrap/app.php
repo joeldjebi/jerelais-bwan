@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsurePasswordIsSet;
 use App\Http\Middleware\EnsureTwoFactorIsEnabled;
 use App\Http\Middleware\EnsureUserIsStaff;
+use App\Http\Middleware\ParseMultipartForUpdates;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'staff' => EnsureUserIsStaff::class,
             'password.set' => EnsurePasswordIsSet::class,
+            'multipart.updates' => ParseMultipartForUpdates::class,
             'two-factor' => EnsureTwoFactorIsEnabled::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,

@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Identity;
 
 use App\Domain\Access\Enums\Role;
-use App\Domain\Identity\Actions\SaveIdentityDetails;
-use App\Domain\Identity\Actions\SubmitIdentityAtOnce;
+use App\Domain\Identity\Actions\SaveIdentityVerification;
 use App\Domain\Identity\Exceptions\IdentityIncomplete;
 use App\Domain\Identity\Exceptions\IdentityLocked;
 use App\Domain\Identity\Models\IdentityVerification;
@@ -14,6 +13,7 @@ use App\Http\Requests\Api\V1\Identity\SubmitIdentityRequest;
 use App\Http\Requests\Api\V1\Identity\UpdateIdentityRequest;
 use App\Http\Resources\V1\IdentityVerificationResource;
 use App\Models\User;
+use Closure;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response as ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -46,28 +46,54 @@ class IdentityController extends Controller
     }
 
     /**
-     * Envoyer ma vérification d'identité en une seule requête.
+     * Envoyer ma vérification d'identité (une seule requête).
      *
-     * Requête `multipart/form-data` avec tous les champs et tous les fichiers ; le dossier part
-     * aussitôt en vérification (`status: "submitted"`), puis l'administration le valide (`verified`) ou le refuse (`rejected`,
-     * motif dans `decision_comment` : renvoyer alors la même requête corrigée).
+     * Requête `multipart/form-data` avec tous les champs et toutes les photos. Le dossier part aussitôt en vérification
+     * (`status: "submitted"`) ; l'administration le valide (`verified`) ou le refuse (`rejected`, motif dans `decision_comment`).
      *
-     * Champs : `last_name`, `first_names` (ou `first_name`), `gender` (`femme` ou `homme`), `birth_date` (JJ/MM/AAAA ou AAAA-MM-JJ),
-     * `commune` (uuid de `GET /communes`) et/ou `localite` (uuid de `GET /communes/{commune}/localites`, de la même commune),
-     * `document_type` (une `value` de `GET /auth/register/options`).
-     * Fichiers : les faces de la pièce indiquées par `sides` (`recto` et `verso`, ou `page` ; image ou PDF) et `selfie`
-     * (la personne tenant sa pièce, visage visible ; sert aussi de photo du badge ; image) ; 10 Mo maximum chacun.
+     * **Choisir d'abord `document_type`** (liste `GET /auth/register/options`) : ses `sides` disent quelles photos de la pièce
+     * envoyer — `recto` et `verso` (CNI, permis, carte consulaire) ou `page` (passeport, attestation). Plus le `selfie`
+     * (la personne tenant sa pièce, visage visible ; sert aussi de photo du badge). Images JPEG, PNG ou HEIC (PDF accepté pour
+     * la pièce), 10 Mo maximum chacune.
      *
-     * Tout ou rien : en cas d'erreur (422), rien n'est enregistré et `errors` indique chaque champ ou fichier à corriger.
+     * Tout ou rien : en cas d'erreur (422), rien n'est enregistré et `errors` indique chaque champ ou photo à corriger.
      *
      * @response IdentityVerificationResource
      */
     #[ApiResponse(409, 'Vérification déjà envoyée (en cours) ou déjà vérifiée.', type: 'array{message: string}')]
     #[ApiResponse(503, 'Antivirus momentanément indisponible : réessayer plus tard (`Retry-After`).', type: 'array{message: string}')]
-    public function store(SubmitIdentityRequest $request, SubmitIdentityAtOnce $submit): JsonResponse
+    public function store(SubmitIdentityRequest $request, SaveIdentityVerification $save): JsonResponse
+    {
+        return $this->resource($this->run(fn () => $save->submit($this->verificationOf($request), $request->details(), $request->identityFiles())));
+    }
+
+    /**
+     * Modifier ma vérification d'identité.
+     *
+     * **Tout est facultatif** : seuls les éléments envoyés changent (champs et/ou photos), les autres sont conservés.
+     * Même format que `POST /identity` (`multipart/form-data` ; JSON accepté s'il n'y a pas de photo).
+     * Changer `document_type` retire les photos de la pièce devenues inutiles ; les photos envoyées doivent correspondre
+     * au type de pièce (celui envoyé, sinon celui déjà enregistré). Possible tant que le dossier est `draft` ou `rejected`.
+     * Si la modification complète le dossier, il part aussitôt en vérification (`submitted`).
+     *
+     * @response IdentityVerificationResource
+     */
+    #[ApiResponse(409, 'Vérification déjà envoyée (en cours) ou déjà vérifiée.', type: 'array{message: string}')]
+    #[ApiResponse(503, 'Antivirus momentanément indisponible : réessayer plus tard (`Retry-After`).', type: 'array{message: string}')]
+    public function update(UpdateIdentityRequest $request, SaveIdentityVerification $save): JsonResponse
+    {
+        return $this->resource($this->run(fn () => $save->update($this->verificationOf($request), $request->details(), $request->identityFiles())));
+    }
+
+    /**
+     * Traduit les refus métier en réponses HTTP (409, 422, 503).
+     *
+     * @param  Closure(): IdentityVerification  $action
+     */
+    private function run(Closure $action): IdentityVerification
     {
         try {
-            $verification = $submit->handle($this->verificationOf($request), $request->details(), $request->identityFiles());
+            return $action();
         } catch (IdentityLocked $exception) {
             throw new ConflictHttpException($exception->getMessage());
         } catch (VirusScanUnavailable) {
@@ -77,32 +103,6 @@ class IdentityController extends Controller
         } catch (InvalidArgumentException $exception) {
             throw ValidationException::withMessages(['document_type' => $exception->getMessage()]);
         }
-
-        return $this->resource($verification);
-    }
-
-    /**
-     * Corriger quelques champs (facultatif).
-     *
-     * Pour le parcours normal, utiliser `POST /identity` (tout en une requête). Cette route modifie seulement les champs envoyés
-     * (sans fichier), par exemple pour pré-remplir l'écran ou corriger l'identité d'un dossier refusé.
-     * `last_name`, `first_names`, `gender` (`femme` ou `homme`), `birth_date` (AAAA-MM-JJ) ;
-     * `commune` (uuid de `GET /communes`) et/ou `localite` (uuid de `GET /communes/{commune}/localites`) : une localité suffit,
-     * sa commune est déduite ; `document_type` : une `value` de `GET /auth/register/options` (`cni`, `passeport`, `permis`…, liste gérée par l'administration).
-     * Changer de type de pièce retire les faces devenues inutiles. Si la mise à jour complète le dossier, il passe tout seul
-     * au statut `submitted`. 409 si la vérification est envoyée ou déjà vérifiée.
-     *
-     * @response IdentityVerificationResource
-     */
-    public function update(UpdateIdentityRequest $request, SaveIdentityDetails $save): JsonResponse
-    {
-        try {
-            $verification = $save->handle($this->verificationOf($request), $request->details());
-        } catch (IdentityLocked $exception) {
-            throw new ConflictHttpException($exception->getMessage());
-        }
-
-        return $this->resource($verification);
     }
 
     private function verificationOf(Request $request): IdentityVerification
