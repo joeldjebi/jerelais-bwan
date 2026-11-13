@@ -12,6 +12,7 @@ enum IdentityFileKind: string
     case Verso = 'verso';
     case Page = 'page';
     case Selfie = 'selfie';
+    /** Ancienne photo de profil : plus demandée (le selfie sert de photo du badge), conservée pour les dossiers existants. */
     case ProfilePhoto = 'profile_photo';
 
     public function label(): string

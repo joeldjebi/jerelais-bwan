@@ -209,5 +209,5 @@ it('refuse une pièce désactivée dans la vérification d’identité [MOB-01]'
     Sanctum::actingAs($relais);
 
     $this->putJson(route('api.v1.identity.update'), ['document_type' => 'permis'])->assertUnprocessable()->assertJsonValidationErrors('document_type');
-    $this->putJson(route('api.v1.identity.update'), ['document_type' => 'passeport'])->assertOk()->assertJsonPath('data.required_files', ['page', 'selfie', 'profile_photo']);
+    $this->putJson(route('api.v1.identity.update'), ['document_type' => 'passeport'])->assertOk()->assertJsonPath('data.required_files', ['page', 'selfie']);
 });

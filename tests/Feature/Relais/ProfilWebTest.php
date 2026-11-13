@@ -32,16 +32,17 @@ it('complète le profil sur le site comme dans l’application, puis l’envoie 
         ->call('save')
         ->assertHasNoErrors();
 
-    foreach (['recto', 'verso', 'selfie', 'profile_photo'] as $kind) {
+    foreach (['recto', 'verso', 'selfie'] as $kind) {
         $component->set("uploads.{$kind}", UploadedFile::fake()->image("{$kind}.jpg"))->assertHasNoErrors();
     }
 
+    // Le dernier fichier complète le dossier : il part tout seul en vérification (le bouton reste sans effet).
     $component->call('submit')->assertHasNoErrors();
 
     $verification = IdentityVerification::query()->where('user_id', $this->relais->id)->sole();
 
     expect($verification->status)->toBe(IdentityStatus::Submitted)
-        ->and($verification->files()->count())->toBe(4)
+        ->and($verification->files()->count())->toBe(3)
         ->and($this->relais->refresh()->name)->toBe('Awa Traoré');
 });
 

@@ -49,13 +49,13 @@ class IdentityDocumentType extends Model
     }
 
     /**
-     * Tous les fichiers exigés : faces de la pièce, selfie et photo de profil.
+     * Tous les fichiers exigés : faces de la pièce et selfie (qui sert aussi de photo du badge).
      *
      * @return list<IdentityFileKind>
      */
     public function requiredFiles(): array
     {
-        return [...$this->sides(), IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto];
+        return [...$this->sides(), IdentityFileKind::Selfie];
     }
 
     /**

@@ -260,8 +260,7 @@ curl -X POST "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: appl
   -F "document_type=cni" \
   -F "recto=@recto.jpg" \
   -F "verso=@verso.jpg" \
-  -F "selfie=@selfie.jpg" \
-  -F "profile_photo=@photo.jpg"
+  -F "selfie=@selfie.jpg"
 ```
 
 | Champ | Obligatoire | Règle |
@@ -275,8 +274,7 @@ curl -X POST "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: appl
 | `document_type` | oui | Une `value` de 5.1 |
 | `recto` + `verso` | si `sides` = recto, verso | Photo (ou PDF) de chaque face |
 | `page` | si `sides` = page | Photo (ou PDF) de la page (passeport, attestation) |
-| `selfie` | oui | Photo de la personne tenant sa pièce |
-| `profile_photo` | oui | Photo de profil |
+| `selfie` | oui | Photo de la personne tenant sa pièce, visage bien visible ; sert aussi de **photo du badge** |
 
 Fichiers : JPEG, PNG, HEIC (et PDF pour la pièce), **10 Mo maximum** chacun.
 
@@ -295,7 +293,7 @@ Fichiers : JPEG, PNG, HEIC (et PDF pour la pièce), **10 Mo maximum** chacun.
     "commune": { "uuid": "…", "name": "Abobo" },
     "localite": { "uuid": "…", "name": "Abatta" },
     "document_type": "cni",
-    "files": [ { "kind": "recto", "…": "…" }, { "kind": "verso" }, { "kind": "selfie" }, { "kind": "profile_photo" } ],
+    "files": [ { "kind": "recto", "…": "…" }, { "kind": "verso" }, { "kind": "selfie" } ],
     "missing": {},
     "decision_comment": null,
     "submitted_at": "2026-11-13T15:00:00Z"
@@ -324,7 +322,7 @@ curl "$BASE/identity" -H "Authorization: Bearer $TOKEN" -H "Accept: application/
 
 Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).
 
-> Routes détaillées, toujours acceptées mais **inutiles avec 5.3** : `PUT /identity` (champs un par un), `POST /identity/files` et `DELETE /identity/files/{kind}` (fichier par fichier), `POST /identity/submit`. Un dossier rempli par ces routes part aussi tout seul en vérification dès qu’il est complet.
+> `PUT /identity` (facultatif) modifie seulement les champs envoyés, sans fichier : par exemple pour pré-remplir l’écran ou corriger l’identité d’un dossier refusé.
 
 ---
 

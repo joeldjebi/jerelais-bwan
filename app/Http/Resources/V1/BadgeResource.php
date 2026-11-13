@@ -3,6 +3,7 @@
 namespace App\Http\Resources\V1;
 
 use App\Domain\Relais\Models\RelaisProfile;
+use App\Domain\Relais\Support\BadgePhoto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\URL;
@@ -25,7 +26,7 @@ class BadgeResource extends JsonResource
             'commune' => $this->commune === null ? null : ['uuid' => $this->commune->uuid, 'name' => $this->commune->name],
             'status' => $this->status->value,
             'status_label' => $this->status->label(),
-            'photo_url' => URL::temporarySignedRoute('relais.badge.photo', now()->addMinutes(15), $this->resource),
+            'photo_url' => BadgePhoto::for($this->resource) === null ? null : URL::temporarySignedRoute('relais.badge.photo', now()->addMinutes(15), $this->resource),
             'qr_payload' => $this->verificationUrl(),
             'activated_at' => $this->activated_at->toIso8601ZuluString(),
         ];

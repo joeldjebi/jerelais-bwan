@@ -41,7 +41,7 @@ class IdentityVerificationResource extends JsonResource
             'document_type' => $this->document_type,
             'required_files' => array_map(
                 fn (IdentityFileKind $kind): string => $kind->value,
-                $this->documentType?->requiredFiles() ?? [IdentityFileKind::Selfie, IdentityFileKind::ProfilePhoto],
+                $this->documentType?->requiredFiles() ?? [IdentityFileKind::Selfie],
             ),
             'files' => IdentityFileResource::collection($this->files),
             'missing' => $this->status->isEditable() ? IdentityChecklist::missing($this->resource) : (object) [],

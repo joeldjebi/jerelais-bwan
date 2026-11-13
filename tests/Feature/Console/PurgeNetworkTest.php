@@ -6,6 +6,7 @@ use App\Domain\Auth\Enums\UserStatus;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Relais\Models\RelaisProfile;
+use App\Domain\Territoire\Models\Commune;
 use App\Livewire\Console\Network\PurgeButton;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -31,8 +32,11 @@ function registerNetworkAccount(string $phone): User
 it('vide tous les comptes du réseau et leurs données, sans toucher à l’équipe', function () {
     $relais = registerNetworkAccount('0707070707');
     Sanctum::actingAs($relais);
-    $this->putJson(route('api.v1.identity.update'), ['document_type' => 'passeport', 'last_name' => 'Traoré'])->assertOk();
-    $this->post(route('api.v1.identity.files.store'), ['kind' => 'page', 'file' => UploadedFile::fake()->image('page.jpg')], ['Accept' => 'application/json'])->assertCreated();
+    $this->post(route('api.v1.identity.store'), [
+        'last_name' => 'Traoré', 'first_name' => 'Awa', 'gender' => 'femme', 'birth_date' => '26/04/2000',
+        'commune' => Commune::factory()->create()->uuid, 'document_type' => 'passeport',
+        'page' => UploadedFile::fake()->image('page.jpg'), 'selfie' => UploadedFile::fake()->image('selfie.jpg'),
+    ], ['Accept' => 'application/json'])->assertOk();
     fakeMultipart();
     $this->postJson(route('api.v1.relais.store'), relaisApiPayload())->assertCreated();
 
