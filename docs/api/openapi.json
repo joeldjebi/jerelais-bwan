@@ -8675,7 +8675,7 @@
                             "null"
                         ],
                         "format": "uuid",
-                        "description": "Commune (uuid de `GET /communes`). Facultative si une localité est donnée.",
+                        "description": "Commune : uuid renvoyé par `GET /communes` (l’exemple est fictif, à remplacer). Facultative si une localité est donnée.",
                         "examples": [
                             "9d2c6f0e-1b3a-4c5d-8e7f-0a1b2c3d4e5f"
                         ]
@@ -8686,7 +8686,7 @@
                             "null"
                         ],
                         "format": "uuid",
-                        "description": "Localité (uuid de `GET /communes/{commune}/localites`) : sa commune est déduite.",
+                        "description": "Localité : uuid renvoyé par `GET /communes/{commune}/localites` (l’exemple est fictif, à remplacer). Elle doit appartenir à la commune envoyée ; seule, sa commune est déduite.",
                         "examples": [
                             "9d2c6f0e-2b3a-4c5d-8e7f-0a1b2c3d4e5f"
                         ]
