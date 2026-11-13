@@ -46,8 +46,8 @@ Le Relais complète son profil quand il le souhaite ; il est **obligatoire seule
 1. `GET /identity` : statut, éléments manquants (`missing`), identité déjà saisie, types de pièces acceptés (`document_types`, aussi en public sur `GET /auth/register/options`) et `gains_eligible`.
 2. `PUT /identity` (**mise à jour partielle** : seuls les champs envoyés changent) : `last_name`, `first_names`, `gender`, `birth_date`, `commune` et/ou `localite`, `document_type` (une `value` de `GET /auth/register/options` ; liste gérée par l’administration, avec ses faces `sides`).
 3. `POST /identity/files` (multipart `kind` + `file`) pour chaque fichier de `required_files` : faces de la pièce (image ou PDF), `selfie` (la personne tenant sa pièce) et `profile_photo` (image). `DELETE /identity/files/{kind}` pour en retirer un.
-4. `POST /identity/submit` : envoi à l’administration (**422** avec la liste de ce qui manque sinon).
-5. Suivi : `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` : corriger selon `decision_comment`, puis renvoyer. Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).
+4. Envoi automatique : dès que le dossier est complet (dernier fichier ou dernier champ), il passe en `submitted`. `POST /identity/submit` reste facultatif (**422** avec la liste de ce qui manque).
+5. Suivi : `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` : corriger selon `decision_comment` ; le dossier repart tout seul une fois complet. Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).
 
 ## Parcours d’un candidat
 

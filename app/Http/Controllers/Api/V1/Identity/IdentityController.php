@@ -57,7 +57,8 @@ class IdentityController extends Controller
      * `last_name`, `first_names`, `gender` (`femme` ou `homme`), `birth_date` (AAAA-MM-JJ) ;
      * `commune` (uuid de `GET /communes`) et/ou `localite` (uuid de `GET /communes/{commune}/localites`) : une localité suffit,
      * sa commune est déduite ; `document_type` : une `value` de `GET /auth/register/options` (`cni`, `passeport`, `permis`…, liste gérée par l'administration).
-     * Changer de type de pièce retire les faces devenues inutiles. 409 si la vérification est envoyée ou déjà vérifiée.
+     * Changer de type de pièce retire les faces devenues inutiles. Si la mise à jour complète le dossier, il passe tout seul
+     * au statut `submitted`. 409 si la vérification est envoyée ou déjà vérifiée.
      *
      * @response IdentityVerificationResource
      */
@@ -78,6 +79,7 @@ class IdentityController extends Controller
      * Envoi multipart : `kind` et `file`. `kind` : `recto` et `verso` (CNI, permis, carte consulaire), `page` (passeport,
      * attestation d'identité), `selfie` (la personne tenant sa pièce) et `profile_photo`. Choisir d'abord le type de pièce.
      * Formats : JPEG, PNG, HEIC, et PDF pour les faces de la pièce ; 10 Mo maximum. Un nouveau fichier remplace le précédent.
+     * Quand ce fichier complète le dossier, celui-ci passe tout seul au statut `submitted` (envoyé à l'administration).
      */
     #[ApiResponse(503, 'Antivirus momentanément indisponible : réessayer plus tard (`Retry-After`).', type: 'array{message: string}')]
     public function storeFile(StoreIdentityFileRequest $request, StoreIdentityFile $store): JsonResponse
@@ -114,8 +116,9 @@ class IdentityController extends Controller
     }
 
     /**
-     * Envoyer ma vérification d'identité.
+     * Envoyer ma vérification d'identité (facultatif).
      *
+     * Le dossier part déjà tout seul dès qu'il est complet (dernier fichier ou dernier champ reçu) : cet appel est facultatif.
      * Exige le nom, les prénoms, le sexe, la date de naissance, la commune, le type de pièce, ses faces, le selfie et la photo
      * de profil ; sinon 422 avec la liste des éléments
      * manquants. Passe au statut `submitted` : l'administration vérifie, puis le statut devient `verified` (éligible aux gains)
