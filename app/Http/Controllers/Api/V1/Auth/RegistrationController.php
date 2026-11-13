@@ -63,7 +63,7 @@ class RegistrationController extends Controller
      *
      * @unauthenticated
      */
-    #[ApiResponse(503, 'Le fournisseur de SMS n’a pas accepté le message : réessayer après le délai `Retry-After`.', type: 'array{message: string}')]
+    #[ApiResponse(503, 'SMS non envoyé (fournisseur indisponible, ou plafond horaire de la plateforme atteint) : afficher `message` et réessayer après `Retry-After`.', type: 'array{message: string}')]
     public function request(RequestOtpRequest $request, RequestOtp $requestOtp): JsonResponse
     {
         $phone = $request->phoneNumber();
@@ -76,8 +76,8 @@ class RegistrationController extends Controller
 
         try {
             $requestOtp->handle($phone, $request->ip());
-        } catch (SmsNotSent) {
-            throw new ServiceUnavailableHttpException(60, __('auth.sms_failed'));
+        } catch (SmsNotSent $exception) {
+            throw new ServiceUnavailableHttpException(60, $exception->userMessage());
         }
 
         return response()->json([

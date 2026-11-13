@@ -28,8 +28,14 @@ return [
         'ttl_minutes' => 5,
         'max_attempts' => 5,
         'requests_per_phone' => 3,
-        'requests_per_ip' => 10,
+        // Par adresse IP : les opérateurs mobiles partagent une même adresse entre de nombreux abonnés (CGNAT).
+        'requests_per_ip' => (int) env('OTP_REQUESTS_PER_IP', 60),
         'requests_window_minutes' => 15,
+        'verify_per_ip_per_minute' => (int) env('OTP_VERIFY_PER_IP_PER_MINUTE', 60),
+        // Indicatifs autorisés à recevoir un code (protection contre la fraude aux SMS internationaux), séparés par des virgules.
+        'allowed_prefixes' => array_values(array_filter(array_map('trim', explode(',', (string) env('OTP_ALLOWED_PREFIXES', '+225'))))),
+        // Plafond de SMS de code envoyés par heure sur toute la plateforme : borne le coût d'une attaque. 0 : pas de plafond.
+        'global_per_hour' => (int) env('OTP_GLOBAL_PER_HOUR', 300),
         // Code fixe transitoire (ex. 1234) tant qu'aucun fournisseur de SMS n'est branché : voir App\Domain\Auth\Support\OtpPolicy.
         'fixed_code' => env('OTP_FIXED_CODE'),
         // Numéros autorisés à utiliser le code fixe, séparés par des virgules ; vide : tous les numéros.

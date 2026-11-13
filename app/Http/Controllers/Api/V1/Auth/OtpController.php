@@ -28,17 +28,17 @@ class OtpController extends Controller
      * Pour un compte existant (mot de passe oublié, nouvel appareil). Envoie par SMS un code à 4 chiffres, valable 5 minutes ;
      * chaque nouvelle demande annule le code précédent. Tant qu'aucun fournisseur de SMS n'est branché, le code est `1234`.
      * L'inscription passe par `POST /auth/register`. La réponse est identique que le numéro soit inscrit ou non.
-     * Numéro ivoirien à 10 chiffres (`0700000001`) ou format international (`+2250700000001`).
+     * Numéro ivoirien à 10 chiffres (`0700000001`) ou `+2250700000001` ; seuls les numéros de Côte d’Ivoire reçoivent un code (422 sinon).
      *
      * @unauthenticated
      */
-    #[ApiResponse(503, 'Le fournisseur de SMS n’a pas accepté le message : réessayer après le délai `Retry-After`.', type: 'array{message: string}')]
+    #[ApiResponse(503, 'SMS non envoyé (fournisseur indisponible, ou plafond horaire de la plateforme atteint) : afficher `message` et réessayer après `Retry-After`.', type: 'array{message: string}')]
     public function request(RequestOtpRequest $request, RequestOtp $requestOtp): JsonResponse
     {
         try {
             $requestOtp->handle($request->phoneNumber(), $request->ip());
-        } catch (SmsNotSent) {
-            throw new ServiceUnavailableHttpException(60, __('auth.sms_failed'));
+        } catch (SmsNotSent $exception) {
+            throw new ServiceUnavailableHttpException(60, $exception->userMessage());
         }
 
         return response()->json([

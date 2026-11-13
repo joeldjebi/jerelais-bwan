@@ -78,6 +78,8 @@ it('limite à 3 envois par numéro sur 15 minutes [§10 Sécurité]', function (
 });
 
 it('limite les envois par adresse IP, quel que soit le numéro [§10 Sécurité]', function () {
+    config(['jerelais.otp.requests_per_ip' => 10]);
+
     foreach (range(1, 10) as $index) {
         requestOtp('07070707'.str_pad((string) $index, 2, '0', STR_PAD_LEFT))->assertAccepted();
     }
@@ -230,4 +232,56 @@ it('vérifie le numéro sur le site avec le code fixe à 4 chiffres', function (
         ->call('verify')
         ->assertHasNoErrors()
         ->assertSet('step', 'password');
+});
+
+it('accepte par défaut 60 demandes par adresse IP (abonnés mobiles derrière une même adresse)', function () {
+    expect(config('jerelais.otp.requests_per_ip'))->toBe(60)
+        ->and(config('jerelais.otp.verify_per_ip_per_minute'))->toBe(60);
+
+    foreach (range(1, 15) as $index) {
+        requestOtp('07070707'.str_pad((string) $index, 2, '0', STR_PAD_LEFT))->assertAccepted();
+    }
+});
+
+it('refuse d’envoyer un code à un numéro étranger (fraude aux SMS internationaux) [§10 Sécurité]', function () {
+    requestOtp('+33 6 12 34 56 78')->assertUnprocessable()->assertJsonValidationErrors(['phone' => 'Seuls les numéros de Côte d’Ivoire']);
+    registerPhone('+1 202 555 0143')->assertUnprocessable()->assertJsonValidationErrors('phone');
+
+    expect($this->sms->sent)->toHaveCount(0)
+        ->and(OtpCode::query()->count())->toBe(0);
+});
+
+it('autorise d’autres indicatifs quand l’administration les ajoute', function () {
+    config(['jerelais.otp.allowed_prefixes' => ['+225', '+33']]);
+
+    requestOtp('+33 6 12 34 56 78')->assertAccepted();
+    expect($this->sms->sent)->toHaveCount(1);
+});
+
+it('suspend l’envoi des codes au-delà du plafond horaire de la plateforme, avec une seule alerte [§10 Sécurité]', function () {
+    config(['jerelais.otp.global_per_hour' => 2]);
+
+    requestOtp('0701010101')->assertAccepted();
+    requestOtp('0702020202')->assertAccepted();
+    requestOtp('0703030303')->assertServiceUnavailable()->assertJsonPath('message', 'Le service d’envoi des codes est très sollicité. Réessayez dans quelques minutes.');
+    registerPhone('0704040404')->assertServiceUnavailable();
+
+    expect($this->sms->sent)->toHaveCount(2)
+        ->and(AuditLog::query()->where('action', 'auth.otp.global_cap_reached')->count())->toBe(1);
+});
+
+it('ne compte pas le code fixe dans le plafond horaire (aucun SMS envoyé)', function () {
+    config(['jerelais.otp.global_per_hour' => 1, 'jerelais.otp.fixed_code' => '1234']);
+
+    requestOtp('0701010101')->assertAccepted();
+    requestOtp('0702020202')->assertAccepted();
+    expect($this->sms->sent)->toHaveCount(0);
+});
+
+it('explique sur le site qu’un numéro étranger ne peut pas recevoir de code', function () {
+    Livewire::test(Rejoindre::class)
+        ->set('phone', '+33 6 12 34 56 78')
+        ->call('sendCode')
+        ->assertHasErrors('phone')
+        ->assertSee('Seuls les numéros de Côte d’Ivoire');
 });
