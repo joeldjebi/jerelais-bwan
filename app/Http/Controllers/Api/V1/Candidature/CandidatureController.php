@@ -21,7 +21,6 @@ use App\Domain\Media\Exceptions\InfectedFile;
 use App\Domain\Media\Exceptions\VirusScanUnavailable;
 use App\Domain\Territoire\Models\Commune;
 use App\Domain\Territoire\Models\LieuType;
-use App\Domain\Territoire\Models\Localite;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Candidature\StoreCandidatureDocumentRequest;
 use App\Http\Requests\Api\V1\Candidature\UpdateCandidatureStepRequest;
@@ -176,24 +175,6 @@ class CandidatureController extends Controller
             'interests' => Category::query()->active()->get(['slug', 'name'])->map(fn (Category $category): array => ['value' => $category->slug, 'label' => $category->name]),
             'lieu_types' => LieuType::query()->orderBy('name')->get(['uuid', 'name'])->map(fn (LieuType $type): array => ['uuid' => $type->uuid, 'name' => $type->name]),
         ]]);
-    }
-
-    /**
-     * Localités d'une commune ouverte.
-     *
-     * Quartiers, villages et sous-préfectures de la commune, triés par nom. 404 si la commune est fermée aux Relais.
-     *
-     * @response array{data: list<array{uuid: string, name: string, type: 'quartier'|'village'|'sous_prefecture'}>}
-     *
-     * @unauthenticated
-     */
-    public function localites(Commune $commune): JsonResponse
-    {
-        abort_unless($commune->is_active, 404);
-
-        return response()->json(['data' => $commune->localites()->orderBy('name')->get(['uuid', 'name', 'type'])
-            ->map(fn (Localite $localite): array => ['uuid' => $localite->uuid, 'name' => $localite->name, 'type' => $localite->type->value]),
-        ]);
     }
 
     private function candidatureOf(Request $request, StartCandidature $start): Candidature
