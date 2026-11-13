@@ -344,74 +344,34 @@ class ApiDocumentationServiceProvider extends ServiceProvider
             $documentType->enum($types->pluck('slug')->all());
         }
 
-        $when = $submit ? 'Obligatoire.' : 'Facultatif.';
-        $common = fn (ObjectType $body): ObjectType => $body
+        $twoSided = $types->where('two_sided', true)->pluck('name')->implode(', ') ?: 'CNI, permis, carte consulaire';
+        $onePage = $types->where('two_sided', false)->pluck('name')->implode(', ') ?: 'passeport, attestation';
+        $when = $submit ? 'Obligatoire pour ces pièces' : 'Facultatif';
+
+        // Corps à plat : l'outil d'essai de la documentation n'envoie rien quand le corps est découpé en variantes (anyOf).
+        $body = (new ObjectType)
             ->addProperty('last_name', $text('Nom.', 'Traoré'))
             ->addProperty('first_name', $text('Prénoms (`first_names` est aussi accepté).', 'Abou'))
             ->addProperty('gender', (new StringType)->enum(['femme', 'homme'])->setDescription('Genre.')->example('homme'))
             ->addProperty('birth_date', $text('Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.', '26/04/2000'))
             ->addProperty('commune', $uuid('Commune : `uuid` renvoyé par `GET /communes`.'.($submit ? ' Obligatoire sauf si `localite` est envoyée.' : '')))
-            ->addProperty('localite', $uuid('Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`.'));
-        $selfie = $file('Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. '.$when);
+            ->addProperty('localite', $uuid('Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`.'))
+            ->addProperty('document_type', $documentType)
+            ->addProperty('recto', $file('**Seulement pour : '.$twoSided.'.** Photo du recto de la pièce, image ou PDF, 10 Mo maximum. '.$when.'.'))
+            ->addProperty('verso', $file('**Seulement pour : '.$twoSided.'.** Photo du verso de la pièce, image ou PDF, 10 Mo maximum. '.$when.'.'))
+            ->addProperty('page', $file('**Seulement pour : '.$onePage.'.** Photo de la page de la pièce, image ou PDF, 10 Mo maximum. '.$when.'.'))
+            ->addProperty('selfie', $file('La personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum.'.($submit ? ' Obligatoire.' : ' Facultatif.')));
 
-        // Une variante par pièce : la documentation affiche les seules photos demandées par la pièce choisie.
-        $variants = $types->map(function (IdentityDocumentType $type) use ($common, $file, $selfie, $when, $submit): Type {
-            $variant = $common(self::titled($type->name.' — '.($type->two_sided ? 'recto + verso' : 'une page')))
-                ->addProperty('document_type', (new StringType)->enum([$type->slug])->setDescription('Type de pièce : `'.$type->slug.'`.')->example($type->slug));
-
-            $sides = $type->two_sided ? ['recto' => 'Photo du recto', 'verso' => 'Photo du verso'] : ['page' => 'Photo de la page'];
-
-            foreach ($sides as $kind => $label) {
-                $variant->addProperty($kind, $file($label.' de la pièce : image ou PDF, 10 Mo maximum. '.$when));
-            }
-
-            $variant->addProperty('selfie', $selfie);
-
-            if ($submit) {
-                $variant->setRequired(['last_name', 'first_name', 'gender', 'birth_date', 'document_type', ...array_keys($sides), 'selfie']);
-            }
-
-            return $variant;
-        })->values()->all();
-
-        if (! $submit) {
-            $variants[] = $common(self::titled('Sans changer de pièce'))->addProperty('selfie', $selfie);
+        if ($submit) {
+            $body->setRequired(['last_name', 'first_name', 'gender', 'birth_date', 'document_type', 'selfie']);
         }
-
-        $body = new AnyOf;
-        $body->setItems($variants === [] ? [$common(new ObjectType)->addProperty('document_type', $documentType)] : $variants);
-        $body->setDescription($documentType->description);
 
         return RequestBodyObject::make()
             ->setContent('multipart/form-data', Schema::fromType($body))
             ->description($submit
-                ? 'Tout en une requête. Choisir d’abord `document_type` : envoyer `recto` + `verso`, ou `page`, selon la pièce ; puis le `selfie`.'
+                ? 'Tout en une requête. Choisir d’abord `document_type`, puis envoyer les photos de cette pièce : `recto` + `verso` ('.$twoSided.') ou `page` ('.$onePage.'), et le `selfie`. Laisser vides les photos qui ne concernent pas la pièce choisie.'
                 : 'Tout est facultatif : seuls les éléments envoyés changent. Les photos de la pièce doivent correspondre au type de pièce (envoyé ou déjà enregistré).')
             ->required($submit);
-    }
-
-    /**
-     * Objet avec un titre (nom de la variante affiché par la documentation).
-     */
-    private static function titled(string $title): ObjectType
-    {
-        return new class($title) extends ObjectType
-        {
-            public function __construct(private readonly string $title)
-            {
-                parent::__construct();
-            }
-
-            public function serializeAs31(): mixed
-            {
-                return ['title' => $this->title, ...(array) parent::serializeAs31()];
-            }
-
-            public function serializeAs32(): mixed
-            {
-                return ['title' => $this->title, ...(array) parent::serializeAs32()];
-            }
-        };
     }
 
     /**

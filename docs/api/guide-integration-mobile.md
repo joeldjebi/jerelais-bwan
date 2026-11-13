@@ -331,7 +331,7 @@ Le statut est aussi dans `GET /me` (`identity_status`, `gains_eligible`).
 
 ### 5.5 Modifier (tout est facultatif)
 
-`PUT /identity` accepte **les mêmes champs et photos que 5.3, tous facultatifs** : seuls les éléments envoyés changent, le reste est conservé. Possible tant que le statut est `draft` ou `rejected` (sinon **409**).
+`PUT /identity` accepte **les mêmes champs et photos que 5.3, tous facultatifs** : seuls les éléments envoyés **et non vides** changent, le reste est conservé (un champ envoyé vide ne l’efface pas). Possible tant que le statut est `draft` ou `rejected` (sinon **409**).
 
 ```bash
 # Corriger un dossier refusé : nouveau selfie seulement

@@ -70,7 +70,8 @@ class IdentityController extends Controller
     /**
      * Modifier ma vérification d'identité.
      *
-     * **Tout est facultatif** : seuls les éléments envoyés changent (champs et/ou photos), les autres sont conservés.
+     * **Tout est facultatif** : seuls les éléments envoyés et non vides changent (champs et/ou photos) ; un champ vide ne
+     * l'efface pas, les autres sont conservés. Une requête sans aucun élément répond 422.
      * Même format que `POST /identity` (`multipart/form-data` ; JSON accepté s'il n'y a pas de photo).
      * Changer `document_type` retire les photos de la pièce devenues inutiles ; les photos envoyées doivent correspondre
      * au type de pièce (celui envoyé, sinon celui déjà enregistré). Possible tant que le dossier est `draft` ou `rejected`.
