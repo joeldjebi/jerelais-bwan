@@ -25,7 +25,7 @@ La personne se connecte ensuite avec `POST /auth/login` et peut **envoyer des re
 
 **Connexion** : `POST /auth/login` avec seulement `phone` et `password`. La description de l’appareil (`device_name`, `platform`, `app_version`) est facultative : sans elle, la plateforme est déduite du User-Agent. Après 5 mots de passe erronés sur un même numéro, il est bloqué 15 minutes (**429**).
 
-**Mot de passe oublié** : `POST /auth/otp`, puis `POST /auth/verify` (numéro et code ; appareil facultatif) renvoie un jeton ; pendant 15 minutes, ce jeton peut redéfinir le mot de passe avec `PUT /me/password` **sans** `current_password`. Un numéro sans compte est refusé : proposer l’inscription.
+**Mot de passe oublié** (3 étapes) : 1. `POST /auth/otp` (code par SMS) ; 2. `POST /auth/verify` (numéro et code) renvoie un jeton ; 3. `POST /auth/password/reset` avec ce jeton, dans les 15 minutes : `password` et `password_confirmation`, sans l’ancien. Un numéro sans compte est refusé à l’étape 2 : proposer l’inscription.
 
 Ensuite :
 
@@ -64,27 +64,17 @@ Statuts d’une candidature : `draft` (à compléter) · `submitted` (reçue) ·
 
 ## Envoyer un relais
 
-**Pas de brouillon, pas d’appel d’envoi séparé.** Un relais s’envoie en un seul appel ; les fichiers suivent, et le relais part tout seul quand le dernier est reçu.
+**Une seule requête, pas de brouillon.** `POST /relais` en `multipart/form-data` avec tout le contenu et les fichiers : `category`, `title`, `description`, `urgency`, la position `lat` + `lng` (ou `declared_commune`), les protections `has_minors` (`true`/`false`), `people_consent`, `credit_mode` (`credit_name` pour un pseudonyme), `appel` pour répondre à un appel, et **`files[]`** : 1 à 10 fichiers (photos, vidéos, sons), **100 Mo maximum chacun**. Le relais est aussitôt reçu par le coordonnateur (`received`), routé vers la commune du GPS (sinon la commune déclarée). Tout ou rien : **422** avec un message par champ, rien n’est créé. `client_uuid` (facultatif) évite les doublons après une coupure.
 
-1. `POST /relais` avec **tout le contenu** et la **liste des fichiers** : `client_uuid` (généré par l’application), `category`, `title`, `location` (GPS) ou `declared_commune`, `protections` (`has_minors`, `people_consent`, `credit_mode`, plus `credit_name` pour un pseudonyme), et `medias` : 1 à 10 fichiers, chacun avec `client_uuid`, `kind` (`photo`, `video`, `audio`), `mime`, `size` en octets et `sha256`. Tout est contrôlé d’emblée : **422** avec la liste des champs (par exemple `medias.0.size`), et **rien n’est créé**.
-2. La réponse (**201**) contient le relais (statut `uploading`, « envoi en cours ») et, dans **`uploads`**, pour chaque fichier : son `uuid`, `upload.part_size` et une URL signée par morceau dans `upload.missing_parts` (valable 30 minutes).
-3. Pour chaque fichier, l’envoi se fait **directement vers le stockage**, en morceaux :
-   1. Découper le fichier en morceaux de `part_size` octets (le dernier est plus petit) et envoyer chacun par `PUT` brut sur son URL, **sans** en-tête `Authorization`. Conserver l’en-tête `ETag` de chaque réponse.
-   2. Après une coupure : `GET /medias/{media}` renvoie les morceaux déjà reçus (`uploaded_parts`) et de nouvelles URL pour les manquants. Seuls ceux-là sont à renvoyer. Renvoyer `POST /relais` avec le même `client_uuid` redonne aussi le relais et des URL à jour (200), sans doublon.
-   3. `POST /medias/{media}/complete` avec `parts: [{number, etag}]`. La taille totale reçue doit être exactement celle annoncée.
-4. **Dès que le dernier fichier est clos, le relais est soumis automatiquement** : statut `received`, routé vers la commune du GPS (sinon la commune déclarée), dans la file du coordonnateur. Aucun autre appel n’est nécessaire. Un fichier jamais terminé est abandonné au bout de 48 heures, et le relais part avec les fichiers reçus.
-5. Chaque fichier est ensuite contrôlé en tâche de fond (type réel, antivirus, empreinte, métadonnées, vignette) : `uploaded` → `processing` → `ready` ou `rejected` (raison dans `rejection`), visible avec `GET /medias/{media}` ou `GET /relais/{relais}`.
-6. Le relais apparaît dans `GET /relais` avec son statut, mis à jour à chaque décision.
+Chaque fichier est ensuite contrôlé en tâche de fond (type réel, antivirus, empreinte, durée, vignette) : `uploaded` → `processing` → `ready` ou `rejected` (raison dans `rejection`), visible avec `GET /relais/{relais}`.
 
-**Complément demandé par le coordonnateur** (`complement_requested`) : `POST /relais/{relais}/medias` ajoute un fichier (mêmes étapes 3), puis `POST /relais/{relais}/complement` envoie la réponse.
+**Modifier** : `PUT /relais/{relais}`, mêmes champs **tous facultatifs** (seuls les éléments envoyés et non vides changent), `files[]` pour ajouter des fichiers, `remove_medias[]` (uuid) pour en retirer. Possible tant que le relais est `received` (pas encore pris en charge) et quand un complément est demandé (`complement_requested`) : la modification sert alors de réponse (`message` facultatif) et le relais revient dans la file. **409** ensuite.
 
-Statuts d’un média : `pending` (en attente des morceaux) · `uploaded` (reçu, à contrôler) · `processing` · `ready` · `rejected`.
+**Vidéo de plus de 100 Mo ou réseau instable** : envoi en morceaux reprenable — `POST /relais` en JSON avec la liste des fichiers (`medias` : `client_uuid`, `kind`, `mime`, `size`, `sha256`), puis dépôt des morceaux sur les URL de `uploads` et `POST /medias/{media}/complete` ; le relais part quand le dernier fichier est clos.
 
-Raisons de rejet d’un média : format non accepté, antivirus, fichier incomplet ou altéré, durée dépassée, taille dépassée, fichier illisible, envoi jamais terminé, taille différente de celle annoncée. Le texte affichable est dans `rejection`.
+Statuts d’un relais vus par le Relais : `uploading` (fichiers en cours d’envoi) · `received` (reçu, en vérification) · `complement_requested` (le coordonnateur pose une question : `complement_request` ; réponse par `PUT /relais/{relais}` ou `POST /relais/{relais}/complement`) · `validated` · `rejected` (motif dans `rejection`) · `selected` (choisi par la rédaction) · `broadcast` (diffusé) · `archived`.
 
-Statuts d’un relais vus par le Relais : `uploading` (fichiers en cours d’envoi) · `received` (reçu, en vérification) · `complement_requested` (le coordonnateur pose une question : `complement_request`, réponse par `POST /relais/{relais}/complement`) · `validated` · `rejected` (motif dans `rejection`) · `selected` (choisi par la rédaction) · `broadcast` (diffusé) · `archived`.
-
-Limites par défaut, modifiables par l’administration et lisibles dans `GET /settings` : vidéo de 3 minutes, audio de 10 minutes, 10 médias par relais, 500 Mo par fichier.
+Limites par défaut, modifiables par l’administration et lisibles dans `GET /settings` : vidéo de 3 minutes, audio de 10 minutes, 10 médias par relais. Taille : 100 Mo par fichier en une requête, 500 Mo en envoi par morceaux.
 
 ## Erreurs
 

@@ -5,8 +5,11 @@ use App\Domain\Audit\Models\AuditLog;
 use App\Domain\Contribution\Events\RelaisStatusChanged;
 use App\Domain\Contribution\Models\Category;
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Contribution\States\ComplementRequested;
+use App\Domain\Contribution\States\InReview;
 use App\Domain\Contribution\States\Received;
 use App\Domain\Contribution\States\Uploading;
+use App\Domain\Contribution\States\Validated;
 use App\Domain\Media\Actions\PurgeAbandonedUploads;
 use App\Domain\Media\Models\Media;
 use App\Domain\Relais\Enums\RelaisStatus;
@@ -18,8 +21,10 @@ use Clickbar\Magellan\Data\Geometries\MultiPolygon;
 use Clickbar\Magellan\Data\Geometries\Point;
 use Clickbar\Magellan\Data\Geometries\Polygon;
 use Database\Seeders\ListsSeeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
@@ -239,9 +244,9 @@ it('valide les coordonnées et la date de capture', function () {
         ->assertJsonValidationErrors(['location.lat', 'device_captured_at']);
 });
 
-it('ne propose plus de brouillon ni d’envoi séparé', function () {
-    expect(Route::has('api.v1.relais.update'))->toBeFalse()
-        ->and(Route::has('api.v1.relais.submit'))->toBeFalse();
+it('ne propose plus d’envoi séparé : la modification passe par PUT /relais/{relais}', function () {
+    expect(Route::has('api.v1.relais.submit'))->toBeFalse()
+        ->and(Route::has('api.v1.relais.update'))->toBeTrue();
 });
 
 it('soumet quand même le relais si un de ses fichiers n’arrive jamais (abandonné après 48 h)', function () {
@@ -267,4 +272,149 @@ it('renvoie à l’application des messages lisibles pour un relais incomplet [M
             'protections.credit_name' => 'Indiquez le pseudonyme à afficher à l’antenne.',
             'category' => 'Le champ catégorie est obligatoire.',
         ]);
+});
+
+/**
+ * Envoi en une seule requête (multipart, champs à plat comme dans la documentation).
+ *
+ * @param  array<string, mixed>  $overrides
+ */
+function sendRelaisAtOnce(array $overrides = []): TestResponse
+{
+    return test()->post(route('api.v1.relais.store'), [
+        'category' => test()->category->uuid,
+        'title' => 'Inondation au carrefour Siporex',
+        'description' => 'La route est coupée depuis ce matin.',
+        'urgency' => 'urgent',
+        'declared_commune' => test()->cocody->uuid,
+        'has_minors' => 'false',
+        'people_consent' => 'not_applicable',
+        'credit_mode' => 'anonymous',
+        'files' => [UploadedFile::fake()->createWithContent('photo.jpg', photoBytes())],
+        ...$overrides,
+    ], ['Accept' => 'application/json']);
+}
+
+it('envoie un relais en une seule requête : contenu et fichier ensemble, aussitôt reçu [MOB-19]', function () {
+    $response = sendRelaisAtOnce()
+        ->assertCreated()
+        ->assertJsonPath('data.status', 'received')
+        ->assertJsonPath('data.title', 'Inondation au carrefour Siporex')
+        ->assertJsonPath('data.protections.has_minors', false)
+        ->assertJsonCount(1, 'data.medias')
+        ->assertJsonMissingPath('uploads');
+
+    $relais = RelaisItem::withoutCommuneRestriction()->where('uuid', $response->json('data.uuid'))->sole();
+    $media = $relais->medias()->sole();
+
+    expect($relais->state)->toBeInstanceOf(Received::class)
+        ->and($relais->commune_id)->toBe($this->cocody->id)
+        ->and($media->declared_sha256)->toBe(hash('sha256', photoBytes()))
+        ->and(Storage::disk('medias')->exists($media->path))->toBeTrue();
+});
+
+it('accepte la position GPS à plat (lat, lng) et route le relais vers la commune du point', function () {
+    sendRelaisAtOnce(['declared_commune' => '', 'lat' => '5.34', 'lng' => '-4.07', 'accuracy_m' => '10'])
+        ->assertCreated()
+        ->assertJsonPath('data.commune.uuid', $this->yopougon->uuid);
+});
+
+it('reprend le même relais avec le même client_uuid, sans doublon', function () {
+    $uuid = (string) Str::uuid();
+
+    $first = sendRelaisAtOnce(['client_uuid' => $uuid])->assertCreated()->json('data.uuid');
+    sendRelaisAtOnce(['client_uuid' => $uuid])->assertOk()->assertJsonPath('data.uuid', $first);
+
+    expect(RelaisItem::withoutCommuneRestriction()->count())->toBe(1);
+});
+
+it('refuse un envoi sans fichier, un format inconnu ou un fichier de plus de 100 Mo, sans rien créer', function () {
+    sendRelaisAtOnce(['files' => []])->assertUnprocessable()->assertJsonValidationErrors('files');
+    sendRelaisAtOnce(['files' => [UploadedFile::fake()->create('doc.pdf', 20, 'application/pdf')]])->assertUnprocessable()->assertJsonValidationErrors('files.0');
+    sendRelaisAtOnce(['files' => [UploadedFile::fake()->create('film.mp4', 101 * 1024, 'video/mp4')]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['files.0' => 'envoyez-le en morceaux']);
+    sendRelaisAtOnce(['title' => '', 'credit_mode' => 'pseudonym'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['title', 'protections.credit_name']);
+
+    expect(RelaisItem::withoutCommuneRestriction()->count())->toBe(0)
+        ->and(Storage::disk('medias')->allFiles())->toBeEmpty();
+});
+
+/**
+ * @param  array<string, mixed>  $data
+ */
+function updateRelais(string $uuid, array $data): TestResponse
+{
+    return test()->put(route('api.v1.relais.update', $uuid), $data, ['Accept' => 'application/json']);
+}
+
+it('modifie un relais avant sa prise en charge : seuls les champs envoyés changent [MOB-19]', function () {
+    $uuid = sendRelaisAtOnce()->json('data.uuid');
+
+    updateRelais($uuid, ['title' => 'Route coupée à Siporex', 'description' => '', 'urgency' => ''])
+        ->assertOk()
+        ->assertJsonPath('data.title', 'Route coupée à Siporex')
+        ->assertJsonPath('data.description', 'La route est coupée depuis ce matin.')
+        ->assertJsonPath('data.status', 'received');
+
+    $this->assertDatabaseHas('audit_logs', ['action' => 'relais.updated']);
+});
+
+it('ajoute et retire des fichiers d’un relais envoyé, sans pouvoir tous les retirer', function () {
+    $response = sendRelaisAtOnce();
+    $uuid = $response->json('data.uuid');
+    $first = $response->json('data.medias.0.uuid');
+
+    updateRelais($uuid, ['files' => [UploadedFile::fake()->createWithContent('autre.jpg', photoBytes())], 'remove_medias' => [$first]])
+        ->assertOk()
+        ->assertJsonCount(1, 'data.medias');
+
+    $remaining = RelaisItem::withoutCommuneRestriction()->where('uuid', $uuid)->sole()->medias()->sole();
+    expect($remaining->uuid)->not->toBe($first);
+
+    updateRelais($uuid, ['remove_medias' => [$remaining->uuid]])->assertUnprocessable()->assertJsonValidationErrors('files');
+    updateRelais($uuid, ['remove_medias' => [(string) Str::uuid()]])->assertUnprocessable()->assertJsonValidationErrors('remove_medias');
+});
+
+it('déplace le relais vers la commune du nouveau lieu avant sa prise en charge', function () {
+    $uuid = sendRelaisAtOnce()->json('data.uuid');
+
+    updateRelais($uuid, ['lat' => '5.34', 'lng' => '-4.07'])->assertOk()->assertJsonPath('data.commune.uuid', $this->yopougon->uuid);
+});
+
+it('refuse une modification vide, et toute modification pendant l’examen ou après la décision (409)', function () {
+    $uuid = sendRelaisAtOnce()->json('data.uuid');
+    updateRelais($uuid, [])->assertUnprocessable()->assertJsonValidationErrors('relais');
+
+    RelaisItem::withoutCommuneRestriction()->where('uuid', $uuid)->update(['state' => InReview::getMorphClass()]);
+    updateRelais($uuid, ['title' => 'Autre'])->assertConflict();
+
+    RelaisItem::withoutCommuneRestriction()->where('uuid', $uuid)->update(['state' => Validated::getMorphClass()]);
+    updateRelais($uuid, ['title' => 'Autre'])->assertConflict();
+});
+
+it('répond à une demande de complément par la modification : le relais revient dans la file [COO-14]', function () {
+    $uuid = sendRelaisAtOnce()->json('data.uuid');
+    RelaisItem::withoutCommuneRestriction()->where('uuid', $uuid)->update(['state' => ComplementRequested::getMorphClass()]);
+
+    updateRelais($uuid, ['files' => [UploadedFile::fake()->createWithContent('plan-large.jpg', photoBytes())], 'message' => 'Voici une vue plus large.'])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'received')
+        ->assertJsonCount(2, 'data.medias');
+});
+
+it('n’autorise pas la modification du relais d’un autre Relais', function () {
+    $uuid = sendRelaisAtOnce()->json('data.uuid');
+    Sanctum::actingAs(RelaisProfile::factory()->create()->user);
+
+    updateRelais($uuid, ['title' => 'Piraté'])->assertNotFound();
+});
+
+it('accepte des champs facultatifs envoyés vides (urgence, description, emplacements de fichier)', function () {
+    sendRelaisAtOnce(['urgency' => '', 'description' => '', 'declared_place' => '', 'files' => [UploadedFile::fake()->createWithContent('photo.jpg', photoBytes()), '', '']])
+        ->assertCreated()
+        ->assertJsonPath('data.urgency', 'normal')
+        ->assertJsonCount(1, 'data.medias');
 });

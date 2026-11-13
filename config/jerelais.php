@@ -124,6 +124,9 @@ return [
     'media' => [
         // Taille d'un morceau d'envoi multipart (5 Mo minimum imposé par S3, sauf le dernier).
         'part_size_mb' => 8,
+        // Envoi en une seule requête (texte + fichiers, POST et PUT /relais) : taille maximale par fichier.
+        // Au-delà, l'application utilise l'envoi en morceaux (reprise après coupure). PHP doit l'autoriser (upload_max_filesize).
+        'direct_upload_max_mb' => (int) env('MEDIA_DIRECT_UPLOAD_MAX_MB', 100),
         'part_url_minutes' => 30,
         'view_url_minutes' => 15,
     ],

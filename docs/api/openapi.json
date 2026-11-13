@@ -3,7 +3,7 @@
     "info": {
         "title": "JE RELAIS — API v1",
         "version": "0.1.0",
-        "description": "API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV. Elle est consommée par l’application mobile Android et iOS. Toutes les règles métier vivent côté serveur : l’application affiche et envoie, le serveur contrôle.\n\n## Conventions\n\n| Sujet | Règle |\n|---|---|\n| Adresse | `https://<domaine>/api/v1`. Un changement incompatible donnera `/api/v2` ; la v1 reste servie pendant la transition. |\n| Format | JSON, champs en `snake_case`, dates ISO 8601 en UTC (`2026-10-21T07:40:00Z`), identifiants UUID. |\n| En-têtes | `Accept: application/json` sur **toutes** les requêtes (sinon les erreurs reviennent en HTML). `Content-Type: application/json`, sauf l’envoi des pièces de candidature (`multipart/form-data`). |\n| Langue | Messages d’erreur et libellés en français, prêts à afficher. |\n| Enveloppe | Les ressources sont dans `data`, les informations annexes dans `meta`. |\n| Pagination | `GET /relais` et `GET /diffusions` renvoient 20 éléments par page : `data`, `links` (`first`, `last`, `prev`, `next`) et `meta` (`current_page`, `last_page`, `per_page`, `total`…). Page suivante : `?page=2`. |\n\n## Authentification\n\nUn compte est identifié par son **numéro de téléphone** et protégé par un **mot de passe d’au moins 8 caractères**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes de vérification font **4 chiffres**, sont valables 5 minutes et **arrivent par SMS** (fournisseur MTarget, expéditeur affiché sur le téléphone). Sur un environnement sans fournisseur de SMS (développement, recette), aucun SMS ne part et le code est toujours `1234`. L’écran de saisie est le même dans les deux cas. Si le fournisseur refuse l’envoi, l’API répond **503** « L’envoi du SMS a échoué. Réessayez dans quelques instants. »\n\n**Inscription** (3 appels) :\n\n1. `POST /auth/register` avec `phone` : envoie le code par SMS. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.\n2. `POST /auth/register/verify` avec `phone` et `code` : le numéro est retenu comme vérifié pendant **30 minutes**.\n3. `POST /auth/register/complete` avec le même `phone`, `password` et `password_confirmation` (au moins 8 caractères), et, facultatifs, `last_name`, `first_names`, `gender` (`femme` ou `homme`) et `birth_date` au format **JJ/MM/AAAA** (`26/04/2000`). Le compte est **actif** : la personne est Relais (numéro et badge). Aucun jeton n’est renvoyé : ouvrir l’écran de connexion.\n\nLa personne se connecte ensuite avec `POST /auth/login` et peut **envoyer des relais tout de suite**. L’identité saisie à l’inscription pré-remplit le profil ; pièce d’identité, commune, selfie et photo de profil se complètent plus tard dans le profil (voir « Vérification d’identité et commissions ») : ils n’empêchent ni la connexion ni l’envoi de relais.\n\n**Connexion** : `POST /auth/login` avec seulement `phone` et `password`. La description de l’appareil (`device_name`, `platform`, `app_version`) est facultative : sans elle, la plateforme est déduite du User-Agent. Après 5 mots de passe erronés sur un même numéro, il est bloqué 15 minutes (**429**).\n\n**Mot de passe oublié** : `POST /auth/otp`, puis `POST /auth/verify` (numéro et code ; appareil facultatif) renvoie un jeton ; pendant 15 minutes, ce jeton peut redéfinir le mot de passe avec `PUT /me/password` **sans** `current_password`. Un numéro sans compte est refusé : proposer l’inscription.\n\nEnsuite :\n\n- Envoyer `Authorization: Bearer <jeton>` sur chaque requête protégée (bouton **Authorize** ci-dessus pour essayer).\n- `PUT /devices/current` après chaque connexion ou mise à jour de l’application : jeton de notifications push (FCM) et version installée.\n- `POST /auth/logout` détruit le jeton de l’appareil.\n\nLe jeton est valable **60 jours** (date dans `expires_at`), puis une nouvelle connexion est nécessaire. Il devient invalide plus tôt (réponse **401**) après une déconnexion, une révocation à distance, une radiation du Relais ou la suppression du compte : l’application doit alors revenir à l’écran de connexion.\n\nLes comptes de l’équipe (coordonnateurs, rédaction, administration) n’ont pas accès à l’API : ils passent par la console web, avec double authentification.\n\nNuméros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00 01`) ou format international (`+2250700000001`).\n\n## Vérification d’identité et commissions\n\nLe Relais complète son profil quand il le souhaite ; il est **obligatoire seulement pour recevoir ses commissions**. Ni la connexion ni l’envoi de relais n’en dépendent.\n\n**En une seule requête :** `POST /identity` (multipart) avec `last_name`, `first_name`, `gender`, `birth_date` (`26/04/2000`), `commune` et/ou `localite`, `document_type` (une `value` de `GET /auth/register/options`), et les fichiers : faces de la pièce selon `sides` (`recto` + `verso`, ou `page`), `selfie`. Le dossier part aussitôt en vérification (`submitted`). Tout ou rien : **422** liste chaque champ ou fichier à corriger, sans rien enregistrer.\n\nSuivi : `GET /identity` — `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` (motif dans `decision_comment` : renvoyer la même requête corrigée). Le statut est aussi dans `GET /me`.\n\n**Modifier :** `PUT /identity`, mêmes champs et photos que `POST /identity`, **tous facultatifs** : seuls les éléments envoyés changent ; dès que le dossier est complet, il part en vérification. Le type de pièce décide des photos : `recto` + `verso` ou `page` (`sides`). Le `selfie` sert aussi de photo du badge.\n\n## Parcours d’un candidat\n\n1. Inscription (`POST /auth/register`, `POST /auth/register/verify`, `POST /auth/register/complete`) : compte actif et Relais dès le mot de passe choisi.\n2. Lecture des listes du formulaire : `GET /candidature/options`, `GET /communes`, `GET /communes/{commune}/localites`.\n3. Remplissage en trois étapes, enregistrées à chaque modification : `PUT /candidature/steps/identite`, `…/territoire`, `…/profil`.\n4. Pièces : `POST /candidature/documents` (photo de profil, recto, verso, selfie ; autorisation parentale si mineur admis).\n5. Textes juridiques : `GET /legal`, puis `POST /consents` avec les `uuid` des versions en vigueur.\n6. Formation et quiz : `GET /formation`, `GET /quiz`, `POST /quiz/attempts`.\n7. Dépôt : `POST /candidature/submit`. Le serveur renvoie **422** avec la liste des éléments manquants tant que le dossier est incomplet.\n8. Suivi : `GET /candidature` (statut, motif de refus, complément demandé). Une fois accepté, le compte devient **Relais** et `GET /me/badge` répond.\n\nStatuts d’une candidature : `draft` (à compléter) · `submitted` (reçue) · `under_review` (en examen) · `on_hold` (en attente) · `complement_requested` (complément demandé, dossier de nouveau modifiable) · `accepted` · `rejected` (avec motif).\n\n## Envoyer un relais\n\n**Pas de brouillon, pas d’appel d’envoi séparé.** Un relais s’envoie en un seul appel ; les fichiers suivent, et le relais part tout seul quand le dernier est reçu.\n\n1. `POST /relais` avec **tout le contenu** et la **liste des fichiers** : `client_uuid` (généré par l’application), `category`, `title`, `location` (GPS) ou `declared_commune`, `protections` (`has_minors`, `people_consent`, `credit_mode`, plus `credit_name` pour un pseudonyme), et `medias` : 1 à 10 fichiers, chacun avec `client_uuid`, `kind` (`photo`, `video`, `audio`), `mime`, `size` en octets et `sha256`. Tout est contrôlé d’emblée : **422** avec la liste des champs (par exemple `medias.0.size`), et **rien n’est créé**.\n2. La réponse (**201**) contient le relais (statut `uploading`, « envoi en cours ») et, dans **`uploads`**, pour chaque fichier : son `uuid`, `upload.part_size` et une URL signée par morceau dans `upload.missing_parts` (valable 30 minutes).\n3. Pour chaque fichier, l’envoi se fait **directement vers le stockage**, en morceaux :\n   1. Découper le fichier en morceaux de `part_size` octets (le dernier est plus petit) et envoyer chacun par `PUT` brut sur son URL, **sans** en-tête `Authorization`. Conserver l’en-tête `ETag` de chaque réponse.\n   2. Après une coupure : `GET /medias/{media}` renvoie les morceaux déjà reçus (`uploaded_parts`) et de nouvelles URL pour les manquants. Seuls ceux-là sont à renvoyer. Renvoyer `POST /relais` avec le même `client_uuid` redonne aussi le relais et des URL à jour (200), sans doublon.\n   3. `POST /medias/{media}/complete` avec `parts: [{number, etag}]`. La taille totale reçue doit être exactement celle annoncée.\n4. **Dès que le dernier fichier est clos, le relais est soumis automatiquement** : statut `received`, routé vers la commune du GPS (sinon la commune déclarée), dans la file du coordonnateur. Aucun autre appel n’est nécessaire. Un fichier jamais terminé est abandonné au bout de 48 heures, et le relais part avec les fichiers reçus.\n5. Chaque fichier est ensuite contrôlé en tâche de fond (type réel, antivirus, empreinte, métadonnées, vignette) : `uploaded` → `processing` → `ready` ou `rejected` (raison dans `rejection`), visible avec `GET /medias/{media}` ou `GET /relais/{relais}`.\n6. Le relais apparaît dans `GET /relais` avec son statut, mis à jour à chaque décision.\n\n**Complément demandé par le coordonnateur** (`complement_requested`) : `POST /relais/{relais}/medias` ajoute un fichier (mêmes étapes 3), puis `POST /relais/{relais}/complement` envoie la réponse.\n\nStatuts d’un média : `pending` (en attente des morceaux) · `uploaded` (reçu, à contrôler) · `processing` · `ready` · `rejected`.\n\nRaisons de rejet d’un média : format non accepté, antivirus, fichier incomplet ou altéré, durée dépassée, taille dépassée, fichier illisible, envoi jamais terminé, taille différente de celle annoncée. Le texte affichable est dans `rejection`.\n\nStatuts d’un relais vus par le Relais : `uploading` (fichiers en cours d’envoi) · `received` (reçu, en vérification) · `complement_requested` (le coordonnateur pose une question : `complement_request`, réponse par `POST /relais/{relais}/complement`) · `validated` · `rejected` (motif dans `rejection`) · `selected` (choisi par la rédaction) · `broadcast` (diffusé) · `archived`.\n\nLimites par défaut, modifiables par l’administration et lisibles dans `GET /settings` : vidéo de 3 minutes, audio de 10 minutes, 10 médias par relais, 500 Mo par fichier.\n\n## Erreurs\n\n| Code | Signification | Que faire |\n|---|---|---|\n| 401 | Jeton absent, invalide ou révoqué. Corps : `{\"message\": \"Unauthenticated.\"}` | Revenir à l’écran de connexion. |\n| 403 | Action non permise pour ce compte : candidat sur une route de Relais, Relais suspendu ou radié qui tente d’envoyer… Avec `\"code\": \"password_required\"` : compte sans mot de passe (créé sur le site web). | Afficher le message, ne pas réessayer. Si `password_required` : ouvrir l’écran « Choisissez votre mot de passe ». |\n| 404 | Ressource inexistante **ou appartenant à quelqu’un d’autre** (le serveur ne distingue pas les deux). | — |\n| 409 | Conflit d’état : dossier déjà déposé, relais déjà envoyé, `client_uuid` déjà utilisé par un autre compte. | Recharger la ressource. |\n| 422 | Données invalides. Corps : `{\"message\": \"…\", \"errors\": {\"champ\": [\"…\"]}}` | Afficher chaque message sous son champ. |\n| 429 | Trop de requêtes. En-tête `Retry-After` (secondes). | Attendre, puis réessayer. |\n| 503 | Antivirus momentanément indisponible (pièces), ou envoi du SMS refusé par le fournisseur (« L’envoi du SMS a échoué… »). En-tête `Retry-After`. | Réessayer plus tard. |\n\n## Limites d’appels\n\n- 120 appels par minute et par compte connecté ; 1 200 par minute et par adresse IP sans connexion (les opérateurs partagent souvent une même adresse publique).\n- Codes SMS : 3 par numéro et par 15 minutes (quota commun au site et à l’application), 10 par adresse IP.\n- Vérification d’un code : 10 par minute et par adresse IP ; 5 essais par code.\n- Connexion par mot de passe : 5 essais par minute ; après 5 mots de passe erronés, le numéro est bloqué 15 minutes, toutes adresses IP confondues.\n- Création de relais : 60 par minute. Annonce de médias : 120 par minute. Messages et pièces de candidature : 30 par minute. Quiz : 10 tentatives par heure. Export des données : 5 par heure.\n\n## Cache\n\nLes référentiels publics (`/auth/register/options`, `/communes`, `/categories`, `/settings`, `/legal`, `/formation`, `/candidature/options`, `/communes/{commune}/localites`, `/diffusions`) sont envoyés avec `Cache-Control: public, max-age=300` et un `ETag`. L’application peut les garder 5 minutes, puis les revalider avec `If-None-Match` (réponse **304** si rien n’a changé).\n\n## Notifications\n\nÀ chaque décision (relais validé, rejeté, complément demandé, sélectionné, diffusé ; candidature décidée), à chaque appel à relais de sa zone et à chaque message du coordonnateur, le Relais est prévenu par **SMS**. Les notifications push (FCM) utiliseront le jeton déclaré par `PUT /devices/current`, avec un contenu de la forme `{\"type\": \"relais.status_changed\", \"uuid\": \"…\", \"status\": \"validated\"}` (types : `relais.status_changed`, `appel.created`, `message.received`, `candidature.decided`) ; leur envoi est en cours de branchement avec l’équipe mobile.\n\n## Données personnelles\n\n`GET /me/export` renvoie toutes les données du compte (droit d’accès). `DELETE /me` supprime le compte avec `confirm: \"SUPPRIMER\"` : identité, pièces, positions et messages sont effacés ; les relais déjà diffusés restent anonymes.\n"
+        "description": "API REST de **JE RELAIS**, la plateforme des observateurs citoyens de REFLET TV. Elle est consommée par l’application mobile Android et iOS. Toutes les règles métier vivent côté serveur : l’application affiche et envoie, le serveur contrôle.\n\n## Conventions\n\n| Sujet | Règle |\n|---|---|\n| Adresse | `https://<domaine>/api/v1`. Un changement incompatible donnera `/api/v2` ; la v1 reste servie pendant la transition. |\n| Format | JSON, champs en `snake_case`, dates ISO 8601 en UTC (`2026-10-21T07:40:00Z`), identifiants UUID. |\n| En-têtes | `Accept: application/json` sur **toutes** les requêtes (sinon les erreurs reviennent en HTML). `Content-Type: application/json`, sauf l’envoi des pièces de candidature (`multipart/form-data`). |\n| Langue | Messages d’erreur et libellés en français, prêts à afficher. |\n| Enveloppe | Les ressources sont dans `data`, les informations annexes dans `meta`. |\n| Pagination | `GET /relais` et `GET /diffusions` renvoient 20 éléments par page : `data`, `links` (`first`, `last`, `prev`, `next`) et `meta` (`current_page`, `last_page`, `per_page`, `total`…). Page suivante : `?page=2`. |\n\n## Authentification\n\nUn compte est identifié par son **numéro de téléphone** et protégé par un **mot de passe d’au moins 8 caractères**. Chaque appareil reçoit **son propre jeton** (Sanctum), révocable à distance par la coordination si le téléphone est perdu. Les codes de vérification font **4 chiffres**, sont valables 5 minutes et **arrivent par SMS** (fournisseur MTarget, expéditeur affiché sur le téléphone). Sur un environnement sans fournisseur de SMS (développement, recette), aucun SMS ne part et le code est toujours `1234`. L’écran de saisie est le même dans les deux cas. Si le fournisseur refuse l’envoi, l’API répond **503** « L’envoi du SMS a échoué. Réessayez dans quelques instants. »\n\n**Inscription** (3 appels) :\n\n1. `POST /auth/register` avec `phone` : envoie le code par SMS. Un numéro qui a déjà un compte est refusé (**422** sur `phone`) : proposer la connexion.\n2. `POST /auth/register/verify` avec `phone` et `code` : le numéro est retenu comme vérifié pendant **30 minutes**.\n3. `POST /auth/register/complete` avec le même `phone`, `password` et `password_confirmation` (au moins 8 caractères), et, facultatifs, `last_name`, `first_names`, `gender` (`femme` ou `homme`) et `birth_date` au format **JJ/MM/AAAA** (`26/04/2000`). Le compte est **actif** : la personne est Relais (numéro et badge). Aucun jeton n’est renvoyé : ouvrir l’écran de connexion.\n\nLa personne se connecte ensuite avec `POST /auth/login` et peut **envoyer des relais tout de suite**. L’identité saisie à l’inscription pré-remplit le profil ; pièce d’identité, commune, selfie et photo de profil se complètent plus tard dans le profil (voir « Vérification d’identité et commissions ») : ils n’empêchent ni la connexion ni l’envoi de relais.\n\n**Connexion** : `POST /auth/login` avec seulement `phone` et `password`. La description de l’appareil (`device_name`, `platform`, `app_version`) est facultative : sans elle, la plateforme est déduite du User-Agent. Après 5 mots de passe erronés sur un même numéro, il est bloqué 15 minutes (**429**).\n\n**Mot de passe oublié** (3 étapes) : 1. `POST /auth/otp` (code par SMS) ; 2. `POST /auth/verify` (numéro et code) renvoie un jeton ; 3. `POST /auth/password/reset` avec ce jeton, dans les 15 minutes : `password` et `password_confirmation`, sans l’ancien. Un numéro sans compte est refusé à l’étape 2 : proposer l’inscription.\n\nEnsuite :\n\n- Envoyer `Authorization: Bearer <jeton>` sur chaque requête protégée (bouton **Authorize** ci-dessus pour essayer).\n- `PUT /devices/current` après chaque connexion ou mise à jour de l’application : jeton de notifications push (FCM) et version installée.\n- `POST /auth/logout` détruit le jeton de l’appareil.\n\nLe jeton est valable **60 jours** (date dans `expires_at`), puis une nouvelle connexion est nécessaire. Il devient invalide plus tôt (réponse **401**) après une déconnexion, une révocation à distance, une radiation du Relais ou la suppression du compte : l’application doit alors revenir à l’écran de connexion.\n\nLes comptes de l’équipe (coordonnateurs, rédaction, administration) n’ont pas accès à l’API : ils passent par la console web, avec double authentification.\n\nNuméros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00 01`) ou format international (`+2250700000001`).\n\n## Vérification d’identité et commissions\n\nLe Relais complète son profil quand il le souhaite ; il est **obligatoire seulement pour recevoir ses commissions**. Ni la connexion ni l’envoi de relais n’en dépendent.\n\n**En une seule requête :** `POST /identity` (multipart) avec `last_name`, `first_name`, `gender`, `birth_date` (`26/04/2000`), `commune` et/ou `localite`, `document_type` (une `value` de `GET /auth/register/options`), et les fichiers : faces de la pièce selon `sides` (`recto` + `verso`, ou `page`), `selfie`. Le dossier part aussitôt en vérification (`submitted`). Tout ou rien : **422** liste chaque champ ou fichier à corriger, sans rien enregistrer.\n\nSuivi : `GET /identity` — `submitted` (en cours), puis `verified` (`gains_eligible: true`) ou `rejected` (motif dans `decision_comment` : renvoyer la même requête corrigée). Le statut est aussi dans `GET /me`.\n\n**Modifier :** `PUT /identity`, mêmes champs et photos que `POST /identity`, **tous facultatifs** : seuls les éléments envoyés changent ; dès que le dossier est complet, il part en vérification. Le type de pièce décide des photos : `recto` + `verso` ou `page` (`sides`). Le `selfie` sert aussi de photo du badge.\n\n## Parcours d’un candidat\n\n1. Inscription (`POST /auth/register`, `POST /auth/register/verify`, `POST /auth/register/complete`) : compte actif et Relais dès le mot de passe choisi.\n2. Lecture des listes du formulaire : `GET /candidature/options`, `GET /communes`, `GET /communes/{commune}/localites`.\n3. Remplissage en trois étapes, enregistrées à chaque modification : `PUT /candidature/steps/identite`, `…/territoire`, `…/profil`.\n4. Pièces : `POST /candidature/documents` (photo de profil, recto, verso, selfie ; autorisation parentale si mineur admis).\n5. Textes juridiques : `GET /legal`, puis `POST /consents` avec les `uuid` des versions en vigueur.\n6. Formation et quiz : `GET /formation`, `GET /quiz`, `POST /quiz/attempts`.\n7. Dépôt : `POST /candidature/submit`. Le serveur renvoie **422** avec la liste des éléments manquants tant que le dossier est incomplet.\n8. Suivi : `GET /candidature` (statut, motif de refus, complément demandé). Une fois accepté, le compte devient **Relais** et `GET /me/badge` répond.\n\nStatuts d’une candidature : `draft` (à compléter) · `submitted` (reçue) · `under_review` (en examen) · `on_hold` (en attente) · `complement_requested` (complément demandé, dossier de nouveau modifiable) · `accepted` · `rejected` (avec motif).\n\n## Envoyer un relais\n\n**Une seule requête, pas de brouillon.** `POST /relais` en `multipart/form-data` avec tout le contenu et les fichiers : `category`, `title`, `description`, `urgency`, la position `lat` + `lng` (ou `declared_commune`), les protections `has_minors` (`true`/`false`), `people_consent`, `credit_mode` (`credit_name` pour un pseudonyme), `appel` pour répondre à un appel, et **`files[]`** : 1 à 10 fichiers (photos, vidéos, sons), **100 Mo maximum chacun**. Le relais est aussitôt reçu par le coordonnateur (`received`), routé vers la commune du GPS (sinon la commune déclarée). Tout ou rien : **422** avec un message par champ, rien n’est créé. `client_uuid` (facultatif) évite les doublons après une coupure.\n\nChaque fichier est ensuite contrôlé en tâche de fond (type réel, antivirus, empreinte, durée, vignette) : `uploaded` → `processing` → `ready` ou `rejected` (raison dans `rejection`), visible avec `GET /relais/{relais}`.\n\n**Modifier** : `PUT /relais/{relais}`, mêmes champs **tous facultatifs** (seuls les éléments envoyés et non vides changent), `files[]` pour ajouter des fichiers, `remove_medias[]` (uuid) pour en retirer. Possible tant que le relais est `received` (pas encore pris en charge) et quand un complément est demandé (`complement_requested`) : la modification sert alors de réponse (`message` facultatif) et le relais revient dans la file. **409** ensuite.\n\n**Vidéo de plus de 100 Mo ou réseau instable** : envoi en morceaux reprenable — `POST /relais` en JSON avec la liste des fichiers (`medias` : `client_uuid`, `kind`, `mime`, `size`, `sha256`), puis dépôt des morceaux sur les URL de `uploads` et `POST /medias/{media}/complete` ; le relais part quand le dernier fichier est clos.\n\nStatuts d’un relais vus par le Relais : `uploading` (fichiers en cours d’envoi) · `received` (reçu, en vérification) · `complement_requested` (le coordonnateur pose une question : `complement_request` ; réponse par `PUT /relais/{relais}` ou `POST /relais/{relais}/complement`) · `validated` · `rejected` (motif dans `rejection`) · `selected` (choisi par la rédaction) · `broadcast` (diffusé) · `archived`.\n\nLimites par défaut, modifiables par l’administration et lisibles dans `GET /settings` : vidéo de 3 minutes, audio de 10 minutes, 10 médias par relais. Taille : 100 Mo par fichier en une requête, 500 Mo en envoi par morceaux.\n\n## Erreurs\n\n| Code | Signification | Que faire |\n|---|---|---|\n| 401 | Jeton absent, invalide ou révoqué. Corps : `{\"message\": \"Unauthenticated.\"}` | Revenir à l’écran de connexion. |\n| 403 | Action non permise pour ce compte : candidat sur une route de Relais, Relais suspendu ou radié qui tente d’envoyer… Avec `\"code\": \"password_required\"` : compte sans mot de passe (créé sur le site web). | Afficher le message, ne pas réessayer. Si `password_required` : ouvrir l’écran « Choisissez votre mot de passe ». |\n| 404 | Ressource inexistante **ou appartenant à quelqu’un d’autre** (le serveur ne distingue pas les deux). | — |\n| 409 | Conflit d’état : dossier déjà déposé, relais déjà envoyé, `client_uuid` déjà utilisé par un autre compte. | Recharger la ressource. |\n| 422 | Données invalides. Corps : `{\"message\": \"…\", \"errors\": {\"champ\": [\"…\"]}}` | Afficher chaque message sous son champ. |\n| 429 | Trop de requêtes. En-tête `Retry-After` (secondes). | Attendre, puis réessayer. |\n| 503 | Antivirus momentanément indisponible (pièces), ou envoi du SMS refusé par le fournisseur (« L’envoi du SMS a échoué… »). En-tête `Retry-After`. | Réessayer plus tard. |\n\n## Limites d’appels\n\n- 120 appels par minute et par compte connecté ; 1 200 par minute et par adresse IP sans connexion (les opérateurs partagent souvent une même adresse publique).\n- Codes SMS : 3 par numéro et par 15 minutes (quota commun au site et à l’application), 10 par adresse IP.\n- Vérification d’un code : 10 par minute et par adresse IP ; 5 essais par code.\n- Connexion par mot de passe : 5 essais par minute ; après 5 mots de passe erronés, le numéro est bloqué 15 minutes, toutes adresses IP confondues.\n- Création de relais : 60 par minute. Annonce de médias : 120 par minute. Messages et pièces de candidature : 30 par minute. Quiz : 10 tentatives par heure. Export des données : 5 par heure.\n\n## Cache\n\nLes référentiels publics (`/auth/register/options`, `/communes`, `/categories`, `/settings`, `/legal`, `/formation`, `/candidature/options`, `/communes/{commune}/localites`, `/diffusions`) sont envoyés avec `Cache-Control: public, max-age=300` et un `ETag`. L’application peut les garder 5 minutes, puis les revalider avec `If-None-Match` (réponse **304** si rien n’a changé).\n\n## Notifications\n\nÀ chaque décision (relais validé, rejeté, complément demandé, sélectionné, diffusé ; candidature décidée), à chaque appel à relais de sa zone et à chaque message du coordonnateur, le Relais est prévenu par **SMS**. Les notifications push (FCM) utiliseront le jeton déclaré par `PUT /devices/current`, avec un contenu de la forme `{\"type\": \"relais.status_changed\", \"uuid\": \"…\", \"status\": \"validated\"}` (types : `relais.status_changed`, `appel.created`, `message.received`, `candidature.decided`) ; leur envoi est en cours de branchement avec l’équipe mobile.\n\n## Données personnelles\n\n`GET /me/export` renvoie toutes les données du compte (droit d’accès). `DELETE /me` supprime le compte avec `confirm: \"SUPPRIMER\"` : identité, pièces, positions et messages sont effacés ; les relais déjà diffusés restent anonymes.\n"
     },
     "servers": [
         {
@@ -71,7 +71,7 @@
             "post": {
                 "operationId": "v1.auth.otp.request",
                 "description": "Pour un compte existant (mot de passe oublié, nouvel appareil). Envoie par SMS un code à 4 chiffres, valable 5 minutes ;\nchaque nouvelle demande annule le code précédent. Tant qu'aucun fournisseur de SMS n'est branché, le code est `1234`.\nL'inscription passe par `POST /auth/register`. La réponse est identique que le numéro soit inscrit ou non.\nNuméro ivoirien à 10 chiffres (`0700000001`) ou `+2250700000001` ; seuls les numéros de Côte d’Ivoire reçoivent un code (422 sinon).",
-                "summary": "Mot de passe oublié : demander un code de connexion",
+                "summary": "Mot de passe oublié 1/3 : recevoir un code par SMS",
                 "tags": [
                     "Authentification"
                 ],
@@ -181,8 +181,8 @@
         "/auth/verify": {
             "post": {
                 "operationId": "v1.auth.otp.verify",
-                "description": "Renvoie le jeton Sanctum de cet appareil, valable 60 jours (`expires_at`), à envoyer ensuite dans `Authorization: Bearer <jeton>`.\nPendant 15 minutes, ce jeton peut redéfinir le mot de passe avec `PUT /me/password` **sans** l'ancien (`current_password`).\nUn numéro sans compte est refusé (422 sur `code`) : l'application propose l'inscription.\n\nErreurs 422 sur `code` : code faux ou expiré ; après 5 essais le code est annulé et il faut en redemander un.\nUn compte suspendu ou un compte de l'équipe (console) est refusé.",
-                "summary": "Mot de passe oublié : valider le code et obtenir un jeton",
+                "description": "Renvoie le jeton Sanctum de cet appareil, valable 60 jours (`expires_at`), à envoyer ensuite dans `Authorization: Bearer <jeton>`.\nPendant 15 minutes, ce jeton permet de choisir un nouveau mot de passe **sans** l'ancien : étape 3, `POST /auth/password/reset`.\nUn numéro sans compte est refusé (422 sur `code`) : l'application propose l'inscription.\n\nErreurs 422 sur `code` : code faux ou expiré ; après 5 essais le code est annulé et il faut en redemander un.\nUn compte suspendu ou un compte de l'équipe (console) est refusé.",
+                "summary": "Mot de passe oublié 2/3 : valider le code",
                 "tags": [
                     "Authentification"
                 ],
@@ -825,6 +825,105 @@
                 }
             }
         },
+        "/auth/password/reset": {
+            "post": {
+                "operationId": "v1.auth.password.reset",
+                "description": "Avec le jeton obtenu à l'étape 2 (`POST /auth/verify`), **dans les 15 minutes** : `password` (au moins 8 caractères)\net `password_confirmation`. L'ancien mot de passe n'est pas demandé. Le Relais reste connecté sur cet appareil ;\nses autres appareils sont déconnectés. Il se connectera ensuite avec `POST /auth/login` et ce nouveau mot de passe.",
+                "summary": "Mot de passe oublié 3/3 : choisir un nouveau mot de passe",
+                "tags": [
+                    "Authentification"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResetPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Mot de passe enregistré.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "description": "Jeton qui ne vient pas d’un code SMS validé, ou plus de 15 minutes écoulées : recommencer à l’étape 1.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Trop de requêtes. 10 vérifications par minute et par adresse IP. Chaque code accepte 5 essais. Limite générale : 120 appels par minute et par compte (1 200 par adresse IP sans connexion). Attendre la durée indiquée par l’en-tête `Retry-After` avant de réessayer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher.",
+                                            "examples": [
+                                                "Trop de demandes. Patientez quelques minutes avant de réessayer."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Nombre de secondes à attendre avant de réessayer.",
+                                "schema": {
+                                    "type": "integer",
+                                    "examples": [
+                                        60
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/me": {
             "get": {
                 "operationId": "v1.me.show",
@@ -993,7 +1092,7 @@
         "/me/password": {
             "put": {
                 "operationId": "v1.me.password",
-                "description": "Mot de passe d'au moins 8 caractères dans `password`, répété dans `password_confirmation`. Un compte sans mot de passe\n(créé sur le site web) doit le définir : en attendant, les autres routes protégées répondent 403 avec `code: \"password_required\"`.\nPour le changer, `current_password` (l'ancien) est obligatoire, sauf dans les 15 minutes qui suivent une connexion\npar code SMS (`POST /auth/verify`, mot de passe oublié). `has_password` dans `GET /me` indique s'il en existe un.",
+                "description": "Mot de passe d'au moins 8 caractères dans `password`, répété dans `password_confirmation`. Un compte sans mot de passe\n(créé sur le site web) doit le définir : en attendant, les autres routes protégées répondent 403 avec `code: \"password_required\"`.\nPour le changer depuis les réglages, `current_password` (l'ancien) est obligatoire. Mot de passe oublié : utiliser\n`POST /auth/password/reset` après le code SMS. `has_password` dans `GET /me` indique s'il en existe un.",
                 "summary": "Définir ou changer mon mot de passe",
                 "tags": [
                     "Mon compte"
@@ -4277,24 +4376,181 @@
             },
             "post": {
                 "operationId": "v1.relais.store",
-                "description": "**Pas de brouillon.** Un seul appel avec tout le contenu et la liste des fichiers :\n`client_uuid`, `category`, `title`, `location` (GPS) ou `declared_commune`, `protections`\n(`has_minors`, `people_consent`, `credit_mode`, `credit_name` pour un pseudonyme) et `medias` (1 à 10 fichiers :\n`client_uuid`, `kind`, `mime`, `size` en octets, `sha256`). Tout est contrôlé d'emblée : 422 sinon, et rien n'est créé.\n\nLa réponse donne, dans `uploads`, les URL d'envoi de chaque fichier (`upload.part_size`, `upload.missing_parts`).\nL'application envoie les morceaux, puis appelle `POST /medias/{uuid}/complete` pour chaque fichier.\n**Le relais est soumis automatiquement** dès que son dernier fichier est reçu : statut `uploading` → `received`.\n\nIdempotent : renvoyer le même `client_uuid` rend le même relais (200) avec des URL d'envoi à jour pour les fichiers\npas encore reçus (reprise après une coupure). Pour répondre à un appel à relais, envoyer son `uuid` dans `appel`.\n409 si le `client_uuid` appartient à un autre compte. 403 pour un Relais suspendu.",
-                "summary": "Envoyer un relais (en un seul appel)",
+                "description": "**Requête `multipart/form-data` avec tout le contenu et les fichiers.** Le relais est aussitôt envoyé au\ncoordonnateur (`status: \"received\"`) ; chaque fichier est ensuite contrôlé en arrière-plan (antivirus, durée) :\nsuivre `medias.N.status` (`processing` puis `ready`, ou `rejected`).\n\nChamps : `category`, `title` (obligatoires), `description`, `urgency`, le lieu — `lat` + `lng` (GPS, `accuracy_m`\nfacultatif) ou `declared_commune` —, `declared_place`, les protections `has_minors` (`true`/`false`), `people_consent`,\n`credit_mode` (`credit_name` si pseudonyme), `appel` pour répondre à un appel, et **`files[]`** : 1 à 10 fichiers\n(photos JPEG/PNG/HEIC, vidéos MP4/MOV, sons M4A/MP3/AAC), **100 Mo maximum chacun**. `client_uuid` (facultatif) :\nrenvoyer le même rend le même relais, sans doublon.\n\nTout ou rien : 422 avec un message par champ, rien n'est créé. Vidéo de plus de 100 Mo ou réseau instable :\nutiliser l'envoi en morceaux (JSON avec `medias`, voir le guide).",
+                "summary": "Envoyer un relais (une seule requête)",
                 "tags": [
                     "Relais"
                 ],
                 "requestBody": {
+                    "description": "Tout en une requête : contenu et fichiers. Le relais est aussitôt envoyé au coordonnateur.",
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/StoreRelaisItemRequest"
+                                "type": "object",
+                                "properties": {
+                                    "category": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Catégorie : `uuid` renvoyé par `GET /categories`. Obligatoire."
+                                    },
+                                    "title": {
+                                        "type": "string",
+                                        "description": "Titre, 120 caractères maximum. Obligatoire.",
+                                        "examples": [
+                                            "Route coupée au carrefour Siporex"
+                                        ]
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "description": "Ce que l’on voit, 2 000 caractères maximum.",
+                                        "examples": [
+                                            "L’eau arrive aux genoux."
+                                        ]
+                                    },
+                                    "urgency": {
+                                        "type": "string",
+                                        "description": "Urgence.",
+                                        "enum": [
+                                            "normal",
+                                            "important",
+                                            "urgent"
+                                        ],
+                                        "examples": [
+                                            "normal"
+                                        ]
+                                    },
+                                    "lat": {
+                                        "type": "string",
+                                        "description": "Latitude GPS. Avec `lng`, ou à la place `declared_commune`.",
+                                        "examples": [
+                                            "5.341"
+                                        ]
+                                    },
+                                    "lng": {
+                                        "type": "string",
+                                        "description": "Longitude GPS.",
+                                        "examples": [
+                                            "-4.069"
+                                        ]
+                                    },
+                                    "accuracy_m": {
+                                        "type": "string",
+                                        "description": "Précision GPS en mètres (facultatif).",
+                                        "examples": [
+                                            "12"
+                                        ]
+                                    },
+                                    "declared_commune": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Commune : `uuid` de `GET /communes`, si pas de GPS. Le GPS prime pour router le relais."
+                                    },
+                                    "declared_place": {
+                                        "type": "string",
+                                        "description": "Lieu précis en clair (facultatif).",
+                                        "examples": [
+                                            "Carrefour Siporex"
+                                        ]
+                                    },
+                                    "has_minors": {
+                                        "type": "string",
+                                        "description": "Des mineurs identifiables apparaissent-ils ? Obligatoire.",
+                                        "enum": [
+                                            "false",
+                                            "true"
+                                        ],
+                                        "examples": [
+                                            "false"
+                                        ]
+                                    },
+                                    "people_consent": {
+                                        "type": "string",
+                                        "description": "Accord des personnes filmées. Obligatoire.",
+                                        "enum": [
+                                            "not_applicable",
+                                            "yes",
+                                            "no"
+                                        ],
+                                        "examples": [
+                                            "not_applicable"
+                                        ]
+                                    },
+                                    "credit_mode": {
+                                        "type": "string",
+                                        "description": "Mention à l’antenne. Obligatoire.",
+                                        "enum": [
+                                            "anonymous",
+                                            "name",
+                                            "pseudonym"
+                                        ],
+                                        "examples": [
+                                            "anonymous"
+                                        ]
+                                    },
+                                    "credit_name": {
+                                        "type": "string",
+                                        "description": "Pseudonyme à afficher, obligatoire si `credit_mode` = `pseudonym`.",
+                                        "examples": [
+                                            "Awa d’Abobo"
+                                        ]
+                                    },
+                                    "appel": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Facultatif : `uuid` de l’appel à relais auquel on répond (`GET /appels`)."
+                                    },
+                                    "files[0]": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "**Fichier 1 (obligatoire).** Photo JPEG/PNG/HEIC, vidéo MP4/MOV ou son M4A/MP3/AAC, **100 Mo maximum par fichier**. Jusqu’à 10 fichiers (`files[]`). Au-delà de 100 Mo : envoi en morceaux (voir le guide)."
+                                    },
+                                    "files[1]": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Fichier 2 (facultatif)."
+                                    },
+                                    "files[2]": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Fichier 3 (facultatif)."
+                                    },
+                                    "files[3]": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Fichier 4 (facultatif)."
+                                    },
+                                    "files[4]": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Fichier 5 (facultatif)."
+                                    },
+                                    "client_uuid": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Facultatif : identifiant généré par l’application ; renvoyer le même rend le même relais (pas de doublon après une coupure)."
+                                    }
+                                },
+                                "required": [
+                                    "category",
+                                    "title",
+                                    "has_minors",
+                                    "people_consent",
+                                    "credit_mode",
+                                    "files[0]"
+                                ]
                             }
                         }
                     }
                 },
                 "responses": {
                     "200": {
-                        "description": "Relais déjà créé avec ce `client_uuid` : renvoyé avec des URL d’envoi à jour (reprise sans doublon).",
+                        "description": "Relais déjà envoyé avec ce `client_uuid` : renvoyé sans doublon.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4335,7 +4591,7 @@
                         "$ref": "#/components/responses/AuthenticationException"
                     },
                     "422": {
-                        "description": "Contenu incomplet ou fichier refusé : `errors` liste chaque champ (`category`, `title`, `declared_commune`, `protections.*`, `medias.N.size`…).",
+                        "description": "Contenu incomplet ou fichier refusé : `errors` liste chaque champ (`category`, `title`, `declared_commune`, `protections.*`, `files.N`…).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4367,7 +4623,7 @@
                         "$ref": "#/components/responses/AuthorizationException"
                     },
                     "201": {
-                        "description": "Relais créé : envoyer les fichiers avec les URL de `uploads` ; il est soumis à la réception du dernier.",
+                        "description": "Relais envoyé (`status: \"received\"`) ; ses fichiers sont contrôlés en arrière-plan.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4471,6 +4727,277 @@
                     },
                     "429": {
                         "description": "Trop de requêtes. Limite générale : 120 appels par minute et par compte (1 200 par adresse IP sans connexion). Attendre la durée indiquée par l’en-tête `Retry-After` avant de réessayer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher.",
+                                            "examples": [
+                                                "Trop de demandes. Patientez quelques minutes avant de réessayer."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Nombre de secondes à attendre avant de réessayer.",
+                                "schema": {
+                                    "type": "integer",
+                                    "examples": [
+                                        60
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "operationId": "v1.relais.update",
+                "description": "**Tout est facultatif** : seuls les éléments envoyés et non vides changent (même format que l'envoi, multipart ou JSON).\nAjouter des fichiers : `files[]` (100 Mo maximum chacun). Retirer des fichiers : `remove_medias[]` (uuid de\n`medias.N.uuid`) ; il doit en rester au moins un.\n\nPossible tant que le coordonnateur ne l'a pas pris en charge (`received`) et quand un complément est demandé\n(`complement_requested`) : la modification sert alors de réponse (`message` facultatif) et le relais revient dans la\nfile. 409 pendant l'examen et après la décision.",
+                "summary": "Modifier un relais envoyé",
+                "tags": [
+                    "Relais"
+                ],
+                "parameters": [
+                    {
+                        "name": "relais",
+                        "in": "path",
+                        "required": true,
+                        "description": "UUID d’un de mes relais.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Tout est facultatif : seuls les éléments envoyés et non vides changent.",
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "category": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Catégorie : `uuid` renvoyé par `GET /categories`."
+                                    },
+                                    "title": {
+                                        "type": "string",
+                                        "description": "Titre, 120 caractères maximum.",
+                                        "examples": [
+                                            "Route coupée au carrefour Siporex"
+                                        ]
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "description": "Ce que l’on voit, 2 000 caractères maximum.",
+                                        "examples": [
+                                            "L’eau arrive aux genoux."
+                                        ]
+                                    },
+                                    "urgency": {
+                                        "type": "string",
+                                        "description": "Urgence.",
+                                        "enum": [
+                                            "normal",
+                                            "important",
+                                            "urgent"
+                                        ],
+                                        "examples": [
+                                            "normal"
+                                        ]
+                                    },
+                                    "lat": {
+                                        "type": "string",
+                                        "description": "Latitude GPS. Avec `lng`, ou à la place `declared_commune`.",
+                                        "examples": [
+                                            "5.341"
+                                        ]
+                                    },
+                                    "lng": {
+                                        "type": "string",
+                                        "description": "Longitude GPS.",
+                                        "examples": [
+                                            "-4.069"
+                                        ]
+                                    },
+                                    "accuracy_m": {
+                                        "type": "string",
+                                        "description": "Précision GPS en mètres (facultatif).",
+                                        "examples": [
+                                            "12"
+                                        ]
+                                    },
+                                    "declared_commune": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Commune : `uuid` de `GET /communes`, si pas de GPS. Le GPS prime pour router le relais."
+                                    },
+                                    "declared_place": {
+                                        "type": "string",
+                                        "description": "Lieu précis en clair (facultatif).",
+                                        "examples": [
+                                            "Carrefour Siporex"
+                                        ]
+                                    },
+                                    "has_minors": {
+                                        "type": "string",
+                                        "description": "Des mineurs identifiables apparaissent-ils ?",
+                                        "enum": [
+                                            "false",
+                                            "true"
+                                        ],
+                                        "examples": [
+                                            "false"
+                                        ]
+                                    },
+                                    "people_consent": {
+                                        "type": "string",
+                                        "description": "Accord des personnes filmées.",
+                                        "enum": [
+                                            "not_applicable",
+                                            "yes",
+                                            "no"
+                                        ],
+                                        "examples": [
+                                            "not_applicable"
+                                        ]
+                                    },
+                                    "credit_mode": {
+                                        "type": "string",
+                                        "description": "Mention à l’antenne.",
+                                        "enum": [
+                                            "anonymous",
+                                            "name",
+                                            "pseudonym"
+                                        ],
+                                        "examples": [
+                                            "anonymous"
+                                        ]
+                                    },
+                                    "credit_name": {
+                                        "type": "string",
+                                        "description": "Pseudonyme à afficher, obligatoire si `credit_mode` = `pseudonym`.",
+                                        "examples": [
+                                            "Awa d’Abobo"
+                                        ]
+                                    },
+                                    "appel": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Facultatif : `uuid` de l’appel à relais auquel on répond (`GET /appels`)."
+                                    },
+                                    "files[0]": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Fichier à **ajouter**. Photo JPEG/PNG/HEIC, vidéo MP4/MOV ou son M4A/MP3/AAC, **100 Mo maximum par fichier**. Jusqu’à 10 fichiers (`files[]`). Au-delà de 100 Mo : envoi en morceaux (voir le guide)."
+                                    },
+                                    "files[1]": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Fichier 2 (facultatif)."
+                                    },
+                                    "files[2]": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Fichier 3 (facultatif)."
+                                    },
+                                    "files[3]": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Fichier 4 (facultatif)."
+                                    },
+                                    "files[4]": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Fichier 5 (facultatif)."
+                                    },
+                                    "remove_medias[0]": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Fichier à **retirer** : `uuid` de `medias.N.uuid` (`remove_medias[]`, plusieurs possibles). Il doit en rester au moins un."
+                                    },
+                                    "remove_medias[1]": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Autre fichier à retirer (facultatif)."
+                                    },
+                                    "message": {
+                                        "type": "string",
+                                        "description": "Réponse au coordonnateur quand un complément est demandé (facultatif).",
+                                        "examples": [
+                                            "Voici une vue plus large."
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Succès.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "description": "Contenu de la réponse.",
+                                            "$ref": "#/components/schemas/RelaisItemResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Relais en cours d’examen ou déjà décidé : il ne peut plus être modifié.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "429": {
+                        "description": "Trop de requêtes. 60 appels par minute. Limite générale : 120 appels par minute et par compte (1 200 par adresse IP sans connexion). Attendre la durée indiquée par l’en-tête `Retry-After` avant de réessayer.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8115,6 +8642,28 @@
                 ],
                 "title": "RequestOtpRequest"
             },
+            "ResetPasswordRequest": {
+                "type": "object",
+                "description": "Mot de passe oublié, étape 3 : nouveau mot de passe, avec le jeton obtenu par le code SMS (POST /auth/verify).",
+                "properties": {
+                    "password": {
+                        "type": "string",
+                        "description": "Nouveau mot de passe, au moins 8 caractères, à confirmer dans `password_confirmation`.",
+                        "minLength": 8,
+                        "maxLength": 200
+                    },
+                    "password_confirmation": {
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 200
+                    }
+                },
+                "required": [
+                    "password",
+                    "password_confirmation"
+                ],
+                "title": "ResetPasswordRequest"
+            },
             "StoreCandidatureDocumentRequest": {
                 "type": "object",
                 "description": "Envoi d'une pièce du dossier (MOB-03) : type vérifié sur le contenu du fichier.",
@@ -8278,10 +8827,13 @@
             },
             "StoreRelaisItemRequest": {
                 "type": "object",
-                "description": "Envoi d'un relais en un seul appel par l'application (MOB-10 à MOB-19), identifié par son « client_uuid » :\ncontenu complet (catégorie, titre, lieu, protections) et liste des fichiers à envoyer. Pas de brouillon.",
+                "description": "Envoi d'un relais par l'application (MOB-10 à MOB-19), sans brouillon. Deux façons :\n\n- **en une seule requête** (multipart/form-data) : contenu et fichiers (`files[]`, 100 Mo maximum chacun) ;\n- **en morceaux** (JSON) : contenu et liste des fichiers (`medias`), puis envoi reprenable de chaque fichier\n  (vidéos lourdes, réseau instable).",
                 "properties": {
                     "client_uuid": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "format": "uuid",
                         "description": "UUID généré par l’application pour rendre la création idempotente : la même valeur renvoyée ne crée jamais de doublon.",
                         "examples": [
@@ -8477,75 +9029,23 @@
                             "credit_mode"
                         ]
                     },
-                    "medias": {
+                    "files": {
                         "type": "array",
-                        "description": "Fichiers du relais (1 à 10) : chacun reçoit ses URL d’envoi dans `uploads` de la réponse. Le relais est soumis automatiquement à la réception du dernier.",
                         "items": {
-                            "type": "object",
-                            "properties": {
-                                "client_uuid": {
-                                    "type": "string",
-                                    "format": "uuid",
-                                    "description": "UUID généré par l’application pour rendre la création idempotente : la même valeur renvoyée ne crée jamais de doublon.",
-                                    "examples": [
-                                        "6f1c2a40-3b7e-4d6a-9c1e-2a7d5b8e9f01"
-                                    ]
-                                },
-                                "kind": {
-                                    "$ref": "#/components/schemas/MediaKind"
-                                },
-                                "mime": {
-                                    "type": "string",
-                                    "maxLength": 100
-                                },
-                                "size": {
-                                    "type": "integer",
-                                    "minimum": 1
-                                },
-                                "sha256": {
-                                    "type": "string",
-                                    "pattern": "^[a-fA-F0-9]{64}$"
-                                },
-                                "filename": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ],
-                                    "maxLength": 255
-                                },
-                                "is_imported": {
-                                    "type": [
-                                        "boolean",
-                                        "null"
-                                    ]
-                                },
-                                "device_captured_at": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ],
-                                    "format": "date-time"
-                                }
-                            },
-                            "required": [
-                                "client_uuid",
-                                "kind",
-                                "mime",
-                                "size",
-                                "sha256"
-                            ]
+                            "type": "string",
+                            "format": "binary",
+                            "contentMediaType": "application/octet-stream",
+                            "description": "Maximum file size: 102400 kilobytes."
                         },
                         "minItems": 1,
-                        "maxItems": 10,
-                        "uniqueItems": true
+                        "maxItems": 10
                     }
                 },
                 "required": [
-                    "client_uuid",
                     "category",
                     "title",
                     "protections",
-                    "medias"
+                    "files"
                 ],
                 "title": "StoreRelaisItemRequest"
             },
@@ -8833,6 +9333,242 @@
                     "password_confirmation"
                 ],
                 "title": "UpdatePasswordRequest"
+            },
+            "UpdateRelaisItemRequest": {
+                "type": "object",
+                "description": "PUT /relais/{relais} : modifier un relais envoyé (MOB-19). Tout est facultatif ; seuls les éléments envoyés et non\nvides changent. Fichiers ajoutés dans `files[]`, fichiers retirés dans `remove_medias[]` (uuid). Multipart ou JSON.",
+                "properties": {
+                    "appel": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid",
+                        "description": "`uuid` de l’appel à relais auquel ce relais répond (facultatif).",
+                        "examples": [
+                            null
+                        ]
+                    },
+                    "category": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid",
+                        "description": "`uuid` de la catégorie (`GET /categories`)."
+                    },
+                    "urgency": {
+                        "anyOf": [
+                            {
+                                "description": "Urgence : `normal`, `important` ou `urgent` (traité en 30 minutes).",
+                                "examples": [
+                                    "urgent"
+                                ],
+                                "$ref": "#/components/schemas/Urgency"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Titre court. Obligatoire.",
+                        "examples": [
+                            "Inondation au carrefour Siporex"
+                        ],
+                        "maxLength": 120
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Description : où, quand, ce que le Relais voit.",
+                        "examples": [
+                            "L’eau arrive aux genoux, les gbakas ne passent plus."
+                        ],
+                        "maxLength": 2000
+                    },
+                    "location": {
+                        "type": "object",
+                        "description": "Position GPS au moment de la capture. Elle sert à attribuer le relais à la bonne commune.",
+                        "properties": {
+                            "lat": {
+                                "type": "number",
+                                "description": "Latitude (WGS 84).",
+                                "examples": [
+                                    5.3445
+                                ],
+                                "minimum": -90,
+                                "maximum": 90
+                            },
+                            "lng": {
+                                "type": "number",
+                                "description": "Longitude (WGS 84).",
+                                "examples": [
+                                    -4.0702
+                                ],
+                                "minimum": -180,
+                                "maximum": 180
+                            },
+                            "accuracy_m": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "description": "Précision de la position, en mètres.",
+                                "examples": [
+                                    12
+                                ],
+                                "minimum": 0,
+                                "maximum": 100000
+                            }
+                        }
+                    },
+                    "declared_commune": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid",
+                        "description": "`uuid` de la commune indiquée par le Relais."
+                    },
+                    "declared_place": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Lieu précis, surtout si le GPS est imprécis.",
+                        "examples": [
+                            "Carrefour Siporex"
+                        ],
+                        "maxLength": 200
+                    },
+                    "device_captured_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Date de la capture selon le téléphone (pas plus de 5 minutes dans le futur).",
+                        "examples": [
+                            "2026-10-21T07:38:00Z"
+                        ]
+                    },
+                    "device_model": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Modèle du téléphone, visible du coordonnateur.",
+                        "examples": [
+                            "Tecno Spark 10"
+                        ],
+                        "maxLength": 100
+                    },
+                    "app_version": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Version de l’application installée.",
+                        "examples": [
+                            "1.0.3"
+                        ],
+                        "maxLength": 20
+                    },
+                    "protections": {
+                        "type": "object",
+                        "description": "Réponses aux questions de protection, obligatoires à l’envoi.",
+                        "properties": {
+                            "has_minors": {
+                                "type": [
+                                    "boolean",
+                                    "null"
+                                ],
+                                "description": "Des mineurs sont-ils reconnaissables ? Si oui, le coordonnateur décide d’un floutage.",
+                                "examples": [
+                                    false
+                                ]
+                            },
+                            "people_consent": {
+                                "anyOf": [
+                                    {
+                                        "description": "Les personnes filmées sont-elles d’accord : `yes`, `no` ou `not_applicable` (personne de reconnaissable).",
+                                        "examples": [
+                                            "not_applicable"
+                                        ],
+                                        "$ref": "#/components/schemas/PeopleConsent"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            },
+                            "credit_mode": {
+                                "anyOf": [
+                                    {
+                                        "description": "Crédit à l’antenne : `named` (nom), `pseudonym` (pseudonyme) ou `anonymous` (« Un Relais de REFLET TV »).",
+                                        "examples": [
+                                            "anonymous"
+                                        ],
+                                        "$ref": "#/components/schemas/CreditMode"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            },
+                            "credit_name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Pseudonyme affiché à l’antenne, obligatoire avec `credit_mode` = `pseudonym`.",
+                                "examples": [
+                                    "Fatou d’Angré"
+                                ],
+                                "maxLength": 80
+                            }
+                        }
+                    },
+                    "files": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "format": "binary",
+                            "contentMediaType": "application/octet-stream",
+                            "description": "Maximum file size: 102400 kilobytes."
+                        },
+                        "maxItems": 10
+                    },
+                    "remove_medias": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    "message": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Message prêt à afficher.",
+                        "maxLength": 2000
+                    }
+                },
+                "title": "UpdateRelaisItemRequest"
             },
             "Urgency": {
                 "type": "string",

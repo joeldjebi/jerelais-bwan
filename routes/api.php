@@ -53,6 +53,7 @@ Route::name('api.v1.')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('auth/logout', LogoutController::class)->name('auth.logout');
+        Route::post('auth/password/reset', [OtpController::class, 'resetPassword'])->middleware('throttle:otp-verify')->name('auth.password.reset');
         Route::get('me', [MeController::class, 'show'])->name('me.show');
         Route::put('me/password', [MeController::class, 'updatePassword'])->name('me.password');
         Route::put('devices/current', [MeController::class, 'updateDevice'])->name('devices.current');
@@ -85,6 +86,7 @@ Route::name('api.v1.')->group(function () {
             Route::get('relais', [RelaisItemController::class, 'index'])->name('relais.index');
             Route::post('relais', [RelaisItemController::class, 'store'])->middleware('throttle:60,1')->name('relais.store');
             Route::get('relais/{relais}', [RelaisItemController::class, 'show'])->name('relais.show');
+            Route::put('relais/{relais}', [RelaisItemController::class, 'update'])->middleware(['multipart.updates', 'throttle:60,1'])->name('relais.update');
             Route::post('relais/{relais}/complement', [RelaisItemController::class, 'complement'])->name('relais.complement');
             Route::post('relais/{relais}/medias', [MediaController::class, 'store'])->middleware('throttle:120,1')->name('relais.medias.store');
             Route::get('medias/{media}', [MediaController::class, 'show'])->name('medias.show');
