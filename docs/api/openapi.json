@@ -4391,8 +4391,22 @@
                                 "properties": {
                                     "category": {
                                         "type": "string",
-                                        "format": "uuid",
-                                        "description": "Catégorie : `uuid` renvoyé par `GET /categories`. Obligatoire."
+                                        "description": "Catégorie du relais (obligatoire) : choisir dans la liste. L’application peut envoyer le `slug` ou l’`uuid` de `GET /categories`. `faits-divers-et-accidents` Faits divers et accidents ; `meteo-et-environnement` Météo et environnement ; `vie-de-quartier` Vie de quartier ; `education` Éducation ; `sante` Santé ; `economie-et-consommation` Économie et consommation ; `societe-et-solidarite` Société et solidarité ; `culture-sport-et-loisirs` Culture, sport et loisirs ; `politique-et-institutions` Politique et institutions ; `autre` Autre.",
+                                        "enum": [
+                                            "faits-divers-et-accidents",
+                                            "meteo-et-environnement",
+                                            "vie-de-quartier",
+                                            "education",
+                                            "sante",
+                                            "economie-et-consommation",
+                                            "societe-et-solidarite",
+                                            "culture-sport-et-loisirs",
+                                            "politique-et-institutions",
+                                            "autre"
+                                        ],
+                                        "examples": [
+                                            "faits-divers-et-accidents"
+                                        ]
                                     },
                                     "title": {
                                         "type": "string",
@@ -4443,8 +4457,12 @@
                                     },
                                     "declared_commune": {
                                         "type": "string",
-                                        "format": "uuid",
-                                        "description": "Commune : `uuid` de `GET /communes`, si pas de GPS. Le GPS prime pour router le relais."
+                                        "description": "**Commune où s’est passé l’événement**, déclarée par le Relais. À envoyer quand il n’y a pas de position GPS (`lat`/`lng`) ; avec le GPS, c’est le GPS qui choisit la commune. Le relais part au coordonnateur de cette commune. `slug` ou `uuid` de `GET /communes`.",
+                                        "enum": [
+                                            "abobo",
+                                            "cocody",
+                                            "yopougon"
+                                        ]
                                     },
                                     "declared_place": {
                                         "type": "string",
@@ -4498,7 +4516,7 @@
                                     "appel": {
                                         "type": "string",
                                         "format": "uuid",
-                                        "description": "Facultatif : `uuid` de l’appel à relais auquel on répond (`GET /appels`)."
+                                        "description": "Facultatif — **répondre à un appel à relais** : quand la rédaction ou le coordonnateur demande aux Relais de couvrir un sujet (`GET /appels`), le Relais envoie ici l’`uuid` de cet appel ; son relais est alors rattaché à l’appel et remonte en priorité. Laisser vide pour un relais spontané."
                                     },
                                     "files[0]": {
                                         "type": "string",
@@ -4529,11 +4547,6 @@
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
                                         "description": "Fichier 5 (facultatif)."
-                                    },
-                                    "client_uuid": {
-                                        "type": "string",
-                                        "format": "uuid",
-                                        "description": "Facultatif : identifiant généré par l’application ; renvoyer le même rend le même relais (pas de doublon après une coupure)."
                                     }
                                 },
                                 "required": [
@@ -4787,8 +4800,22 @@
                                 "properties": {
                                     "category": {
                                         "type": "string",
-                                        "format": "uuid",
-                                        "description": "Catégorie : `uuid` renvoyé par `GET /categories`."
+                                        "description": "Catégorie du relais : choisir dans la liste. L’application peut envoyer le `slug` ou l’`uuid` de `GET /categories`. `faits-divers-et-accidents` Faits divers et accidents ; `meteo-et-environnement` Météo et environnement ; `vie-de-quartier` Vie de quartier ; `education` Éducation ; `sante` Santé ; `economie-et-consommation` Économie et consommation ; `societe-et-solidarite` Société et solidarité ; `culture-sport-et-loisirs` Culture, sport et loisirs ; `politique-et-institutions` Politique et institutions ; `autre` Autre.",
+                                        "enum": [
+                                            "faits-divers-et-accidents",
+                                            "meteo-et-environnement",
+                                            "vie-de-quartier",
+                                            "education",
+                                            "sante",
+                                            "economie-et-consommation",
+                                            "societe-et-solidarite",
+                                            "culture-sport-et-loisirs",
+                                            "politique-et-institutions",
+                                            "autre"
+                                        ],
+                                        "examples": [
+                                            "faits-divers-et-accidents"
+                                        ]
                                     },
                                     "title": {
                                         "type": "string",
@@ -4839,8 +4866,12 @@
                                     },
                                     "declared_commune": {
                                         "type": "string",
-                                        "format": "uuid",
-                                        "description": "Commune : `uuid` de `GET /communes`, si pas de GPS. Le GPS prime pour router le relais."
+                                        "description": "**Commune où s’est passé l’événement**, déclarée par le Relais. À envoyer quand il n’y a pas de position GPS (`lat`/`lng`) ; avec le GPS, c’est le GPS qui choisit la commune. Le relais part au coordonnateur de cette commune. `slug` ou `uuid` de `GET /communes`.",
+                                        "enum": [
+                                            "abobo",
+                                            "cocody",
+                                            "yopougon"
+                                        ]
                                     },
                                     "declared_place": {
                                         "type": "string",
@@ -4894,7 +4925,7 @@
                                     "appel": {
                                         "type": "string",
                                         "format": "uuid",
-                                        "description": "Facultatif : `uuid` de l’appel à relais auquel on répond (`GET /appels`)."
+                                        "description": "Facultatif — **répondre à un appel à relais** : quand la rédaction ou le coordonnateur demande aux Relais de couvrir un sujet (`GET /appels`), le Relais envoie ici l’`uuid` de cet appel ; son relais est alors rattaché à l’appel et remonte en priorité. Laisser vide pour un relais spontané."
                                     },
                                     "files[0]": {
                                         "type": "string",
@@ -7310,6 +7341,10 @@
                             "Yopougon"
                         ]
                     },
+                    "slug": {
+                        "type": "string",
+                        "description": "Identifiant lisible, stable."
+                    },
                     "code": {
                         "type": [
                             "string",
@@ -7355,6 +7390,7 @@
                 "required": [
                     "uuid",
                     "name",
+                    "slug",
                     "code",
                     "is_virtual"
                 ],

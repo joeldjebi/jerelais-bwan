@@ -19,6 +19,7 @@ class CommuneResource extends JsonResource
         return [
             'uuid' => $this->uuid,
             'name' => $this->name,
+            'slug' => $this->slug,
             'code' => $this->code,
             'region' => $this->whenLoaded('region', fn () => $this->region === null ? null : [
                 'uuid' => $this->region->uuid,

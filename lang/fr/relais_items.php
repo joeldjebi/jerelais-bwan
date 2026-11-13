@@ -56,6 +56,8 @@ return [
     'complement_by_update' => 'Relais modifié en réponse à la demande de complément.',
 
     'errors' => [
+        'category_unknown' => 'Catégorie inconnue : choisissez-en une de GET /categories (son uuid ou son slug, ex. vie-de-quartier).',
+        'commune_unknown' => 'Commune inconnue ou fermée : choisissez-en une de GET /communes (son uuid ou son slug, ex. abobo).',
         'nothing_to_update' => 'Aucun champ ni fichier reçu : envoyez au moins un élément à modifier (multipart/form-data ou JSON).',
         'not_relais' => 'Seul un Relais actif peut envoyer un relais.',
         'client_uuid_taken' => 'Cet identifiant est déjà utilisé.',

@@ -51,6 +51,7 @@ class UpdateRelaisItemRequest extends FormRequest
     public function messages(): array
     {
         return [
+            ...$this->referenceMessages(),
             'files.*.max' => __('media.too_large_direct', ['max' => app(StoreDirectMedia::class)->maxMegabytes()]),
             'files.*.mimetypes' => __('media.unsupported_type'),
             'files.*.uploaded' => __('media.too_large_direct', ['max' => app(StoreDirectMedia::class)->maxMegabytes()]),
