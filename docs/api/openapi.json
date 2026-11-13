@@ -1836,429 +1836,101 @@
                     "Vérification d’identité"
                 ],
                 "requestBody": {
-                    "description": "Tout en une requête. Choisir d’abord `document_type` : envoyer `recto` + `verso`, ou `page`, selon la pièce ; puis le `selfie`.",
+                    "description": "Tout en une requête. Choisir d’abord `document_type`, puis envoyer les photos de cette pièce : `recto` + `verso` (Carte nationale d’identité (CNI), Permis de conduire, Carte consulaire) ou `page` (Passeport, Attestation d’identité), et le `selfie`. Laisser vides les photos qui ne concernent pas la pièce choisie.",
                     "required": true,
                     "content": {
                         "multipart/form-data": {
                             "schema": {
-                                "description": "Type de pièce (liste gérée par l’administration, `GET /auth/register/options`). Il décide des photos de la pièce : `cni` Carte nationale d’identité (CNI) → `recto` + `verso` ; `passeport` Passeport → `page` ; `permis` Permis de conduire → `recto` + `verso` ; `carte_consulaire` Carte consulaire → `recto` + `verso` ; `attestation_identite` Attestation d’identité → `page`.",
-                                "anyOf": [
-                                    {
-                                        "title": "Carte nationale d’identité (CNI) — recto + verso",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`. Obligatoire sauf si `localite` est envoyée."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "document_type": {
-                                                "type": "string",
-                                                "description": "Type de pièce : `cni`.",
-                                                "enum": [
-                                                    "cni"
-                                                ],
-                                                "examples": [
-                                                    "cni"
-                                                ]
-                                            },
-                                            "recto": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du recto de la pièce : image ou PDF, 10 Mo maximum. Obligatoire."
-                                            },
-                                            "verso": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du verso de la pièce : image ou PDF, 10 Mo maximum. Obligatoire."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Obligatoire."
-                                            }
-                                        },
-                                        "required": [
-                                            "last_name",
-                                            "first_name",
-                                            "gender",
-                                            "birth_date",
-                                            "document_type",
-                                            "recto",
-                                            "verso",
-                                            "selfie"
+                                "type": "object",
+                                "properties": {
+                                    "last_name": {
+                                        "type": "string",
+                                        "description": "Nom.",
+                                        "examples": [
+                                            "Traoré"
                                         ]
                                     },
-                                    {
-                                        "title": "Passeport — une page",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`. Obligatoire sauf si `localite` est envoyée."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "document_type": {
-                                                "type": "string",
-                                                "description": "Type de pièce : `passeport`.",
-                                                "enum": [
-                                                    "passeport"
-                                                ],
-                                                "examples": [
-                                                    "passeport"
-                                                ]
-                                            },
-                                            "page": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo de la page de la pièce : image ou PDF, 10 Mo maximum. Obligatoire."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Obligatoire."
-                                            }
-                                        },
-                                        "required": [
-                                            "last_name",
-                                            "first_name",
-                                            "gender",
-                                            "birth_date",
-                                            "document_type",
-                                            "page",
-                                            "selfie"
+                                    "first_name": {
+                                        "type": "string",
+                                        "description": "Prénoms (`first_names` est aussi accepté).",
+                                        "examples": [
+                                            "Abou"
                                         ]
                                     },
-                                    {
-                                        "title": "Permis de conduire — recto + verso",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`. Obligatoire sauf si `localite` est envoyée."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "document_type": {
-                                                "type": "string",
-                                                "description": "Type de pièce : `permis`.",
-                                                "enum": [
-                                                    "permis"
-                                                ],
-                                                "examples": [
-                                                    "permis"
-                                                ]
-                                            },
-                                            "recto": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du recto de la pièce : image ou PDF, 10 Mo maximum. Obligatoire."
-                                            },
-                                            "verso": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du verso de la pièce : image ou PDF, 10 Mo maximum. Obligatoire."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Obligatoire."
-                                            }
-                                        },
-                                        "required": [
-                                            "last_name",
-                                            "first_name",
-                                            "gender",
-                                            "birth_date",
-                                            "document_type",
-                                            "recto",
-                                            "verso",
-                                            "selfie"
+                                    "gender": {
+                                        "type": "string",
+                                        "description": "Genre.",
+                                        "enum": [
+                                            "femme",
+                                            "homme"
+                                        ],
+                                        "examples": [
+                                            "homme"
                                         ]
                                     },
-                                    {
-                                        "title": "Carte consulaire — recto + verso",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`. Obligatoire sauf si `localite` est envoyée."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "document_type": {
-                                                "type": "string",
-                                                "description": "Type de pièce : `carte_consulaire`.",
-                                                "enum": [
-                                                    "carte_consulaire"
-                                                ],
-                                                "examples": [
-                                                    "carte_consulaire"
-                                                ]
-                                            },
-                                            "recto": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du recto de la pièce : image ou PDF, 10 Mo maximum. Obligatoire."
-                                            },
-                                            "verso": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du verso de la pièce : image ou PDF, 10 Mo maximum. Obligatoire."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Obligatoire."
-                                            }
-                                        },
-                                        "required": [
-                                            "last_name",
-                                            "first_name",
-                                            "gender",
-                                            "birth_date",
-                                            "document_type",
-                                            "recto",
-                                            "verso",
-                                            "selfie"
+                                    "birth_date": {
+                                        "type": "string",
+                                        "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
+                                        "examples": [
+                                            "26/04/2000"
                                         ]
                                     },
-                                    {
-                                        "title": "Attestation d’identité — une page",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`. Obligatoire sauf si `localite` est envoyée."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "document_type": {
-                                                "type": "string",
-                                                "description": "Type de pièce : `attestation_identite`.",
-                                                "enum": [
-                                                    "attestation_identite"
-                                                ],
-                                                "examples": [
-                                                    "attestation_identite"
-                                                ]
-                                            },
-                                            "page": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo de la page de la pièce : image ou PDF, 10 Mo maximum. Obligatoire."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Obligatoire."
-                                            }
-                                        },
-                                        "required": [
-                                            "last_name",
-                                            "first_name",
-                                            "gender",
-                                            "birth_date",
-                                            "document_type",
-                                            "page",
-                                            "selfie"
+                                    "commune": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Commune : `uuid` renvoyé par `GET /communes`. Obligatoire sauf si `localite` est envoyée."
+                                    },
+                                    "localite": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
+                                    },
+                                    "document_type": {
+                                        "type": "string",
+                                        "description": "Type de pièce (liste gérée par l’administration, `GET /auth/register/options`). Il décide des photos de la pièce : `cni` Carte nationale d’identité (CNI) → `recto` + `verso` ; `passeport` Passeport → `page` ; `permis` Permis de conduire → `recto` + `verso` ; `carte_consulaire` Carte consulaire → `recto` + `verso` ; `attestation_identite` Attestation d’identité → `page`.",
+                                        "enum": [
+                                            "cni",
+                                            "passeport",
+                                            "permis",
+                                            "carte_consulaire",
+                                            "attestation_identite"
+                                        ],
+                                        "examples": [
+                                            "cni"
                                         ]
+                                    },
+                                    "recto": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "**Seulement pour : Carte nationale d’identité (CNI), Permis de conduire, Carte consulaire.** Photo du recto de la pièce, image ou PDF, 10 Mo maximum. Obligatoire pour ces pièces."
+                                    },
+                                    "verso": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "**Seulement pour : Carte nationale d’identité (CNI), Permis de conduire, Carte consulaire.** Photo du verso de la pièce, image ou PDF, 10 Mo maximum. Obligatoire pour ces pièces."
+                                    },
+                                    "page": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "**Seulement pour : Passeport, Attestation d’identité.** Photo de la page de la pièce, image ou PDF, 10 Mo maximum. Obligatoire pour ces pièces."
+                                    },
+                                    "selfie": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "La personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Obligatoire."
                                     }
+                                },
+                                "required": [
+                                    "last_name",
+                                    "first_name",
+                                    "gender",
+                                    "birth_date",
+                                    "document_type",
+                                    "selfie"
                                 ]
                             }
                         }
@@ -2365,7 +2037,7 @@
             },
             "put": {
                 "operationId": "v1.identity.update",
-                "description": "**Tout est facultatif** : seuls les éléments envoyés changent (champs et/ou photos), les autres sont conservés.\nMême format que `POST /identity` (`multipart/form-data` ; JSON accepté s'il n'y a pas de photo).\nChanger `document_type` retire les photos de la pièce devenues inutiles ; les photos envoyées doivent correspondre\nau type de pièce (celui envoyé, sinon celui déjà enregistré). Possible tant que le dossier est `draft` ou `rejected`.\nSi la modification complète le dossier, il part aussitôt en vérification (`submitted`).",
+                "description": "**Tout est facultatif** : seuls les éléments envoyés et non vides changent (champs et/ou photos) ; un champ vide ne\nl'efface pas, les autres sont conservés. Une requête sans aucun élément répond 422.\nMême format que `POST /identity` (`multipart/form-data` ; JSON accepté s'il n'y a pas de photo).\nChanger `document_type` retire les photos de la pièce devenues inutiles ; les photos envoyées doivent correspondre\nau type de pièce (celui envoyé, sinon celui déjà enregistré). Possible tant que le dossier est `draft` ou `rejected`.\nSi la modification complète le dossier, il part aussitôt en vérification (`submitted`).",
                 "summary": "Modifier ma vérification d'identité",
                 "tags": [
                     "Vérification d’identité"
@@ -2375,431 +2047,89 @@
                     "content": {
                         "multipart/form-data": {
                             "schema": {
-                                "description": "Type de pièce (liste gérée par l’administration, `GET /auth/register/options`). Il décide des photos de la pièce : `cni` Carte nationale d’identité (CNI) → `recto` + `verso` ; `passeport` Passeport → `page` ; `permis` Permis de conduire → `recto` + `verso` ; `carte_consulaire` Carte consulaire → `recto` + `verso` ; `attestation_identite` Attestation d’identité → `page`.",
-                                "anyOf": [
-                                    {
-                                        "title": "Carte nationale d’identité (CNI) — recto + verso",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "document_type": {
-                                                "type": "string",
-                                                "description": "Type de pièce : `cni`.",
-                                                "enum": [
-                                                    "cni"
-                                                ],
-                                                "examples": [
-                                                    "cni"
-                                                ]
-                                            },
-                                            "recto": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du recto de la pièce : image ou PDF, 10 Mo maximum. Facultatif."
-                                            },
-                                            "verso": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du verso de la pièce : image ou PDF, 10 Mo maximum. Facultatif."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Facultatif."
-                                            }
-                                        }
+                                "type": "object",
+                                "properties": {
+                                    "last_name": {
+                                        "type": "string",
+                                        "description": "Nom.",
+                                        "examples": [
+                                            "Traoré"
+                                        ]
                                     },
-                                    {
-                                        "title": "Passeport — une page",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "document_type": {
-                                                "type": "string",
-                                                "description": "Type de pièce : `passeport`.",
-                                                "enum": [
-                                                    "passeport"
-                                                ],
-                                                "examples": [
-                                                    "passeport"
-                                                ]
-                                            },
-                                            "page": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo de la page de la pièce : image ou PDF, 10 Mo maximum. Facultatif."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Facultatif."
-                                            }
-                                        }
+                                    "first_name": {
+                                        "type": "string",
+                                        "description": "Prénoms (`first_names` est aussi accepté).",
+                                        "examples": [
+                                            "Abou"
+                                        ]
                                     },
-                                    {
-                                        "title": "Permis de conduire — recto + verso",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "document_type": {
-                                                "type": "string",
-                                                "description": "Type de pièce : `permis`.",
-                                                "enum": [
-                                                    "permis"
-                                                ],
-                                                "examples": [
-                                                    "permis"
-                                                ]
-                                            },
-                                            "recto": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du recto de la pièce : image ou PDF, 10 Mo maximum. Facultatif."
-                                            },
-                                            "verso": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du verso de la pièce : image ou PDF, 10 Mo maximum. Facultatif."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Facultatif."
-                                            }
-                                        }
+                                    "gender": {
+                                        "type": "string",
+                                        "description": "Genre.",
+                                        "enum": [
+                                            "femme",
+                                            "homme"
+                                        ],
+                                        "examples": [
+                                            "homme"
+                                        ]
                                     },
-                                    {
-                                        "title": "Carte consulaire — recto + verso",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "document_type": {
-                                                "type": "string",
-                                                "description": "Type de pièce : `carte_consulaire`.",
-                                                "enum": [
-                                                    "carte_consulaire"
-                                                ],
-                                                "examples": [
-                                                    "carte_consulaire"
-                                                ]
-                                            },
-                                            "recto": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du recto de la pièce : image ou PDF, 10 Mo maximum. Facultatif."
-                                            },
-                                            "verso": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo du verso de la pièce : image ou PDF, 10 Mo maximum. Facultatif."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Facultatif."
-                                            }
-                                        }
+                                    "birth_date": {
+                                        "type": "string",
+                                        "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
+                                        "examples": [
+                                            "26/04/2000"
+                                        ]
                                     },
-                                    {
-                                        "title": "Attestation d’identité — une page",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "document_type": {
-                                                "type": "string",
-                                                "description": "Type de pièce : `attestation_identite`.",
-                                                "enum": [
-                                                    "attestation_identite"
-                                                ],
-                                                "examples": [
-                                                    "attestation_identite"
-                                                ]
-                                            },
-                                            "page": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Photo de la page de la pièce : image ou PDF, 10 Mo maximum. Facultatif."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Facultatif."
-                                            }
-                                        }
+                                    "commune": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Commune : `uuid` renvoyé par `GET /communes`."
                                     },
-                                    {
-                                        "title": "Sans changer de pièce",
-                                        "type": "object",
-                                        "properties": {
-                                            "last_name": {
-                                                "type": "string",
-                                                "description": "Nom.",
-                                                "examples": [
-                                                    "Traoré"
-                                                ]
-                                            },
-                                            "first_name": {
-                                                "type": "string",
-                                                "description": "Prénoms (`first_names` est aussi accepté).",
-                                                "examples": [
-                                                    "Abou"
-                                                ]
-                                            },
-                                            "gender": {
-                                                "type": "string",
-                                                "description": "Genre.",
-                                                "enum": [
-                                                    "femme",
-                                                    "homme"
-                                                ],
-                                                "examples": [
-                                                    "homme"
-                                                ]
-                                            },
-                                            "birth_date": {
-                                                "type": "string",
-                                                "description": "Date de naissance, JJ/MM/AAAA (ou AAAA-MM-JJ). Âge minimum fixé par l’administration.",
-                                                "examples": [
-                                                    "26/04/2000"
-                                                ]
-                                            },
-                                            "commune": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Commune : `uuid` renvoyé par `GET /communes`."
-                                            },
-                                            "localite": {
-                                                "type": "string",
-                                                "format": "uuid",
-                                                "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
-                                            },
-                                            "selfie": {
-                                                "type": "string",
-                                                "format": "binary",
-                                                "contentMediaType": "application/octet-stream",
-                                                "description": "Selfie : la personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Facultatif."
-                                            }
-                                        }
+                                    "localite": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Facultatif. Localité de cette commune : `uuid` renvoyé par `GET /communes/{commune}/localites`."
+                                    },
+                                    "document_type": {
+                                        "type": "string",
+                                        "description": "Type de pièce (liste gérée par l’administration, `GET /auth/register/options`). Il décide des photos de la pièce : `cni` Carte nationale d’identité (CNI) → `recto` + `verso` ; `passeport` Passeport → `page` ; `permis` Permis de conduire → `recto` + `verso` ; `carte_consulaire` Carte consulaire → `recto` + `verso` ; `attestation_identite` Attestation d’identité → `page`.",
+                                        "enum": [
+                                            "cni",
+                                            "passeport",
+                                            "permis",
+                                            "carte_consulaire",
+                                            "attestation_identite"
+                                        ],
+                                        "examples": [
+                                            "cni"
+                                        ]
+                                    },
+                                    "recto": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "**Seulement pour : Carte nationale d’identité (CNI), Permis de conduire, Carte consulaire.** Photo du recto de la pièce, image ou PDF, 10 Mo maximum. Facultatif."
+                                    },
+                                    "verso": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "**Seulement pour : Carte nationale d’identité (CNI), Permis de conduire, Carte consulaire.** Photo du verso de la pièce, image ou PDF, 10 Mo maximum. Facultatif."
+                                    },
+                                    "page": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "**Seulement pour : Passeport, Attestation d’identité.** Photo de la page de la pièce, image ou PDF, 10 Mo maximum. Facultatif."
+                                    },
+                                    "selfie": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "La personne tenant sa pièce, visage bien visible ; sert aussi de photo du badge. Image JPEG, PNG ou HEIC, 10 Mo maximum. Facultatif."
                                     }
-                                ]
+                                }
                             }
                         }
                     }
@@ -9337,7 +8667,7 @@
             },
             "UpdateIdentityRequest": {
                 "type": "object",
-                "description": "PUT /identity : modifier la vérification d'identité, tout est facultatif (champs et fichiers, multipart ou JSON).\nSeuls les éléments envoyés changent. Les faces de la pièce doivent correspondre au type de pièce choisi\n(celui envoyé, sinon celui déjà enregistré). Une localité suffit : sa commune est déduite.",
+                "description": "PUT /identity : modifier la vérification d'identité, tout est facultatif (champs et fichiers, multipart ou JSON).\nSeuls les éléments envoyés et non vides changent : un champ vide laisse la valeur enregistrée. Les faces de la pièce doivent correspondre au type de pièce choisi\n(celui envoyé, sinon celui déjà enregistré). Une localité suffit : sa commune est déduite.",
                 "properties": {
                     "last_name": {
                         "type": [

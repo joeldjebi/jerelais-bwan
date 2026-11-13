@@ -18,7 +18,7 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
  * PUT /identity : modifier la vérification d'identité, tout est facultatif (champs et fichiers, multipart ou JSON).
- * Seuls les éléments envoyés changent. Les faces de la pièce doivent correspondre au type de pièce choisi
+ * Seuls les éléments envoyés et non vides changent : un champ vide laisse la valeur enregistrée. Les faces de la pièce doivent correspondre au type de pièce choisi
  * (celui envoyé, sinon celui déjà enregistré). Une localité suffit : sa commune est déduite.
  */
 class UpdateIdentityRequest extends FormRequest
@@ -103,6 +103,14 @@ class UpdateIdentityRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
+                // Requête vide (aucun champ ni photo) : on le signale au lieu de répondre 200 sans rien changer.
+                $fields = ['last_name', 'first_names', 'first_name', 'gender', 'birth_date', 'commune', 'localite', 'document_type'];
+
+                if (! $this instanceof SubmitIdentityRequest && ! $this->anyFilled($fields) && $this->identityFiles() === []) {
+                    $validator->errors()->add('identity', __('identity.errors.nothing_to_update'));
+                }
+            },
+            function (Validator $validator): void {
                 $commune = $this->input('commune');
                 $localite = $this->input('localite');
 
@@ -161,20 +169,20 @@ class UpdateIdentityRequest extends FormRequest
     {
         $details = [];
 
+        // Un champ vide (ou absent) n'est pas modifié : les formulaires envoient souvent tous leurs champs, même vides.
         foreach (SaveIdentityDetails::IDENTITY_FIELDS as $field) {
-            if ($this->exists($field)) {
-                $value = $this->input($field);
-                $details[$field] = is_string($value) && trim($value) !== '' ? trim($value) : null;
+            if ($this->filled($field)) {
+                $details[$field] = trim($this->string($field)->toString());
             }
         }
 
-        if ($this->exists('commune') || $this->exists('localite')) {
+        if ($this->filled('commune') || $this->filled('localite')) {
             $commune = $this->commune();
             $details['commune'] = $commune;
             $details['localite'] = $this->localite($commune);
         }
 
-        if ($this->exists('document_type')) {
+        if ($this->filled('document_type')) {
             $details['document_type'] = IdentityDocumentType::query()->where('slug', $this->string('document_type')->toString())->first();
         }
 
