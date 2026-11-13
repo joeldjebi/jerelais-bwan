@@ -287,10 +287,31 @@ curl -X PUT "$BASE/identity" -H "Authorization: Bearer $TOKEN" \
 | `last_name`, `first_names` | Texte |
 | `gender` | `femme` ou `homme` |
 | `birth_date` | **JJ/MM/AAAA** (`26/04/2000`) ou `AAAA-MM-JJ` ; âge minimum fixé par l’administration |
-| `commune`, `localite` | uuid de `GET /communes` et `GET /communes/{commune}/localites` ; une localité seule suffit |
+| `commune`, `localite` | uuid de `GET /communes` et de `GET /communes/{commune}/localites` (5.2 bis) ; une localité seule suffit, sa commune est déduite |
 | `document_type` | Une `value` de 5.0 (pièce active) ; changer de type retire les faces devenues inutiles |
 
 **200** : même forme que 5.1. **422** : champ invalide. **409** si la vérification est envoyée ou déjà vérifiée.
+
+### 5.2 bis Communes et localités (référentiels publics)
+
+La **localité** est le quartier, le village ou la sous-préfecture où vit le Relais, à l’intérieur de sa commune. Elle est facultative : la commune suffit. Écran conseillé : choisir la commune, puis (facultatif) la localité.
+
+```bash
+curl "$BASE/communes" -H "Accept: application/json"
+curl "$BASE/communes/<uuid de la commune>/localites" -H "Accept: application/json"
+```
+
+**200** (public, mis en cache 5 minutes)
+```json
+{
+  "data": [
+    { "uuid": "01a1…", "name": "Abobo-Gare", "type": "quartier" },
+    { "uuid": "01a1…", "name": "Anonkoua-Kouté", "type": "village" }
+  ]
+}
+```
+
+`type` : `quartier`, `village` ou `sous_prefecture`. Liste vide si l’administration n’a pas encore saisi de localité pour cette commune : n’afficher alors que la commune. **404** si la commune est fermée aux Relais.
 
 ### 5.3 Fichiers (multipart)
 

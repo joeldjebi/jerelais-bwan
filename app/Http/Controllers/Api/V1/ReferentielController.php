@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Contribution\Models\Category;
 use App\Domain\Settings\Settings;
 use App\Domain\Territoire\Models\Commune;
+use App\Domain\Territoire\Models\Localite;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\CategoryResource;
 use App\Http\Resources\V1\CommuneResource;
@@ -31,6 +32,26 @@ class ReferentielController extends Controller
         return CommuneResource::collection(
             Commune::query()->active()->with('region')->orderBy('name')->get()
         );
+    }
+
+    /**
+     * Localités d'une commune.
+     *
+     * Quartiers, villages et sous-préfectures d'une commune ouverte, triés par nom (404 si la commune est fermée).
+     * L'`uuid` sert au champ `localite` de `PUT /identity` (profil) : une localité suffit, sa commune est déduite.
+     * Liste gérée par l'administration (console → Référentiels → Localités). Mise en cache 5 minutes.
+     *
+     * @response array{data: list<array{uuid: string, name: string, type: 'quartier'|'village'|'sous_prefecture'}>}
+     *
+     * @unauthenticated
+     */
+    public function localites(Commune $commune): JsonResponse
+    {
+        abort_unless($commune->is_active, 404);
+
+        return response()->json(['data' => $commune->localites()->orderBy('name')->get(['uuid', 'name', 'type'])
+            ->map(fn (Localite $localite): array => ['uuid' => $localite->uuid, 'name' => $localite->name, 'type' => $localite->type->value]),
+        ]);
     }
 
     /**

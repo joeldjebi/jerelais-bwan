@@ -43,7 +43,7 @@ Route::name('api.v1.')->group(function () {
         Route::get('communes', [ReferentielController::class, 'communes'])->name('communes.index');
         Route::get('categories', [ReferentielController::class, 'categories'])->name('categories.index');
         Route::get('settings', [ReferentielController::class, 'settings'])->name('settings.index');
-        Route::get('communes/{commune}/localites', [CandidatureController::class, 'localites'])->name('communes.localites');
+        Route::get('communes/{commune}/localites', [ReferentielController::class, 'localites'])->name('communes.localites');
         Route::get('legal', [LegalController::class, 'index'])->name('legal.index');
         Route::get('formation', [FormationController::class, 'modules'])->name('formation.index');
         Route::get('diffusions', DiffusionController::class)->name('diffusions.index');
