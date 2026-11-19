@@ -448,3 +448,21 @@ it('explique un appel à relais inconnu', function () {
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['appel' => 'Appel à relais inconnu : choisissez un appel ouvert de GET /appels']);
 });
+
+it('accepte la mention à l’antenne sous ses variantes courantes (name, nom, pseudo, anonyme)', function (string $sent, string $stored) {
+    sendRelaisAtOnce(['credit_mode' => $sent, 'credit_name' => 'Awa d’Abobo'])
+        ->assertCreated()
+        ->assertJsonPath('data.protections.credit_mode', $stored);
+})->with([
+    'named' => ['named', 'named'],
+    'name (ancienne doc)' => ['name', 'named'],
+    'nom' => ['Nom', 'named'],
+    'pseudo' => ['pseudo', 'pseudonym'],
+    'anonyme' => ['anonyme', 'anonymous'],
+]);
+
+it('liste les valeurs acceptées quand la mention à l’antenne est inconnue', function () {
+    sendRelaisAtOnce(['credit_mode' => 'public'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['protections.credit_mode' => 'Mention à l’antenne inconnue : anonymous (« Un Relais de REFLET TV »), named (nom du Relais) ou pseudonym (avec credit_name).']);
+});

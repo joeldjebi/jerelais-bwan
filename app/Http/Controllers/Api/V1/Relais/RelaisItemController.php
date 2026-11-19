@@ -57,7 +57,7 @@ class RelaisItemController extends Controller
      *
      * Champs : `category`, `title` (obligatoires), `description`, `urgency`, le lieu — `lat` + `lng` (GPS, `accuracy_m`
      * facultatif) ou `declared_commune` —, `declared_place`, les protections `has_minors` (`true`/`false`), `people_consent`,
-     * `credit_mode` (`credit_name` si pseudonyme), `appel` pour répondre à un appel, et **`files[]`** : 1 à 10 fichiers
+     * `credit_mode` (`anonymous`, `named` ou `pseudonym` avec `credit_name`), `appel` pour répondre à un appel, et **`files[]`** : 1 à 10 fichiers
      * (photos JPEG/PNG/HEIC, vidéos MP4/MOV, sons M4A/MP3/AAC), **100 Mo maximum chacun**. `client_uuid` (facultatif) :
      * renvoyer le même rend le même relais, sans doublon.
      *

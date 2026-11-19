@@ -380,7 +380,7 @@ class ApiDocumentationServiceProvider extends ServiceProvider
             ->addProperty('declared_place', $text('Lieu précis en clair (facultatif).', 'Carrefour Siporex'))
             ->addProperty('has_minors', (new StringType)->enum(['false', 'true'])->setDescription('Des mineurs identifiables apparaissent-ils ?'.($send ? ' Obligatoire.' : ''))->example('false'))
             ->addProperty('people_consent', (new StringType)->enum(['not_applicable', 'yes', 'no'])->setDescription('Accord des personnes filmées.'.($send ? ' Obligatoire.' : ''))->example('not_applicable'))
-            ->addProperty('credit_mode', (new StringType)->enum(['anonymous', 'name', 'pseudonym'])->setDescription('Mention à l’antenne.'.($send ? ' Obligatoire.' : ''))->example('anonymous'))
+            ->addProperty('credit_mode', (new StringType)->enum(['anonymous', 'named', 'pseudonym'])->setDescription('Mention à l’antenne : `anonymous` (« Un Relais de REFLET TV »), `named` (nom du Relais) ou `pseudonym` (avec `credit_name`).'.($send ? ' Obligatoire.' : ''))->example('anonymous'))
             ->addProperty('credit_name', $text('Pseudonyme à afficher, obligatoire si `credit_mode` = `pseudonym`.', 'Awa d’Abobo'))
             ->addProperty('appel', $appel);
 
