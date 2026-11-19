@@ -31,6 +31,7 @@ use App\Livewire\Console\Diffusions\Index as DiffusionsPage;
 use App\Livewire\Console\Editorial\Index as EditorialPage;
 use App\Livewire\Console\Flux\Index as FluxPage;
 use App\Livewire\Console\Formation\Index as FormationPage;
+use App\Livewire\Console\Gains\Index as GainsPage;
 use App\Livewire\Console\Identity\Index as IdentityPage;
 use App\Livewire\Console\Identity\Show as IdentityShowPage;
 use App\Livewire\Console\Legal\Index as LegalPage;
@@ -115,6 +116,8 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::get('identites/fichiers/{file}', IdentityFileController::class)->middleware(['signed', 'permission:'.Permission::UsersManage->value])->name('identity.file');
         Route::livewire('referentiels', ReferentielsPage::class)->middleware('permission:'.Permission::TerritoireManage->value.'|'.Permission::SettingsManage->value)->name('referentiels');
         Route::livewire('parametres', SettingsPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('settings');
+        // Paiements des Relais (ADM-27) : commissions dues, versement Mobile Money enregistré avec sa référence.
+        Route::livewire('paiements', GainsPage::class)->middleware('permission:'.Permission::CommissionsManage->value)->name('gains');
         Route::livewire('candidatures', CandidaturesPage::class)->middleware('permission:'.Permission::CandidaturesValidate->value)->name('candidatures');
         Route::livewire('candidatures/{candidature}', CandidaturePage::class)->middleware('permission:'.Permission::CandidaturesValidate->value)->name('candidatures.show');
         Route::get('candidatures/pieces/{document}', CandidatureDocumentController::class)->middleware('signed')->name('candidatures.document');

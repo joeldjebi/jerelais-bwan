@@ -8,6 +8,7 @@ return [
         'levels' => ['Niveaux des Relais', 'Nombre de relais validés pour atteindre chaque niveau (Bronze dès le premier relais validé, MOB-24).'],
         'alerts' => ['Alertes', 'Afflux inhabituel de relais sur une même commune, signe d’un événement (ADM-03).'],
         'candidature' => ['Candidatures', 'Conditions d’admission des Relais (MOB-05, §9.3).'],
+        'gains' => ['Commissions des Relais', 'Montant versé au Relais pour chaque relais validé, et en plus pour chaque relais diffusé. Vide : pas de commission. Paiement par Mobile Money depuis « Paiements ».'],
         'retention' => ['Conservation des données', 'Durées avant purge automatique (§9.4). Vide : aucune purge.'],
     ],
 
@@ -38,6 +39,10 @@ return [
             'quiz_min_score' => 'Score minimal au quiz',
             'minimum_age' => 'Âge minimum',
             'minors_allowed' => 'Admettre des candidats mineurs',
+        ],
+        'gains' => [
+            'amount_per_validated' => 'Par relais validé',
+            'amount_per_broadcast' => 'En plus, par relais diffusé',
         ],
         'retention' => [
             'rejected_candidatures_days' => 'Candidatures refusées',
@@ -71,6 +76,10 @@ return [
         'candidature' => [
             'quiz_min_score' => '%',
             'minimum_age' => 'ans',
+        ],
+        'gains' => [
+            'amount_per_validated' => 'FCFA',
+            'amount_per_broadcast' => 'FCFA',
         ],
         'retention' => [
             'rejected_candidatures_days' => 'jours',

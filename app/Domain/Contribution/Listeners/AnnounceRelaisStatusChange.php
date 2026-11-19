@@ -25,6 +25,11 @@ class AnnounceRelaisStatusChange
             return;
         }
 
+        // Sélection suivie de la diffusion dans le même geste (« Diffuser et publier ») : une seule notification, « diffusé ».
+        if ($event->to === 'selected' && $event->relais->broadcast_at !== null) {
+            return;
+        }
+
         $relais = $event->relais;
         $title = (string) str($relais->title ?? '')->limit(40);
 
