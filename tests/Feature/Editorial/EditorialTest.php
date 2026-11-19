@@ -222,3 +222,24 @@ it('refuse de renommer une collection à un journaliste sans droit d’arbitrage
         ->call('openEdit')
         ->assertForbidden();
 });
+
+it('montre dans l’onglet Vitrine exactement les relais renvoyés par GET /diffusions [MOB-25]', function () {
+    $publie = readyRelais(Broadcast::class, ['title' => 'Publié sur la vitrine', 'showcased_at' => now(), 'showcase_title' => 'Inondations à Yopougon']);
+    readyRelais(Broadcast::class, ['title' => 'Diffusé seulement']);
+
+    Livewire::actingAs($this->admin)->test(Editorial::class)
+        ->set('tab', 'vitrine')
+        ->assertSee('Publié sur la vitrine')
+        ->assertDontSee('Diffusé seulement')
+        ->assertSet('counts.vitrine', 1);
+
+    Livewire::actingAs($this->admin)->test(Editorial::class)
+        ->set('tab', 'diffuses')
+        ->assertSee('Diffusé seulement')
+        ->assertSee('Sur la vitrine');
+
+    $this->getJson(route('api.v1.diffusions.index'))->assertOk()->assertJsonCount(1, 'data');
+
+    $this->actingAs($this->admin)->get(route('console.diffusions'))->assertRedirect(route('console.editorial', ['onglet' => 'vitrine']));
+    $this->actingAs($this->admin)->get(route('console.editorial'))->assertSee('Diffusions');
+});
