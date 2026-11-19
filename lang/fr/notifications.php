@@ -6,6 +6,8 @@
  */
 return [
     'relais' => [
+        'received' => ['title' => 'Relais bien reçu', 'body' => 'Votre relais « :title » est arrivé. Votre coordonnateur va le vérifier.'],
+        'in_review' => ['title' => 'Relais en cours de vérification', 'body' => 'Votre coordonnateur examine « :title ».'],
         'validated' => ['title' => 'Relais validé', 'body' => 'Votre relais « :title » est validé. Merci !'],
         'rejected' => ['title' => 'Relais non retenu', 'body' => 'Votre relais « :title » n’a pas été retenu. Ouvrez-le pour en savoir plus.'],
         'complement_requested' => ['title' => 'Une question sur votre relais', 'body' => 'Votre coordonnateur a une question sur « :title ».'],
@@ -29,6 +31,22 @@ return [
         'suspended' => ['title' => 'Compte suspendu', 'body' => 'Votre compte de Relais est suspendu. Contactez votre coordonnateur.'],
         'struck_off' => ['title' => 'Compte radié', 'body' => 'Votre compte de Relais a été radié, conformément à la charte.'],
     ],
+
+    'media_rejected' => ['title' => 'Fichier refusé', 'body' => 'Un fichier de « :title » n’a pas été accepté : :reason Vous pouvez en envoyer un autre.'],
+
+    'showcased' => ['title' => 'Votre relais est à la une', 'body' => '« :title » est publié sur « Vu sur REFLET TV ». Bravo !'],
+
+    'transferred' => ['title' => 'Nouvelle commune', 'body' => 'Vous êtes maintenant rattaché à :commune.'],
+    'transferred_sms' => 'JE RELAIS : vous êtes maintenant rattaché à la commune de :commune.',
+
+    'gains' => [
+        'earned' => ['title' => 'Nouveau gain', 'body' => '+:amount pour « :title ».'],
+        'cancelled' => ['title' => 'Commission annulée', 'body' => 'La commission de :amount pour « :title » a été annulée. Ouvrez l’application pour en savoir plus.'],
+    ],
+
+    'level' => ['title' => 'Nouveau niveau : :level', 'body' => 'Bravo ! Avec :count relais validés, vous passez au niveau :level.'],
+
+    'legal' => ['title' => 'Texte mis à jour', 'body' => '« :document » a été mis à jour. Ouvrez l’application pour le lire et l’accepter.'],
 
     'conversation' => ['title' => 'Nouveau message', 'body' => 'Votre coordonnateur vous a écrit.'],
 

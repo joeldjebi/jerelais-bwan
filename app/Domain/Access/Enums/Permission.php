@@ -24,6 +24,7 @@ enum Permission: string
     case RelaisProfilesSuspend = 'relais-profiles.suspend';
     case SettingsManage = 'settings.manage';
     case CommissionsManage = 'commissions.manage';
+    case NotificationsSend = 'notifications.send';
     case TerritoireManage = 'territoire.manage';
     case UsersManage = 'users.manage';
     case AuditView = 'audit.view';

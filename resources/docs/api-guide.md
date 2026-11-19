@@ -128,12 +128,12 @@ Les référentiels publics (`/auth/register/options`, `/communes`, `/categories`
 
 ## Notifications
 
-Le Relais reçoit une **notification push** (Firebase Cloud Messaging) sur chaque appareil connecté qui a déclaré son jeton. Sans appareil joignable, il reçoit un **SMS** à la place.
+Le Relais reçoit une **notification push** (Firebase Cloud Messaging) sur chaque appareil connecté qui a déclaré son jeton, **à chaque événement le concernant** (tableau ci-dessous). Sans appareil joignable, il reçoit un **SMS** à la place pour les décisions importantes (relais validé, rejeté, complément, sélectionné, diffusé ; identité ; candidature ; compte ; messages ; appels ; paiements) ; les autres événements restent en push seulement.
 
 **Ce que l'application doit faire** :
 
 1. Obtenir le jeton FCM de l'appareil (Firebase Messaging, après l'autorisation de notifications sur iOS et sur Android 13 et plus).
-2. L'envoyer par `PUT /devices/current` (champ `fcm_token`) juste après chaque connexion, puis à chaque renouvellement du jeton (`onTokenRefresh`). `push_enabled` passe alors à `true` dans la réponse.
+2. L'envoyer par `PUT /devices/current` (champ `fcm_token`, groupe « Notifications ») juste après chaque connexion, puis à chaque renouvellement du jeton (`onTokenRefresh`). `push_enabled` passe alors à `true` dans la réponse.
 3. Utiliser le **même projet Firebase** que le serveur (fichiers `google-services.json` et `GoogleService-Info.plist`). Un jeton d'un autre projet est refusé et oublié.
 4. À la déconnexion (`POST /auth/logout`), le jeton est oublié : plus de notification sur cet appareil.
 
@@ -141,13 +141,23 @@ Le Relais reçoit une **notification push** (Firebase Cloud Messaging) sur chaqu
 
 | `type` | Quand | Autres champs de `data` | Écran à ouvrir |
 |---|---|---|---|
-| `relais.status_changed` | Relais validé, rejeté, complément demandé, sélectionné ou diffusé | `uuid` (relais), `status` : `validated`, `rejected`, `complement_requested`, `selected`, `broadcast` | `GET /relais/{uuid}` |
+| `relais.status_changed` | Relais reçu, en cours de vérification, validé, rejeté, complément demandé, sélectionné ou diffusé | `uuid` (relais), `status` : `received`, `in_review`, `validated`, `rejected`, `complement_requested`, `selected`, `broadcast` | `GET /relais/{uuid}` |
+| `relais.media_rejected` | Un fichier du relais refusé au contrôle (format, antivirus, durée…) | `uuid` (relais), `media` (fichier) | `GET /relais/{uuid}` (motif dans `medias[].rejection`) |
+| `relais.showcased` | Relais publié sur la vitrine « Vu sur REFLET TV » | `uuid` (relais) | `GET /diffusions` |
 | `identity.decided` | Vérification d'identité traitée | `status` : `verified`, `rejected` | `GET /identity` |
 | `candidature.decided` | Candidature traitée | `uuid` (candidature), `status` : `accept`, `reject`, `complement` | `GET /candidature` |
 | `account.status_changed` | Compte de Relais suspendu, radié ou réactivé | `status` : `suspended`, `struck_off`, `active` | `GET /me` |
+| `account.transferred` | Relais rattaché à une autre commune | `commune` (uuid) | `GET /me` |
+| `account.level` | Nouveau niveau atteint (Bronze, Argent, Or) | `level` : `bronze`, `argent`, `or` | `GET /me/stats` |
+| `legal.updated` | Nouvelle version de la charte, des conditions ou de la politique de confidentialité | `document` : `charte`, `conditions`, `confidentialite`, `version` | `GET /legal`, puis `POST /consents` |
 | `message.received` | Message du coordonnateur | `uuid` (conversation) | `GET /conversations/{uuid}/messages` |
 | `appel.created` | Appel à relais dans la zone du Relais | `uuid` (appel) | `GET /appels/{uuid}` |
+| `gains.earned` | Nouvelle commission gagnée (relais validé ou diffusé) | `uuid` (commission), `amount` (FCFA) | `GET /me/gains` |
+| `gains.cancelled` | Commission annulée par l'administration | `uuid` (commission) | `GET /me/gains` |
 | `gains.paid` | Commissions payées par Mobile Money | `uuid` (paiement), `amount` (FCFA) | `GET /me/payouts` |
+| `announcement` | Annonce de l'administration | `uuid` (annonce), `screen` : écran à ouvrir (`home`, `announcements`, `appels`, `relais`, `gains`, `identity`, `profile`) | `screen`, et `POST /announcements/{uuid}/read` |
+
+**Annonces de l'administration** : l'administration peut écrire à tous les Relais ou à une partie (régions, communes, un Relais, identités à vérifier, coordonnées de paiement manquantes). Chaque annonce arrive en notification push (`type: announcement`) **et** reste dans la boîte de réception de l'application : `GET /announcements` (titre, message, `screen`, `is_read` ; `meta.unread_count` pour la pastille), `POST /announcements/{uuid}/read` quand le Relais l'ouvre, `POST /announcements/read-all`. Groupe « Notifications » de la documentation, avec l'enregistrement du jeton.
 
 Exemple de `data` : `{"type": "relais.status_changed", "uuid": "0193…", "status": "validated"}`. Un `type` inconnu doit être ignoré (ouvrir l'accueil) : d'autres pourront s'ajouter.
 

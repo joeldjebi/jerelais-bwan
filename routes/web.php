@@ -18,6 +18,7 @@ use App\Http\Controllers\Relais\DocumentPreviewController;
 use App\Http\Controllers\Relais\LogoutController as RelaisLogoutController;
 use App\Http\Controllers\Relais\WebMediaController;
 use App\Livewire\Console\Account\Index as AccountPage;
+use App\Livewire\Console\Announcements\Index as AnnouncementsPage;
 use App\Livewire\Console\Appels\Index as AppelsPage;
 use App\Livewire\Console\Appels\Show as AppelPage;
 use App\Livewire\Console\Audit\Index as AuditPage;
@@ -116,6 +117,8 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::get('identites/fichiers/{file}', IdentityFileController::class)->middleware(['signed', 'permission:'.Permission::UsersManage->value])->name('identity.file');
         Route::livewire('referentiels', ReferentielsPage::class)->middleware('permission:'.Permission::TerritoireManage->value.'|'.Permission::SettingsManage->value)->name('referentiels');
         Route::livewire('parametres', SettingsPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('settings');
+        // Notifications aux Relais (MOB-21) : annonce push, SMS de secours, immédiate ou programmée.
+        Route::livewire('notifications', AnnouncementsPage::class)->middleware('permission:'.Permission::NotificationsSend->value)->name('announcements');
         // Paiements des Relais (ADM-27) : commissions dues, versement Mobile Money enregistré avec sa référence.
         Route::livewire('paiements', GainsPage::class)->middleware('permission:'.Permission::CommissionsManage->value)->name('gains');
         Route::livewire('candidatures', CandidaturesPage::class)->middleware('permission:'.Permission::CandidaturesValidate->value)->name('candidatures');

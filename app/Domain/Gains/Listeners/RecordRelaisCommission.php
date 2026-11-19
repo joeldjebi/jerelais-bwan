@@ -6,6 +6,8 @@ use App\Domain\Contribution\Events\RelaisStatusChanged;
 use App\Domain\Gains\Enums\CommissionKind;
 use App\Domain\Gains\Enums\CommissionStatus;
 use App\Domain\Gains\Models\Commission;
+use App\Domain\Notification\Actions\NotifyUser;
+use App\Domain\Notification\Data\PushMessage;
 use App\Domain\Settings\Settings;
 
 /**
@@ -15,7 +17,10 @@ use App\Domain\Settings\Settings;
  */
 class RecordRelaisCommission
 {
-    public function __construct(private readonly Settings $settings) {}
+    public function __construct(
+        private readonly Settings $settings,
+        private readonly NotifyUser $notify,
+    ) {}
 
     public function handle(RelaisStatusChanged $event): void
     {
@@ -43,9 +48,17 @@ class RecordRelaisCommission
             return;
         }
 
-        Commission::query()->firstOrCreate(
+        $commission = Commission::query()->firstOrCreate(
             ['relais_item_id' => $relais->id, 'kind' => $kind->value],
             ['user_id' => $relais->user_id, 'amount' => $amount, 'status' => CommissionStatus::Due],
         );
+
+        if ($commission->wasRecentlyCreated) {
+            $this->notify->handle($relais->loadMissing('user')->user, new PushMessage(
+                __('notifications.gains.earned.title'),
+                __('notifications.gains.earned.body', ['amount' => number_format($amount, 0, ',', ' ').' FCFA', 'title' => (string) str($relais->title ?? '')->limit(40)]),
+                ['type' => 'gains.earned', 'uuid' => $commission->uuid, 'amount' => $amount],
+            ), null, 'gains');
+        }
     }
 }

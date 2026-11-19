@@ -56,10 +56,19 @@ it('notifie chaque décision sur le relais : refus, complément, sélection, dif
     ['broadcast', 'Votre relais est passé à l’antenne'],
 ]);
 
-it('ne notifie pas les étapes internes du relais [MOB-21]', function () {
+it('notifie la réception et la vérification par push seulement, et jamais les étapes internes [MOB-21]', function () {
     pushDevice($this->user);
 
+    RelaisStatusChanged::dispatch($this->relais, 'uploading', 'received');
     RelaisStatusChanged::dispatch($this->relais, 'received', 'in_review');
+    RelaisStatusChanged::dispatch($this->relais, 'in_review', 'sensitive');
+
+    expect(collect($this->push->sent)->pluck('message.title')->all())->toBe(['Relais bien reçu', 'Relais en cours de vérification']);
+
+    $this->push->sent = [];
+    pushDevice($this->user, ['fcm_token' => null, 'name' => 'x']);
+    Device::query()->where('user_id', $this->user->id)->update(['fcm_token' => null]);
+    RelaisStatusChanged::dispatch($this->relais, 'uploading', 'received');
 
     expect($this->push->sent)->toBeEmpty()->and($this->sms->sent)->toBeEmpty();
 });
