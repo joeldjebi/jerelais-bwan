@@ -13,7 +13,9 @@ use App\Domain\Media\Support\TemporaryPath;
 use App\Domain\Settings\Settings;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 /**
  * Contrôle d'un média reçu, avant toute mise à disposition (§10) :
@@ -124,6 +126,17 @@ class ProcessMedia implements ShouldQueue
             @unlink($local);
             @unlink($thumbPath);
         }
+    }
+
+    /**
+     * Échec définitif (après tous les essais) : le fichier repasse « reçu » au lieu de rester « en traitement » pour
+     * toujours ; `php artisan medias:reprocess` le relance une fois la cause corrigée.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        Media::query()->whereKey($this->mediaId)->where('status', MediaStatus::Processing->value)->update(['status' => MediaStatus::Uploaded->value]);
+
+        Log::error('[Médias] contrôle impossible', ['media' => $this->mediaId, 'error' => $exception?->getMessage()]);
     }
 
     /**

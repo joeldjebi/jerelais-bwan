@@ -28,7 +28,7 @@ class NotifyCandidateOfDecision
             new PushMessage(
                 __("notifications.candidature.{$decision}.title"),
                 __("notifications.candidature.{$decision}.body"),
-                ['type' => "candidature.{$decision}", 'candidature' => $event->candidature->uuid],
+                ['type' => 'candidature.decided', 'uuid' => $event->candidature->uuid, 'status' => $decision],
             ),
             __("candidature.sms.{$decision}"),
             'candidature',
