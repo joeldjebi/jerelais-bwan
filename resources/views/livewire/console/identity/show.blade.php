@@ -38,12 +38,12 @@
                 @foreach ($kinds as $kind)
                     @php $file = $files[$kind->value] ?? null; $src = $url($file); @endphp
                     <figure class="min-w-0">
-                        @if ($src && $file->isImage())
+                        @if ($src && $file->isImage() && ! in_array($file->mime, ['image/heic', 'image/heif'], true))
                             <button type="button" x-on:click="zoom = @js($src)" class="block aspect-[3/4] w-full overflow-hidden rounded-[0.9rem] bg-black/[0.04] transition-transform duration-500 ease-spring hover:scale-[1.02]">
                                 <img src="{{ $src }}" alt="{{ $kind->label() }}" class="size-full object-cover" loading="lazy">
                             </button>
                         @elseif ($src)
-                            <a href="{{ $src }}" target="_blank" rel="noopener" class="grid aspect-[3/4] w-full place-items-center rounded-[0.9rem] bg-black/[0.04] text-[0.8125rem] font-semibold text-tile-blue hover:opacity-80">{{ __('Ouvrir le PDF') }}</a>
+                            <a href="{{ $src }}" target="_blank" rel="noopener" class="grid aspect-[3/4] w-full place-items-center rounded-[0.9rem] bg-black/[0.04] px-3 text-center text-[0.8125rem] font-semibold text-tile-blue hover:opacity-80">{{ $file->mime === 'application/pdf' ? __('Ouvrir le PDF') : __('Ouvrir la photo (HEIC)') }}</a>
                         @else
                             <div class="grid aspect-[3/4] w-full place-items-center rounded-[0.9rem] bg-black/[0.04] text-[0.75rem] text-mute">{{ __('Non fourni') }}</div>
                         @endif
