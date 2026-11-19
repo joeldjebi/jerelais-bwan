@@ -14,6 +14,7 @@ use App\Domain\Editorial\Models\RelaisCollection;
 use App\Domain\Editorial\Support\CreditLine;
 use App\Livewire\Console\Collections\Index as Collections;
 use App\Livewire\Console\Collections\Show as CollectionShow;
+use App\Livewire\Console\Diffusions\Index as DiffusionsPage;
 use App\Livewire\Console\Editorial\Index as Editorial;
 use App\Livewire\Console\Validation\Show;
 use App\Models\User;
@@ -240,6 +241,33 @@ it('montre dans l’onglet Vitrine exactement les relais renvoyés par GET /diff
 
     $this->getJson(route('api.v1.diffusions.index'))->assertOk()->assertJsonCount(1, 'data');
 
-    $this->actingAs($this->admin)->get(route('console.diffusions'))->assertRedirect(route('console.editorial', ['onglet' => 'vitrine']));
     $this->actingAs($this->admin)->get(route('console.editorial'))->assertSee('Diffusions');
+});
+
+it('liste les diffusions sur une page dédiée et retire un relais de la vitrine [MOB-25]', function () {
+    $publie = readyRelais(Broadcast::class, ['title' => 'Relais publié', 'showcased_at' => now(), 'showcase_title' => 'Inondations à Yopougon', 'showcase_text' => 'Les routes sont coupées.', 'broadcast_programme' => 'Le 20 h']);
+    readyRelais(Broadcast::class, ['title' => 'Diffusé seulement']);
+
+    $this->actingAs($this->admin)->get(route('console.diffusions'))
+        ->assertOk()
+        ->assertSee('Inondations à Yopougon')
+        ->assertSee('Le 20 h')
+        ->assertDontSee('Diffusé seulement');
+
+    Livewire::actingAs($this->redacteur)->test(DiffusionsPage::class)
+        ->set('search', 'introuvable')
+        ->assertSee('Aucune diffusion ne correspond')
+        ->set('search', '')
+        ->call('askWithdraw', $publie->uuid)
+        ->assertSet('confirmingWithdraw', true)
+        ->call('confirmWithdraw')
+        ->assertDontSee('Inondations à Yopougon');
+
+    expect($publie->fresh()->showcased_at)->toBeNull();
+    $this->getJson(route('api.v1.diffusions.index'))->assertJsonCount(0, 'data');
+    $this->assertDatabaseHas('audit_logs', ['action' => 'relais.showcase_withdrawn', 'actor_id' => $this->redacteur->id]);
+});
+
+it('réserve la page Diffusions à la rédaction et à l’administration', function () {
+    $this->actingAs(User::factory()->withTwoFactor()->withRole(Role::LectureSeule)->create())->get(route('console.diffusions'))->assertForbidden();
 });
