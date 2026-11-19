@@ -7,6 +7,9 @@ use App\Domain\Auth\Support\OtpPolicy;
 use App\Domain\Contribution\Actions\EscalateOverdueRelais;
 use App\Domain\Contribution\Actions\ReleaseExpiredLocks;
 use App\Domain\Media\Actions\PurgeAbandonedUploads;
+use App\Domain\Media\Enums\MediaStatus;
+use App\Domain\Media\Jobs\ProcessMedia;
+use App\Domain\Media\Models\Media;
 use App\Domain\Privacy\Actions\PurgeExpiredData;
 use App\Domain\Reporting\Exports\ReportExporter;
 use App\Domain\Reporting\Mail\PeriodicReport;
@@ -69,6 +72,34 @@ Artisan::command('relais:release-locks', function (ReleaseExpiredLocks $release)
 Artisan::command('medias:purge-abandoned', function (PurgeAbandonedUploads $purge) {
     $this->components->info($purge->handle().' envoi(s) abandonné(s) annulé(s).');
 })->purpose('Annule les envois de médias jamais terminés');
+
+Artisan::command('medias:reprocess {--minutes=10 : Bloqués depuis au moins ce nombre de minutes} {--sync : Traiter tout de suite et afficher l’erreur éventuelle}', function () {
+    $stuck = Media::query()
+        ->whereIn('status', [MediaStatus::Uploaded->value, MediaStatus::Processing->value])
+        ->where('updated_at', '<=', now()->subMinutes((int) $this->option('minutes')))
+        ->orderBy('id')
+        ->get(['id']);
+
+    foreach ($stuck as $media) {
+        if (! $this->option('sync')) {
+            ProcessMedia::dispatch($media->id);
+
+            continue;
+        }
+
+        Media::query()->whereKey($media->id)->update(['status' => MediaStatus::Uploaded->value]);
+
+        try {
+            ProcessMedia::dispatchSync($media->id);
+            $this->components->twoColumnDetail('Média '.$media->id, (string) Media::query()->whereKey($media->id)->value('status'));
+        } catch (Throwable $exception) {
+            Media::query()->whereKey($media->id)->update(['status' => MediaStatus::Uploaded->value]);
+            $this->components->twoColumnDetail('Média '.$media->id, '<fg=red>'.$exception::class.' : '.$exception->getMessage().'</>');
+        }
+    }
+
+    $this->components->info($stuck->count().' média(s) relancé(s).');
+})->purpose('Relance le contrôle des médias restés « reçus » ou « en traitement »');
 
 Artisan::command('appels:close-expired', function (PublishAppel $appels) {
     $expired = AppelRelais::query()->where('status', 'open')->where('deadline_at', '<=', now())->get();

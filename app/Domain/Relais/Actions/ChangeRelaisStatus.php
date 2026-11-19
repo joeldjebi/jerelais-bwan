@@ -76,7 +76,7 @@ class ChangeRelaisStatus
             new PushMessage(
                 __("notifications.relais_profile.{$status->value}.title"),
                 __("notifications.relais_profile.{$status->value}.body"),
-                ['type' => "relais_profile.{$status->value}"],
+                ['type' => 'account.status_changed', 'status' => $status->value],
             ),
             __("relais_profils.sms.{$status->value}"),
             'relais_status',

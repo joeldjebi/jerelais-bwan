@@ -564,5 +564,16 @@ it('prévient le Relais par notification push quand son identité est vérifiée
 
     expect($push->sent)->toHaveCount(1)
         ->and($push->sent[0]['message']->title)->toBe('Identité vérifiée')
-        ->and($push->sent[0]['message']->data)->toBe(['type' => 'identity.verified']);
+        ->and($push->sent[0]['message']->data)->toBe(['type' => 'identity.decided', 'status' => 'verified']);
+});
+
+it('montre dans la console toutes les pièces reçues, même si le type de pièce a changé après l’envoi [ADM-07]', function () {
+    completeIdentity();
+    $verification = IdentityVerification::query()->where('user_id', $this->relais->id)->sole();
+    $verification->forceFill(['document_type' => 'passeport'])->save();
+
+    Livewire::actingAs(User::factory()->withTwoFactor()->withRole(Role::Admin)->create())
+        ->test(IdentityShowPage::class, ['verification' => $verification])
+        ->assertSee('alt="Recto de la pièce"', false)
+        ->assertSee('alt="Verso de la pièce"', false);
 });

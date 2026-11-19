@@ -143,7 +143,7 @@ class SendMessage
     private function remindRelais(Conversation $conversation): void
     {
         $user = $conversation->relaisProfile->user;
-        $push = new PushMessage(__('notifications.conversation.title'), __('notifications.conversation.body'), ['type' => 'conversation', 'conversation' => $conversation->uuid]);
+        $push = new PushMessage(__('notifications.conversation.title'), __('notifications.conversation.body'), ['type' => 'message.received', 'uuid' => $conversation->uuid]);
 
         if (NotifyUser::canReceivePush($user)) {
             $this->notify->handle($user, $push, __('conversations.sms'), 'conversation');

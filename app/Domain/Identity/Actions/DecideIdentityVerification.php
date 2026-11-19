@@ -74,7 +74,7 @@ class DecideIdentityVerification
             new PushMessage(
                 __("notifications.identity.{$decision}.title"),
                 __("notifications.identity.{$decision}.body"),
-                ['type' => "identity.{$decision}"],
+                ['type' => 'identity.decided', 'status' => $decision],
             ),
             __("notifications.identity_sms.{$decision}"),
             'identity',
