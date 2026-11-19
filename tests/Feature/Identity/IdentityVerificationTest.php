@@ -577,3 +577,17 @@ it('montre dans la console toutes les pièces reçues, même si le type de pièc
         ->assertSee('alt="Recto de la pièce"', false)
         ->assertSee('alt="Verso de la pièce"', false);
 });
+
+it('affiche les pièces en image, et propose d’ouvrir un PDF ou une photo HEIC que le navigateur ne montre pas [ADM-07]', function () {
+    completeIdentity();
+    $verification = IdentityVerification::query()->where('user_id', $this->relais->id)->sole();
+    $verification->files()->where('kind', IdentityFileKind::Recto->value)->update(['mime' => 'application/pdf']);
+    $verification->files()->where('kind', IdentityFileKind::Verso->value)->update(['mime' => 'image/heic']);
+
+    Livewire::actingAs(User::factory()->withTwoFactor()->withRole(Role::Admin)->create())
+        ->test(IdentityShowPage::class, ['verification' => $verification])
+        ->assertSee('Ouvrir le PDF')
+        ->assertSee('Ouvrir la photo (HEIC)')
+        ->assertSee('alt="Selfie avec la pièce"', false)
+        ->assertDontSee('alt="Recto de la pièce"', false);
+});

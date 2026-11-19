@@ -86,6 +86,15 @@
                             <div x-show="current === {{ $index }}" @if ($index > 0) x-cloak @endif class="absolute inset-0 grid place-items-center">
                                 @switch($media->kind->value)
                                     @case('photo')
+                                        @if (in_array($media->mime ?? $media->declared_mime, ['image/heic', 'image/heif'], true))
+                                            {{-- Photo HEIC (iPhone) : la plupart des navigateurs ne l'affichent pas, on propose de l'ouvrir. --}}
+                                            <div class="flex flex-col items-center gap-3 px-6 text-center text-white">
+                                                <x-ui.icon name="photo" class="size-9 opacity-70" />
+                                                <p class="text-[0.875rem] opacity-80">{{ __('Photo au format HEIC (iPhone) : votre navigateur ne peut pas l’afficher ici.') }}</p>
+                                                <a href="{{ route('console.medias.show', $media) }}" target="_blank" rel="noopener" class="rounded-full bg-white/15 px-4 py-1.5 text-[0.875rem] font-semibold hover:bg-white/25">{{ __('Ouvrir la photo') }}</a>
+                                            </div>
+                                            @break
+                                        @endif
                                         <button type="button" x-on:click="zoom = ! zoom" class="size-full overflow-auto" :class="zoom ? 'cursor-zoom-out' : 'cursor-zoom-in'">
                                             <img src="{{ route('console.medias.show', $media) }}" alt="" class="mx-auto transition-transform duration-500 ease-spring" :class="zoom ? 'max-w-none scale-[1.8]' : 'max-h-full max-w-full object-contain'" loading="lazy">
                                         </button>
