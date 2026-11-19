@@ -44,6 +44,13 @@ class Index extends Component
     #[Computed]
     public function items(): LengthAwarePaginator
     {
+        $with = ['category:id,name', 'commune:id,name', 'relaisProfile:id,display_name,number', 'lockedBy:id,name', 'assignee:id,name', 'medias' => fn ($query) => $query->with('variants')];
+
+        // Vitrine « Vu sur REFLET TV » : exactement ce que renvoie GET /diffusions à l'application (MOB-25, WEB-05).
+        if ($this->tab === 'vitrine') {
+            return RelaisItem::query()->whereNotNull('showcased_at')->with($with)->latest('showcased_at')->paginate(25);
+        }
+
         $state = match ($this->tab) {
             'a-arbitrer' => Sensitive::getMorphClass(),
             'selection' => Selected::getMorphClass(),
@@ -73,6 +80,7 @@ class Index extends Component
             'a-exploiter' => (int) ($byState['validated'] ?? 0),
             'selection' => (int) ($byState['selected'] ?? 0),
             'diffuses' => (int) ($byState['broadcast'] ?? 0),
+            'vitrine' => RelaisItem::query()->whereNotNull('showcased_at')->count(),
         ];
     }
 
