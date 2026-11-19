@@ -272,3 +272,16 @@ it('montre dans les listes la vignette d’un fichier prêt, même si le premier
 
     expect($html)->toContain(route('console.medias.show', [$ready, 'thumbnail']));
 });
+
+it('relance un média bloqué et affiche son nouveau statut (medias:reprocess --sync)', function () {
+    $relais = RelaisItem::factory()->create();
+    $media = attachReadyMedia($relais);
+    $media->forceFill(['status' => MediaStatus::Processing])->save();
+    Media::query()->whereKey($media->id)->update(['updated_at' => now()->subHour()]);
+
+    $this->artisan('medias:reprocess', ['--sync' => true])
+        ->expectsOutputToContain('1 média(s) relancé(s).')
+        ->assertSuccessful();
+
+    expect($media->refresh()->status)->not->toBe(MediaStatus::Processing);
+});
