@@ -3,7 +3,9 @@
 namespace App\Http\Resources\V1;
 
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Models\Media;
+use App\Domain\Media\Support\SignedFileUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -45,18 +47,37 @@ class RelaisItemResource extends JsonResource
                 'credit_mode' => $this->credit_mode?->value,
                 'credit_name' => $this->credit_name,
             ],
-            'medias' => $this->whenLoaded('medias', fn () => $this->medias->map(fn (Media $media): array => [
-                'uuid' => $media->uuid,
-                'client_uuid' => $media->client_uuid,
-                'kind' => $media->kind->value,
-                'status' => $media->status->value,
-                'rejection' => $media->rejection === null ? null : __("media.rejections.{$media->rejection}"),
-            ])->values()),
+            'medias' => $this->whenLoaded('medias', fn () => $this->medias->map(fn (Media $media): array => $this->media($media))->values()),
             'rejection' => $public === 'rejected' ? ['reason' => $this->rejectionReason?->label, 'comment' => $this->decision_comment] : null,
             'complement_request' => $public === 'complement_requested' ? $this->decision_comment : null,
             'submitted_at' => $this->submitted_at?->toIso8601ZuluString(),
             'created_at' => $this->created_at?->toIso8601ZuluString(),
             'updated_at' => $this->updated_at?->toIso8601ZuluString(),
+        ];
+    }
+
+    /**
+     * Fichier du relais, avec des liens signés (Wasabi) valables quelques minutes une fois le fichier contrôlé :
+     * `url` (original) et `thumbnail_url` (vignette JPEG 640 px). À redemander après `urls_expire_at`.
+     *
+     * @return array<string, mixed>
+     */
+    private function media(Media $media): array
+    {
+        $minutes = (int) config('jerelais.media.view_url_minutes');
+        $viewable = $media->status === MediaStatus::Ready && $media->purged_at === null;
+        $thumbnail = $viewable && $media->relationLoaded('variants') ? $media->variants->firstWhere('kind', 'thumbnail') : null;
+
+        return [
+            'uuid' => $media->uuid,
+            'client_uuid' => $media->client_uuid,
+            'kind' => $media->kind->value,
+            'status' => $media->status->value,
+            'mime' => $media->mime ?? $media->declared_mime,
+            'rejection' => $media->rejection === null ? null : __("media.rejections.{$media->rejection}"),
+            'url' => $viewable ? SignedFileUrl::for($media->disk, $media->path, $minutes) : null,
+            'thumbnail_url' => $thumbnail === null ? null : SignedFileUrl::for($thumbnail->disk, $thumbnail->path, $minutes),
+            'urls_expire_at' => $viewable ? SignedFileUrl::expiresAt($minutes) : null,
         ];
     }
 }

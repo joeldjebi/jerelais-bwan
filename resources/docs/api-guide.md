@@ -76,6 +76,22 @@ Statuts d’un relais vus par le Relais : `uploading` (fichiers en cours d’env
 
 Limites par défaut, modifiables par l’administration et lisibles dans `GET /settings` : vidéo de 3 minutes, audio de 10 minutes, 10 médias par relais. Taille : 100 Mo par fichier en une requête, 500 Mo en envoi par morceaux.
 
+## Images et fichiers
+
+Les fichiers sont stockés en privé. L'API renvoie des **liens signés de courte durée** : l'application les affiche directement (`Image.network`, lecteur vidéo ou PDF), **sans** en-tête `Authorization`.
+
+| Où | Champs | Validité |
+|---|---|---|
+| `GET /relais`, `GET /relais/{uuid}` (et réponses d'envoi ou de modification) : `medias[]` | `url` (fichier original), `thumbnail_url` (vignette JPEG 640 px, photos et vidéos), `mime`, `urls_expire_at` | 15 min |
+| `GET /identity` : `files[]` | `url` (image ou PDF selon `mime`), `url_expires_at` | 5 min |
+| `GET /me/badge` | `photo_url` (photo du badge, c'est-à-dire le selfie) | 15 min |
+| `GET /diffusions` | `image_url` (image publique de la vitrine) | permanent |
+
+- `url` et `thumbnail_url` valent `null` tant que le fichier n'est pas contrôlé (`status` ≠ `ready`) ou s'il a été refusé : afficher un emplacement « en cours de contrôle ».
+- Un lien expiré répond **403** : recharger la ressource (par exemple `GET /relais/{uuid}`) pour obtenir de nouveaux liens. Ne pas garder ces liens en cache au-delà de leur date d'expiration ; mettre en cache l'image téléchargée, pas l'URL.
+- Selon `mime` : `image/jpeg`, `image/png` → image ; `image/heic` → image HEIC (lisible sur iOS, à convertir ou à remplacer par la vignette sur Android) ; `application/pdf` → visionneuse PDF ; `video/*`, `audio/*` → lecteur.
+- **Envoyer de préférence des photos en JPEG** (sur iPhone, convertir le HEIC en JPEG avant l'envoi) : la console de la rédaction les affiche alors directement.
+
 ## Erreurs
 
 | Code | Signification | Que faire |

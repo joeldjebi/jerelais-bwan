@@ -11,6 +11,7 @@ use App\Domain\Contribution\States\Received;
 use App\Domain\Contribution\States\Uploading;
 use App\Domain\Contribution\States\Validated;
 use App\Domain\Media\Actions\PurgeAbandonedUploads;
+use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Models\Media;
 use App\Domain\Relais\Enums\RelaisStatus;
 use App\Domain\Relais\Models\RelaisProfile;
@@ -465,4 +466,27 @@ it('liste les valeurs acceptées quand la mention à l’antenne est inconnue', 
     sendRelaisAtOnce(['credit_mode' => 'public'])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['protections.credit_mode' => 'Mention à l’antenne inconnue : anonymous (« Un Relais de REFLET TV »), named (nom du Relais) ou pseudonym (avec credit_name).']);
+});
+
+it('renvoie à l’application des liens signés vers les fichiers contrôlés du relais et leur vignette [MOB-20]', function () {
+    Storage::fake('medias');
+    Storage::disk('medias')->buildTemporaryUrlsUsing(fn (string $path, DateTimeInterface $expiration): string => 'https://s3.wasabisys.test/'.$path.'?X-Amz-Signature=abc&expires='.$expiration->getTimestamp());
+
+    $relais = RelaisItem::factory()->create(['user_id' => $this->relais->id, 'commune_id' => $this->cocody->id]);
+    $ready = attachReadyMedia($relais);
+    $ready->variants()->create(['kind' => 'thumbnail', 'disk' => 'medias', 'path' => 'relais/'.$relais->uuid.'/vignettes/'.$ready->uuid.'.jpg', 'mime' => 'image/jpeg', 'size' => 10, 'width' => 640, 'height' => 480]);
+    $pending = attachReadyMedia($relais);
+    $pending->forceFill(['status' => MediaStatus::Processing])->save();
+
+    $response = $this->getJson(route('api.v1.relais.show', $relais->uuid))->assertOk();
+
+    expect($response->json('data.medias.0.url'))->toStartWith('https://s3.wasabisys.test/'.$ready->path.'?X-Amz-Signature=')
+        ->and($response->json('data.medias.0.thumbnail_url'))->toContain('/vignettes/'.$ready->uuid.'.jpg?X-Amz-Signature=')
+        ->and($response->json('data.medias.0.mime'))->toBe('image/jpeg')
+        ->and($response->json('data.medias.0.urls_expire_at'))->not->toBeNull()
+        ->and($response->json('data.medias.1.status'))->toBe('processing')
+        ->and($response->json('data.medias.1.url'))->toBeNull()
+        ->and($response->json('data.medias.1.thumbnail_url'))->toBeNull();
+
+    $this->getJson(route('api.v1.relais.index'))->assertOk()->assertJsonPath('data.0.medias.0.url', fn (?string $url): bool => str_contains((string) $url, 'X-Amz-Signature'));
 });
