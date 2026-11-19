@@ -41,7 +41,7 @@ Numéros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00
 
 ## Vérification d’identité et commissions
 
-Le Relais complète son profil quand il le souhaite ; il est **obligatoire seulement pour recevoir ses commissions**. Ni la connexion ni l’envoi de relais n’en dépendent.
+Le Relais complète son profil quand il le souhaite ; il est **obligatoire seulement pour recevoir ses commissions** (voir « Mes gains et paiements »). Ni la connexion ni l’envoi de relais n’en dépendent.
 
 **En une seule requête :** `POST /identity` (multipart) avec `last_name`, `first_name`, `gender`, `birth_date` (`26/04/2000`), `commune` et/ou `localite`, `document_type` (une `value` de `GET /auth/register/options`), et les fichiers : faces de la pièce selon `sides` (`recto` + `verso`, ou `page`), `selfie`. Le dossier part aussitôt en vérification (`submitted`). Tout ou rien : **422** liste chaque champ ou fichier à corriger, sans rien enregistrer.
 
@@ -49,7 +49,7 @@ Suivi : `GET /identity` — `submitted` (en cours), puis `verified` (`gains_elig
 
 **Modifier :** `PUT /identity`, mêmes champs et photos que `POST /identity`, **tous facultatifs** : seuls les éléments envoyés changent ; dès que le dossier est complet, il part en vérification. Le type de pièce décide des photos : `recto` + `verso` ou `page` (`sides`). Le `selfie` sert aussi de photo du badge.
 
-**Mes gains :** `GET /me/gains` liste les commissions du Relais (une par relais validé, une autre par relais diffusé, selon les montants fixés par l'administration), la plus récente d'abord : `amount` (FCFA), `label`, `status` (`due` : à recevoir, `paid` : payé avec `paid_at`, `payment_method_label` et `payment_reference`), `relais` (uuid, titre). `meta.totals.due` et `meta.totals.paid` donnent les totaux ; `meta.gains_eligible` vaut `false` tant que l'identité n'est pas vérifiée (le paiement attend : inviter le Relais à compléter `POST /identity`). Le paiement se fait par Mobile Money ; le Relais reçoit alors la notification `gains.paid`.
+
 
 ## Parcours d’un candidat
 
@@ -77,6 +77,14 @@ Chaque fichier est ensuite contrôlé en tâche de fond (type réel, antivirus, 
 Statuts d’un relais vus par le Relais : `uploading` (fichiers en cours d’envoi) · `received` (reçu, en vérification) · `complement_requested` (le coordonnateur pose une question : `complement_request` ; réponse par `PUT /relais/{relais}` ou `POST /relais/{relais}/complement`) · `validated` · `rejected` (motif dans `rejection`) · `selected` (choisi par la rédaction) · `broadcast` (diffusé) · `archived`.
 
 Limites par défaut, modifiables par l’administration et lisibles dans `GET /settings` : vidéo de 3 minutes, audio de 10 minutes, 10 médias par relais. Taille : 100 Mo par fichier en une requête, 500 Mo en envoi par morceaux.
+
+## Mes gains et paiements
+
+Le Relais gagne une **commission** pour chaque relais validé, et une autre pour chaque relais diffusé (montants fixés par l'administration). L'administration le paie par **Mobile Money** ; il est payé seulement si son **identité est vérifiée**.
+
+1. **Coordonnées de paiement** — `GET /me/payout-account` : `data` (ou `null` si rien n'est enregistré) et `meta.methods` (opérateurs à proposer dans une liste : `value` à envoyer, `label` à afficher). `PUT /me/payout-account` (JSON) : `method` (`wave`, `orange_money`, `mtn_momo`, `moov_money`), `phone` (numéro Mobile Money, `0707070707` ou `+2250707070707`), `holder_name` (nom du titulaire). Remplace les coordonnées précédentes ; l'administration paie sur ce numéro.
+2. **Commissions** — `GET /me/gains` (filtre facultatif `?status=due` ou `?status=paid`) : `amount` (FCFA), `label` (« Relais validé » / « Relais diffusé »), `status` (`due` : à recevoir, `paid` : payée), `relais` (uuid, titre). `meta.totals.due` et `meta.totals.paid` : totaux ; `meta.gains_eligible` : `false` tant que l'identité n'est pas vérifiée (inviter à compléter `POST /identity`) ; `meta.payout_account_set` : `false` tant que les coordonnées ne sont pas enregistrées (inviter à les saisir).
+3. **Paiements reçus** — `GET /me/payouts` : historique des versements (`amount`, `method_label`, `reference` de la transaction, `paid_at`, `commissions` soldées) et `meta.total_received`. À chaque paiement, le Relais reçoit la notification `gains.paid`.
 
 ## Images et fichiers
 
@@ -139,7 +147,7 @@ Le Relais reçoit une **notification push** (Firebase Cloud Messaging) sur chaqu
 | `account.status_changed` | Compte de Relais suspendu, radié ou réactivé | `status` : `suspended`, `struck_off`, `active` | `GET /me` |
 | `message.received` | Message du coordonnateur | `uuid` (conversation) | `GET /conversations/{uuid}/messages` |
 | `appel.created` | Appel à relais dans la zone du Relais | `uuid` (appel) | `GET /appels/{uuid}` |
-| `gains.paid` | Commissions payées par Mobile Money | `amount` (FCFA) | `GET /me/gains` |
+| `gains.paid` | Commissions payées par Mobile Money | `uuid` (paiement), `amount` (FCFA) | `GET /me/payouts` |
 
 Exemple de `data` : `{"type": "relais.status_changed", "uuid": "0193…", "status": "validated"}`. Un `type` inconnu doit être ignoré (ouvrir l'accueil) : d'autres pourront s'ajouter.
 
