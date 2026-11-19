@@ -9,6 +9,7 @@ use FFMpeg\FFMpeg;
 use FFMpeg\FFProbe;
 use FFMpeg\Media\Video;
 use GdImage;
+use Illuminate\Support\Facades\Process;
 use Throwable;
 
 /**
@@ -18,6 +19,9 @@ use Throwable;
 class MediaInspector
 {
     public const THUMBNAIL_WIDTH = 640;
+
+    /** Au-delà (environ 20 Mpx), la photo est réduite par FFmpeg avant d'être chargée par GD. */
+    private const MAX_GD_PIXELS = 20_000_000;
 
     public function mimeOf(string $path): string
     {
@@ -45,10 +49,18 @@ class MediaInspector
 
     /**
      * Vignette JPEG ré-encodée (sans aucune métadonnée), orientée correctement. Null si impossible.
+     *
+     * Mémoire maîtrisée (worker à 128 Mo) : la photo est réduite avant d'être tournée, et une très grande photo
+     * (plus de MAX_GD_PIXELS) est d'abord réduite par FFmpeg, hors de PHP.
      */
     public function thumbnail(MediaKind $kind, string $path, string $mime, ?float $duration, string $target): ?GdImage
     {
+        $isPhoto = $kind === MediaKind::Photo && in_array($mime, ['image/jpeg', 'image/png'], true);
+        $size = $isPhoto ? (@getimagesize($path) ?: null) : null;
+        $tooLarge = $size !== null && $size[0] * $size[1] > self::MAX_GD_PIXELS;
+
         $image = match (true) {
+            $isPhoto && $tooLarge => $this->scaledWithFfmpeg($path),
             $kind === MediaKind::Photo && $mime === 'image/jpeg' => @imagecreatefromjpeg($path) ?: null,
             $kind === MediaKind::Photo && $mime === 'image/png' => @imagecreatefrompng($path) ?: null,
             $kind === MediaKind::Video, $kind === MediaKind::Photo => $this->frameWithFfmpeg($path, $kind === MediaKind::Video ? min(1.0, max(0.0, ($duration ?? 0) / 2)) : 0.0),
@@ -59,18 +71,40 @@ class MediaInspector
             return null;
         }
 
-        if ($mime === 'image/jpeg') {
-            $image = $this->orient($image, $path);
-        }
-
+        $orientation = $mime === 'image/jpeg' ? $this->orientationOf($path) : 1;
         $width = imagesx($image);
         $height = imagesy($image);
-        $ratio = min(1, self::THUMBNAIL_WIDTH / max(1, $width));
+        // Largeur visée après rotation : une photo prise en portrait (6, 8) a sa largeur finale dans sa hauteur.
+        $ratio = min(1, self::THUMBNAIL_WIDTH / max(1, in_array($orientation, [6, 8], true) ? $height : $width));
         $thumb = imagecreatetruecolor(max(1, (int) round($width * $ratio)), max(1, (int) round($height * $ratio)));
         imagecopyresampled($thumb, $image, 0, 0, 0, 0, imagesx($thumb), imagesy($thumb), $width, $height);
+        unset($image);
+
+        $thumb = $this->orient($thumb, $orientation);
         imagejpeg($thumb, $target, 82);
 
         return $thumb;
+    }
+
+    /**
+     * Très grande photo réduite par FFmpeg (processus séparé) avant tout chargement en mémoire PHP.
+     */
+    private function scaledWithFfmpeg(string $path): ?GdImage
+    {
+        $scaled = TemporaryPath::make('jpg');
+
+        try {
+            $result = Process::timeout(120)->run([
+                (string) config('laravel-ffmpeg.ffmpeg.binaries'), '-v', 'error', '-y', '-i', $path,
+                '-vf', 'scale='.(self::THUMBNAIL_WIDTH * 2).':-2', '-frames:v', '1', $scaled,
+            ]);
+
+            return $result->successful() ? (@imagecreatefromjpeg($scaled) ?: null) : null;
+        } catch (Throwable) {
+            return null;
+        } finally {
+            @unlink($scaled);
+        }
     }
 
     /**
@@ -154,10 +188,13 @@ class MediaInspector
         }
     }
 
-    private function orient(GdImage $image, string $path): GdImage
+    private function orientationOf(string $path): int
     {
-        $orientation = (int) ((@exif_read_data($path) ?: [])['Orientation'] ?? 1);
+        return (int) ((@exif_read_data($path) ?: [])['Orientation'] ?? 1);
+    }
 
+    private function orient(GdImage $image, int $orientation): GdImage
+    {
         $rotated = match ($orientation) {
             3 => imagerotate($image, 180, 0),
             6 => imagerotate($image, -90, 0),
