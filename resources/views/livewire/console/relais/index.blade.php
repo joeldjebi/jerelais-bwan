@@ -15,6 +15,7 @@
         <div class="flex flex-wrap items-center gap-3 border-b border-line p-3">
             <x-console.search wire:model.live.debounce.250ms="search" :placeholder="__('Nom ou numéro')" />
             <x-console.segmented property="status" :current="$status" :options="['' => __('Tous'), 'active' => __('Actifs'), 'suspended' => __('Suspendus'), 'struck_off' => __('Radiés')]" />
+            <x-console.segmented property="push" :current="$push" :options="['' => __('Push : tous'), 'avec' => __('Push activé'), 'sans' => __('Sans push')]" />
         </div>
 
         @if ($this->profiles->isEmpty())
@@ -31,6 +32,7 @@
                                 <span class="block truncate text-[0.8125rem] text-mute">{{ collect([$profile->commune?->name, $profile->localite?->name])->filter()->join(' · ') }}</span>
                             </span>
                             <span class="hidden text-right text-[0.8125rem] text-mute tabular-nums sm:block">{{ trans_choice(':count envoi|:count envois', $profile->sent_count) }}@if ($rate !== null) · {{ $rate }} % {{ __('validés') }}@endif</span>
+                            <x-console.badge :tone="$profile->push_enabled ? 'success' : 'neutral'" class="hidden md:inline-flex">{{ $profile->push_enabled ? __('Push activé') : __('Pas de push') }}</x-console.badge>
                             <x-console.badge :tone="$statusTone[$profile->status->value]">{{ $profile->status->label() }}</x-console.badge>
                             <svg class="size-4 text-mute/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
                         </a>

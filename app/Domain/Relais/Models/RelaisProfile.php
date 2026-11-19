@@ -3,6 +3,8 @@
 namespace App\Domain\Relais\Models;
 
 use App\Domain\Access\Concerns\BelongsToCommune;
+use App\Domain\Auth\Enums\DevicePlatform;
+use App\Domain\Auth\Models\Device;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Relais\Enums\RelaisStatus;
@@ -81,6 +83,19 @@ class RelaisProfile extends Model
     public function localite(): BelongsTo
     {
         return $this->belongsTo(Localite::class);
+    }
+
+    /**
+     * Appareils connectés du compte qui ont enregistré un jeton de notifications push (MOB-21).
+     *
+     * @return HasMany<Device, $this>
+     */
+    public function pushDevices(): HasMany
+    {
+        return $this->hasMany(Device::class, 'user_id', 'user_id')
+            ->whereNull('revoked_at')
+            ->whereNotNull('fcm_token')
+            ->whereIn('platform', [DevicePlatform::Android->value, DevicePlatform::Ios->value]);
     }
 
     /**
