@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CommissionKind $kind
  * @property int $amount
  * @property CommissionStatus $status
+ * @property int|null $payout_id
  * @property CarbonImmutable|null $paid_at
  * @property int|null $paid_by
  * @property PaymentMethod|null $payment_method
@@ -78,6 +79,14 @@ class Commission extends Model
     public function relaisItem(): BelongsTo
     {
         return $this->belongsTo(RelaisItem::class);
+    }
+
+    /**
+     * @return BelongsTo<Payout, $this>
+     */
+    public function payout(): BelongsTo
+    {
+        return $this->belongsTo(Payout::class);
     }
 
     /**

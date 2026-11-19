@@ -4,9 +4,12 @@ use App\Domain\Access\Enums\Role;
 use App\Domain\Audit\Models\AuditLog;
 use App\Domain\Contribution\Events\RelaisStatusChanged;
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Gains\Actions\PayCommissions;
 use App\Domain\Gains\Enums\CommissionStatus;
 use App\Domain\Gains\Enums\PaymentMethod;
 use App\Domain\Gains\Models\Commission;
+use App\Domain\Gains\Models\Payout;
+use App\Domain\Gains\Models\PayoutAccount;
 use App\Domain\Identity\Enums\IdentityStatus;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Settings\Settings;
@@ -87,7 +90,11 @@ it('paie toutes les commissions dues d’un Relais vérifié, trace le paiement 
             ->and($commission->paid_by)->toBe($this->admin->id);
     }
 
-    expect(AuditLog::query()->where('action', 'commissions.paid')->sole()->payload)->toMatchArray(['amount' => 5000, 'method' => 'orange_money'])
+    $payout = Payout::query()->sole();
+    expect($payout->amount)->toBe(5000)
+        ->and($payout->reference)->toBe('OM-2026-0042')
+        ->and($first->payout_id)->toBe($payout->id)
+        ->and(AuditLog::query()->where('action', 'commissions.paid')->sole()->payload)->toMatchArray(['amount' => 5000, 'method' => 'orange_money'])
         ->and(collect($this->sms->sent)->last()['message'])->toContain('5 000 FCFA')->toContain('Orange Money');
 });
 
@@ -145,4 +152,59 @@ it('montre au Relais ses gains dans l’application, sans les commissions annul�
         ->assertJsonPath('data.0.payment_method_label', 'Wave')
         ->assertJsonPath('data.0.relais.title', 'Inondation à Niangon')
         ->assertJsonPath('data.1.amount', 2000);
+});
+
+it('laisse le Relais enregistrer ses coordonnées Mobile Money, reprises par l’administration au paiement [MOB-26]', function () {
+    Sanctum::actingAs($this->user);
+
+    $this->getJson(route('api.v1.me.payout-account'))->assertOk()->assertJsonPath('data', null)->assertJsonPath('meta.methods.0.value', 'wave');
+
+    $this->putJson(route('api.v1.me.payout-account'), ['method' => 'cash', 'phone' => '12', 'holder_name' => ''])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['method', 'phone', 'holder_name']);
+
+    $this->putJson(route('api.v1.me.payout-account'), ['method' => 'orange_money', 'phone' => '0707070707', 'holder_name' => 'Awa Traoré'])
+        ->assertOk()
+        ->assertJsonPath('data.method', 'orange_money')
+        ->assertJsonPath('data.method_label', 'Orange Money')
+        ->assertJsonPath('data.phone', '+2250707070707')
+        ->assertJsonPath('data.holder_name', 'Awa Traoré');
+
+    $this->putJson(route('api.v1.me.payout-account'), ['method' => 'wave', 'phone' => '+2250102030405', 'holder_name' => 'Awa Traoré'])->assertOk();
+
+    expect(PayoutAccount::query()->where('user_id', $this->user->id)->sole()->method->value)->toBe('wave');
+
+    Commission::factory()->create(['relais_item_id' => $this->relais->id]);
+
+    Livewire::actingAs($this->admin)->test(GainsPage::class)
+        ->assertSee('+2250102030405')
+        ->call('openPay', $this->user->uuid)
+        ->assertSet('method', 'wave')
+        ->assertSet('phone', '+2250102030405');
+});
+
+it('donne au Relais l’historique de ses paiements reçus et filtre ses commissions [MOB-26]', function () {
+    verifyIdentityOf($this->user);
+    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'amount' => 2000]);
+    app(PayCommissions::class)->pay($this->user, $this->admin, PaymentMethod::Wave, 'W-77', '+2250707070707');
+    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'amount' => 3000]);
+
+    Sanctum::actingAs($this->user);
+
+    $this->getJson(route('api.v1.me.payouts'))
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.amount', 2000)
+        ->assertJsonPath('data.0.method_label', 'Wave')
+        ->assertJsonPath('data.0.reference', 'W-77')
+        ->assertJsonPath('data.0.commissions_count', 1)
+        ->assertJsonPath('data.0.commissions.0.relais.title', 'Inondation à Niangon')
+        ->assertJsonPath('meta.total_received', 2000);
+
+    $this->getJson(route('api.v1.me.gains', ['status' => 'due']))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.amount', 3000);
+    $this->getJson(route('api.v1.me.gains', ['status' => 'paid']))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.amount', 2000)
+        ->assertJsonPath('meta.gains_eligible', true)
+        ->assertJsonPath('meta.payout_account_set', false);
+
+    Livewire::actingAs($this->admin)->test(GainsPage::class)->set('tab', 'historique')->assertSee('W-77')->assertSee('2 000 FCFA');
 });

@@ -320,3 +320,22 @@ it('ne publie jamais l’image d’un relais avec des mineurs, et réserve le ge
         ->call('broadcastAndPublish')
         ->assertForbidden();
 });
+
+it('diffuse et publie depuis la liste Exploitation avec le bouton « Diffuser » [ADM-13, WEB-05]', function () {
+    $relais = readyRelais();
+
+    Livewire::actingAs($this->redacteur)->test(Editorial::class)
+        ->assertSee('Diffuser')
+        ->call('openPublish', $relais->uuid)
+        ->assertSet('publishOpen', true)
+        ->assertSet('showcaseTitle', 'Inondation à Niangon')
+        ->set('broadcastProgramme', 'Journal de 13 h')
+        ->call('publish')
+        ->assertHasNoErrors()
+        ->assertSet('publishOpen', false);
+
+    $relais->refresh();
+    expect($relais->state)->toBeInstanceOf(Broadcast::class)
+        ->and($relais->showcased_at)->not->toBeNull()
+        ->and($relais->broadcast_programme)->toBe('Journal de 13 h');
+});

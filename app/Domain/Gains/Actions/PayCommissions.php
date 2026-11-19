@@ -7,6 +7,7 @@ use App\Domain\Gains\Enums\CommissionStatus;
 use App\Domain\Gains\Enums\PaymentMethod;
 use App\Domain\Gains\Exceptions\CommissionRefused;
 use App\Domain\Gains\Models\Commission;
+use App\Domain\Gains\Models\Payout;
 use App\Domain\Notification\Actions\NotifyUser;
 use App\Domain\Notification\Data\PushMessage;
 use App\Models\User;
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Paiement des commissions d'un Relais (ADM-27) : l'administrateur verse la somme due par Mobile Money (hors de la
  * plateforme), puis l'enregistre ici avec le moyen et la référence de la transaction. Toutes les commissions dues du
- * Relais sont soldées en une fois ; le Relais est prévenu. Identité vérifiée exigée (MOB-01).
+ * Relais sont soldées en une fois par un paiement (historique du Relais) ; le Relais est prévenu. Identité vérifiée
+ * exigée (MOB-01).
  */
 class PayCommissions
 {
@@ -35,42 +37,55 @@ class PayCommissions
             throw new CommissionRefused(__('gains.errors.identity_not_verified'));
         }
 
-        $total = DB::transaction(function () use ($relais, $admin, $method, $reference, $phone): int {
+        $payout = DB::transaction(function () use ($relais, $admin, $method, $reference, $phone): Payout {
             $due = Commission::query()->where('user_id', $relais->id)->due()->lockForUpdate()->get();
 
             if ($due->isEmpty()) {
                 throw new CommissionRefused(__('gains.errors.not_due'));
             }
 
+            $phone = $phone === null ? null : (trim($phone) ?: null);
+            $payout = Payout::query()->create([
+                'user_id' => $relais->id,
+                'amount' => (int) $due->sum('amount'),
+                'method' => $method,
+                'reference' => trim($reference),
+                'phone' => $phone,
+                'paid_at' => now(),
+                'paid_by' => $admin->id,
+            ]);
+
             foreach ($due as $commission) {
                 $commission->forceFill([
                     'status' => CommissionStatus::Paid,
-                    'paid_at' => now(),
+                    'payout_id' => $payout->id,
+                    'paid_at' => $payout->paid_at,
                     'paid_by' => $admin->id,
                     'payment_method' => $method,
-                    'payment_reference' => trim($reference),
-                    'payment_phone' => $phone === null ? null : (trim($phone) ?: null),
+                    'payment_reference' => $payout->reference,
+                    'payment_phone' => $phone,
                 ])->save();
             }
 
-            $total = (int) $due->sum('amount');
-
             $this->audit->record('commissions.paid', $relais, [
+                'payout' => $payout->uuid,
                 'commissions' => $due->pluck('uuid')->all(),
-                'amount' => $total,
+                'amount' => $payout->amount,
                 'method' => $method->value,
-                'reference' => trim($reference),
+                'reference' => $payout->reference,
             ], actor: $admin);
 
-            return $total;
+            return $payout;
         });
+
+        $total = $payout->amount;
 
         // Espace ordinaire comme séparateur des milliers : reste dans l'alphabet SMS standard (pas d'Unicode, SMS moins cher).
         $amount = number_format($total, 0, ',', ' ').' FCFA';
 
         $this->notify->handle(
             $relais,
-            new PushMessage(__('Paiement envoyé'), __(':amount vous ont été envoyés par :method. Merci pour vos relais !', ['amount' => $amount, 'method' => $method->label()]), ['type' => 'gains.paid', 'amount' => $total]),
+            new PushMessage(__('Paiement envoyé'), __(':amount vous ont été envoyés par :method. Merci pour vos relais !', ['amount' => $amount, 'method' => $method->label()]), ['type' => 'gains.paid', 'uuid' => $payout->uuid, 'amount' => $total]),
             __('JE RELAIS : :amount vous ont été envoyés par :method (réf. :reference). Merci pour vos relais !', ['amount' => $amount, 'method' => $method->label(), 'reference' => trim($reference)]),
             'gains',
         );

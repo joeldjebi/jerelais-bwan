@@ -25,31 +25,25 @@
     </div>
 
     <div class="flex justify-center">
-        <x-console.segmented property="tab" :current="$tab" :options="['a-payer' => __('À payer'), 'historique' => __('Historique')]" />
+        <x-console.segmented property="tab" :current="$tab" :options="['a-payer' => __('À payer'), 'historique' => __('Historique'), 'annulees' => __('Annulées')]" />
     </div>
 
     @if ($tab === 'historique')
-        <x-console.group :title="trans_choice(':count opération|:count opérations', $this->history->total())">
+        <x-console.group :title="trans_choice(':count paiement|:count paiements', $this->history->total())">
             @if ($this->history->isEmpty())
-                <x-console.empty icon="check" tint="green" :title="__('Aucun paiement pour le moment')" :text="__('Les paiements enregistrés et les commissions annulées apparaîtront ici.')" />
+                <x-console.empty icon="check" tint="green" :title="__('Aucun paiement pour le moment')" :text="__('Chaque paiement enregistré apparaît ici, avec sa référence.')" />
             @else
                 <ul data-stagger>
-                    @foreach ($this->history as $commission)
-                        <li wire:key="hist-{{ $commission->uuid }}" class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+                    @foreach ($this->history as $payout)
+                        <li wire:key="payout-{{ $payout->uuid }}" class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
                             <div class="min-w-0 flex-1">
-                                <p class="truncate text-[0.9375rem] font-semibold">{{ $commission->user->name ?: __('Relais') }} · {{ $fcfa($commission->amount) }}</p>
-                                <p class="truncate text-[0.8125rem] text-mute">
-                                    {{ $commission->kind->label() }}@if ($commission->relaisItem) — {{ $commission->relaisItem->title ?: __('Sans titre') }}@endif
-                                </p>
+                                <p class="truncate text-[0.9375rem] font-semibold">{{ $payout->user->name ?: __('Relais') }}</p>
                                 <p class="text-[0.8125rem] text-mute">
-                                    @if ($commission->status->value === 'paid')
-                                        {{ __('Payé le :date par :method, réf. :reference', ['date' => $date($commission->paid_at), 'method' => $commission->payment_method?->label(), 'reference' => $commission->payment_reference]) }}@if ($commission->payer) · {{ $commission->payer->name }}@endif
-                                    @else
-                                        {{ __('Annulé le :date : :reason', ['date' => $date($commission->cancelled_at), 'reason' => $commission->cancel_reason]) }}
-                                    @endif
+                                    {{ __(':date · :method, réf. :reference', ['date' => $date($payout->paid_at), 'method' => $payout->method->label(), 'reference' => $payout->reference]) }}
+                                    · {{ trans_choice(':count commission|:count commissions', $payout->commissions_count) }}@if ($payout->payer) · {{ __('par :name', ['name' => $payout->payer->name]) }}@endif
                                 </p>
                             </div>
-                            <x-console.badge :tone="$commission->status->value === 'paid' ? 'success' : 'neutral'">{{ $commission->status->label() }}</x-console.badge>
+                            <span class="text-[1rem] font-semibold tabular-nums">{{ $fcfa($payout->amount) }}</span>
                         </li>
                     @endforeach
                 </ul>
@@ -59,6 +53,25 @@
                         <x-ui.button size="sm" variant="secondary" wire:click="nextPage('historique')" :disabled="! $this->history->hasMorePages()">{{ __('Suivant') }}</x-ui.button>
                     </div>
                 @endif
+            @endif
+        </x-console.group>
+    @elseif ($tab === 'annulees')
+        <x-console.group :title="trans_choice(':count commission annulée|:count commissions annulées', $this->history->total())">
+            @if ($this->history->isEmpty())
+                <x-console.empty icon="check" tint="gray" :title="__('Aucune commission annulée')" :text="__('Les commissions annulées (relais rejeté, doublon…) apparaissent ici avec leur motif.')" />
+            @else
+                <ul data-stagger>
+                    @foreach ($this->history as $commission)
+                        <li wire:key="cancel-{{ $commission->uuid }}" class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-[0.9375rem] font-semibold">{{ $commission->user->name ?: __('Relais') }} · {{ $fcfa($commission->amount) }}</p>
+                                <p class="truncate text-[0.8125rem] text-mute">{{ $commission->kind->label() }}@if ($commission->relaisItem) — {{ $commission->relaisItem->title ?: __('Sans titre') }}@endif</p>
+                                <p class="text-[0.8125rem] text-mute">{{ __('Annulée le :date : :reason', ['date' => $date($commission->cancelled_at), 'reason' => $commission->cancel_reason]) }}</p>
+                            </div>
+                            <x-console.badge tone="neutral">{{ $commission->status->label() }}</x-console.badge>
+                        </li>
+                    @endforeach
+                </ul>
             @endif
         </x-console.group>
     @else
@@ -76,7 +89,14 @@
                                     @if ($relais->relaisProfile?->number)<span class="font-normal text-mute">{{ $relais->relaisProfile->number }}</span>@endif
                                 </p>
                                 <p class="truncate text-[0.8125rem] text-mute">
-                                    {{ collect([$relais->phoneNumber()?->e164, $relais->relaisProfile?->commune?->name, trans_choice(':count commission|:count commissions', $relais->due_count)])->filter()->join(' · ') }}
+                                    {{ collect([$relais->relaisProfile?->commune?->name, trans_choice(':count commission|:count commissions', $relais->due_count)])->filter()->join(' · ') }}
+                                </p>
+                                <p class="truncate text-[0.8125rem]">
+                                    @if ($relais->payoutAccount)
+                                        {{ $relais->payoutAccount->method->label() }} · {{ $relais->payoutAccount->phone }} · {{ $relais->payoutAccount->holder_name }}
+                                    @else
+                                        <span class="text-status-pending">{{ __('Coordonnées de paiement non renseignées dans l’application') }}</span>
+                                    @endif
                                 </p>
                             </div>
                             <x-console.badge :tone="$verified ? 'success' : 'warning'">{{ $verified ? __('Identité vérifiée') : __('Identité non vérifiée') }}</x-console.badge>
@@ -100,7 +120,7 @@
             @php $verified = GainsPage::isVerified($this->payee); $total = (int) $this->payeeCommissions->sum('amount'); @endphp
             <div class="space-y-4">
                 <div class="rounded-[1rem] bg-black/[0.035] p-4 dark:bg-white/[0.05]">
-                    <p class="text-[0.8125rem] text-mute">{{ $this->payee->name ?: __('Relais') }}</p>
+                    <p class="text-[0.8125rem] text-mute">{{ $this->payee->name ?: __('Relais') }}@if ($this->payee->payoutAccount) · {{ __('titulaire : :name', ['name' => $this->payee->payoutAccount->holder_name]) }}@endif</p>
                     <p class="text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">{{ $fcfa($total) }}</p>
                     <ul class="mt-2 divide-y divide-line text-[0.8125rem]">
                         @foreach ($this->payeeCommissions as $commission)

@@ -63,7 +63,10 @@ Route::name('api.v1.')->group(function () {
         Route::middleware('password.set')->group(function () {
             Route::get('me/stats', [MeController::class, 'stats'])->name('me.stats');
             Route::get('me/badge', [MeController::class, 'badge'])->name('me.badge');
-            Route::get('me/gains', GainsController::class)->name('me.gains');
+            Route::get('me/gains', [GainsController::class, 'index'])->name('me.gains');
+            Route::get('me/payouts', [GainsController::class, 'payouts'])->name('me.payouts');
+            Route::get('me/payout-account', [GainsController::class, 'payoutAccount'])->name('me.payout-account');
+            Route::put('me/payout-account', [GainsController::class, 'updatePayoutAccount'])->middleware('throttle:10,1')->name('me.payout-account.update');
             Route::get('me/export', [MeController::class, 'export'])->middleware('throttle:5,60')->name('me.export');
             Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
 
