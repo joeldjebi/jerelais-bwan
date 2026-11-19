@@ -216,7 +216,8 @@
                                 <x-ui.button size="sm" variant="secondary" wire:click="openEditorial('arbitrate-validate')">{{ __('Revenir sur le rejet') }}</x-ui.button>
                             @endif
                             @if (in_array($stateName, ['validated', 'selected'], true))
-                                <x-ui.button size="sm" wire:click="openEditorial('select')">{{ $stateName === 'selected' ? __('Modifier l’affectation') : __('Sélectionner') }}</x-ui.button>
+                                <x-ui.button size="sm" variant="success" icon="signal" wire:click="openEditorial('publish')">{{ __('Diffuser et publier') }}</x-ui.button>
+                                <x-ui.button size="sm" variant="secondary" wire:click="openEditorial('select')">{{ $stateName === 'selected' ? __('Modifier l’affectation') : __('Sélectionner') }}</x-ui.button>
                             @endif
                             @if ($stateName === 'validated')
                                 <x-ui.button size="sm" variant="ghost" class="text-status-rejected!" wire:click="openEditorial('arbitrate-reject')">{{ __('Revenir sur la validation') }}</x-ui.button>
@@ -463,13 +464,16 @@
                         </footer>
                     </form>
                 @elseif ($editorial !== '')
-                    <form wire:submit="{{ match ($editorial) { 'arbitrate-validate' => 'arbitrate(true)', 'arbitrate-reject' => 'arbitrate(false)', 'select' => 'selectRelais', 'broadcast' => 'markBroadcast', 'showcase' => 'showcase', default => 'addToCollection' } }}" class="flex min-h-0 flex-1 flex-col">
+                    <form wire:submit="{{ match ($editorial) { 'arbitrate-validate' => 'arbitrate(true)', 'arbitrate-reject' => 'arbitrate(false)', 'select' => 'selectRelais', 'broadcast' => 'markBroadcast', 'publish' => 'broadcastAndPublish', 'showcase' => 'showcase', default => 'addToCollection' } }}" class="flex min-h-0 flex-1 flex-col">
                         <header class="px-6 pt-6 pb-3">
                             <h2 class="text-[1.375rem] font-bold tracking-[-0.02em]">
-                                {{ match ($editorial) { 'arbitrate-validate' => __('Valider'), 'arbitrate-reject' => __('Rejeter'), 'select' => __('Sélectionner et affecter'), 'broadcast' => __('Marquer diffusé'), 'showcase' => __('Vitrine « Vu sur REFLET TV »'), default => __('Ajouter à une collection') } }}
+                                {{ match ($editorial) { 'arbitrate-validate' => __('Valider'), 'arbitrate-reject' => __('Rejeter'), 'select' => __('Sélectionner et affecter'), 'broadcast' => __('Marquer diffusé'), 'publish' => __('Diffuser et publier'), 'showcase' => __('Vitrine « Vu sur REFLET TV »'), default => __('Ajouter à une collection') } }}
                             </h2>
                             @if (str_starts_with($editorial, 'arbitrate'))
                                 <p class="mt-1 text-[0.875rem] text-mute">{{ __('Arbitrage de la rédaction : la décision précédente reste dans l’historique.') }}</p>
+                            @endif
+                            @if ($editorial === 'publish')
+                                <p class="mt-1 text-[0.875rem] text-mute">{{ __('Le relais passe « diffusé », apparaît sur la page d’accueil et sur « Vu sur REFLET TV », et le Relais est prévenu.') }}</p>
                             @endif
                         </header>
                         <div class="flex-1 space-y-4 overflow-y-auto px-6 pb-6">
@@ -500,6 +504,23 @@
                                 <x-console.input :label="__('Date et heure de diffusion')" type="datetime-local" name="broadcastAt" wire:model="broadcastAt" />
                                 <x-console.input :label="__('Émission')" name="broadcastProgramme" wire:model="broadcastProgramme" />
                                 <x-console.input :label="__('Lien (facultatif)')" type="url" name="broadcastUrl" wire:model="broadcastUrl" placeholder="https://" />
+                            @elseif ($editorial === 'publish')
+                                <x-console.input :label="__('Date et heure de diffusion')" type="datetime-local" name="broadcastAt" wire:model="broadcastAt" />
+                                <x-console.input :label="__('Émission')" name="broadcastProgramme" wire:model="broadcastProgramme" :placeholder="__('Journal de 20 h')" />
+                                <x-console.input :label="__('Lien de la diffusion (facultatif)')" type="url" name="broadcastUrl" wire:model="broadcastUrl" placeholder="https://" />
+                                <div class="border-t border-line pt-4">
+                                    <x-console.input :label="__('Titre public')" name="showcaseTitle" wire:model="showcaseTitle" />
+                                </div>
+                                <div>
+                                    <label for="publish-text" class="block text-[0.8125rem] font-medium">{{ __('Texte public (facultatif)') }}</label>
+                                    <textarea id="publish-text" wire:model="showcaseText" rows="3" class="{{ $textarea }}"></textarea>
+                                </div>
+                                @if ($r->blur_required || $r->has_minors)
+                                    <p class="rounded-[0.8rem] bg-status-pending/12 px-3 py-2 text-[0.8125rem]">{{ __('Floutage demandé ou mineurs : l’image ne sera pas publiée.') }}</p>
+                                @else
+                                    <label class="flex items-center gap-3 text-[0.9375rem]"><input type="checkbox" wire:model="showcaseImage" class="ios-check">{{ __('Publier l’image') }}</label>
+                                @endif
+                                <p class="text-[0.8125rem] text-mute">{{ __('Seuls ce titre, ce texte, la commune et le crédit choisi par le Relais sont publics. Jamais la position.') }}</p>
                             @elseif ($editorial === 'showcase')
                                 <x-console.input :label="__('Titre public')" name="showcaseTitle" wire:model="showcaseTitle" />
                                 <div>

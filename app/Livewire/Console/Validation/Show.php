@@ -14,6 +14,7 @@ use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\InReview;
 use App\Domain\Contribution\Support\RelaisVerification;
 use App\Domain\Editorial\Actions\ArbitrateRelaisItem;
+use App\Domain\Editorial\Actions\BroadcastAndPublish;
 use App\Domain\Editorial\Actions\PublishToShowcase;
 use App\Domain\Editorial\Actions\SelectRelaisItem;
 use App\Domain\Editorial\Exceptions\EditorialRefused;
@@ -67,7 +68,7 @@ class Show extends Component
 
     public string $note = '';
 
-    /** Feuille éditoriale ouverte : arbitrate-validate, arbitrate-reject, select, broadcast, collection, derogation. */
+    /** Feuille éditoriale ouverte : arbitrate-validate, arbitrate-reject, select, broadcast, publish, showcase, collection, derogation. */
     public string $editorial = '';
 
     public string $editorReason = '';
@@ -267,6 +268,37 @@ class Show extends Component
         }
 
         $this->closeEditorial(__('Diffusion enregistrée. Le Relais est prévenu.'));
+    }
+
+    /**
+     * Diffuser et publier en un geste : sélection, diffusion (date, émission, lien) et vitrine publique.
+     */
+    public function broadcastAndPublish(BroadcastAndPublish $publish): void
+    {
+        $this->authorizeEditorial();
+        $this->validate([
+            'broadcastAt' => ['required', 'date'],
+            'broadcastProgramme' => ['required', 'string', 'max:120'],
+            'broadcastUrl' => ['nullable', 'url:https,http', 'max:500'],
+            'showcaseTitle' => ['required', 'string', 'max:150'],
+            'showcaseText' => ['nullable', 'string', 'max:1000'],
+        ], attributes: [
+            'broadcastAt' => __('date de diffusion'), 'broadcastProgramme' => __('émission'), 'broadcastUrl' => __('lien'),
+            'showcaseTitle' => __('titre public'), 'showcaseText' => __('texte public'),
+        ]);
+
+        try {
+            $publish->handle(
+                $this->relais, $this->user(), CarbonImmutable::parse($this->broadcastAt, 'Africa/Abidjan'),
+                $this->broadcastProgramme, $this->broadcastUrl, $this->showcaseTitle, $this->showcaseText, $this->showcaseImage,
+            );
+        } catch (EditorialRefused $exception) {
+            $this->addError('editorial', $exception->getMessage());
+
+            return;
+        }
+
+        $this->closeEditorial(__('Relais diffusé et publié sur la page d’accueil. Le Relais est prévenu.'));
     }
 
     /**

@@ -271,3 +271,52 @@ it('liste les diffusions sur une page dédiée et retire un relais de la vitrine
 it('réserve la page Diffusions à la rédaction et à l’administration', function () {
     $this->actingAs(User::factory()->withTwoFactor()->withRole(Role::LectureSeule)->create())->get(route('console.diffusions'))->assertForbidden();
 });
+
+it('diffuse et publie un relais validé en un geste : diffusé, sur la page d’accueil, une seule notification [ADM-13, WEB-05]', function () {
+    $relais = readyRelais();
+
+    Livewire::actingAs($this->redacteur)->test(Show::class, ['relais' => $relais])
+        ->assertSee('Diffuser et publier')
+        ->call('openEditorial', 'publish')
+        ->set('broadcastProgramme', '')
+        ->call('broadcastAndPublish')
+        ->assertHasErrors('broadcastProgramme')
+        ->set('broadcastProgramme', 'Journal de 20 h')
+        ->set('showcaseTitle', 'Niangon sous les eaux')
+        ->set('showcaseText', 'Les habitants s’organisent.')
+        ->set('showcaseImage', true)
+        ->call('broadcastAndPublish')
+        ->assertHasNoErrors();
+
+    $relais->refresh();
+    expect($relais->state)->toBeInstanceOf(Broadcast::class)
+        ->and($relais->selected_by)->toBe($this->redacteur->id)
+        ->and($relais->broadcast_programme)->toBe('Journal de 20 h')
+        ->and($relais->showcased_at)->not->toBeNull()
+        ->and($relais->showcase_title)->toBe('Niangon sous les eaux')
+        ->and($relais->showcase_with_image)->toBeTrue()
+        ->and($this->sms->sent)->toHaveCount(1)
+        ->and($this->sms->sent[0]['message'])->toContain('est passé sur REFLET TV');
+
+    $this->get(route('home'))->assertOk()->assertSee('Niangon sous les eaux');
+    $this->getJson(route('api.v1.diffusions.index'))->assertOk()->assertJsonPath('data.0.title', 'Niangon sous les eaux');
+});
+
+it('ne publie jamais l’image d’un relais avec des mineurs, et réserve le geste à la rédaction [ADM-17, Annexe A]', function () {
+    $relais = readyRelais(Validated::class, ['has_minors' => true]);
+
+    Livewire::actingAs($this->redacteur)->test(Show::class, ['relais' => $relais])
+        ->call('openEditorial', 'publish')
+        ->set('broadcastProgramme', 'Journal de 20 h')
+        ->set('showcaseImage', true)
+        ->call('broadcastAndPublish')
+        ->assertHasErrors('editorial');
+
+    expect($relais->fresh()->state)->toBeInstanceOf(Validated::class);
+
+    $coordo = User::factory()->withTwoFactor()->coordonnateurOf($relais->commune)->create();
+    Livewire::actingAs($coordo)->test(Show::class, ['relais' => $relais])
+        ->assertDontSee('Diffuser et publier')
+        ->call('broadcastAndPublish')
+        ->assertForbidden();
+});

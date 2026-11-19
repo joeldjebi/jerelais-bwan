@@ -49,6 +49,8 @@ Suivi : `GET /identity` — `submitted` (en cours), puis `verified` (`gains_elig
 
 **Modifier :** `PUT /identity`, mêmes champs et photos que `POST /identity`, **tous facultatifs** : seuls les éléments envoyés changent ; dès que le dossier est complet, il part en vérification. Le type de pièce décide des photos : `recto` + `verso` ou `page` (`sides`). Le `selfie` sert aussi de photo du badge.
 
+**Mes gains :** `GET /me/gains` liste les commissions du Relais (une par relais validé, une autre par relais diffusé, selon les montants fixés par l'administration), la plus récente d'abord : `amount` (FCFA), `label`, `status` (`due` : à recevoir, `paid` : payé avec `paid_at`, `payment_method_label` et `payment_reference`), `relais` (uuid, titre). `meta.totals.due` et `meta.totals.paid` donnent les totaux ; `meta.gains_eligible` vaut `false` tant que l'identité n'est pas vérifiée (le paiement attend : inviter le Relais à compléter `POST /identity`). Le paiement se fait par Mobile Money ; le Relais reçoit alors la notification `gains.paid`.
+
 ## Parcours d’un candidat
 
 1. Inscription (`POST /auth/register`, `POST /auth/register/verify`, `POST /auth/register/complete`) : compte actif et Relais dès le mot de passe choisi.
@@ -137,6 +139,7 @@ Le Relais reçoit une **notification push** (Firebase Cloud Messaging) sur chaqu
 | `account.status_changed` | Compte de Relais suspendu, radié ou réactivé | `status` : `suspended`, `struck_off`, `active` | `GET /me` |
 | `message.received` | Message du coordonnateur | `uuid` (conversation) | `GET /conversations/{uuid}/messages` |
 | `appel.created` | Appel à relais dans la zone du Relais | `uuid` (appel) | `GET /appels/{uuid}` |
+| `gains.paid` | Commissions payées par Mobile Money | `amount` (FCFA) | `GET /me/gains` |
 
 Exemple de `data` : `{"type": "relais.status_changed", "uuid": "0193…", "status": "validated"}`. Un `type` inconnu doit être ignoré (ouvrir l'accueil) : d'autres pourront s'ajouter.
 

@@ -23,6 +23,7 @@ enum Permission: string
     case AppelsCreateLocal = 'appels.create-local';
     case RelaisProfilesSuspend = 'relais-profiles.suspend';
     case SettingsManage = 'settings.manage';
+    case CommissionsManage = 'commissions.manage';
     case TerritoireManage = 'territoire.manage';
     case UsersManage = 'users.manage';
     case AuditView = 'audit.view';
