@@ -39,6 +39,15 @@ return [
      * MTarget : envoi des SMS (codes de vérification et notifications) quand SMS_DRIVER=mtarget.
      * Le code lit toujours ces valeurs via config('services.mtarget.*'), compatible avec config:cache.
      */
+    /*
+     * Firebase Cloud Messaging (PUSH_DRIVER=fcm) : chemin du fichier JSON du compte de service Firebase
+     * (Paramètres du projet → Comptes de service → Générer une nouvelle clé privée). Jamais commité.
+     */
+    'fcm' => [
+        'credentials' => env('FIREBASE_CREDENTIALS', 'storage/app/private/firebase-credentials.json'),
+        'timeout' => (int) env('FIREBASE_TIMEOUT', 10),
+    ],
+
     'mtarget' => [
         'url' => env('MTARGET_URL', 'https://api-public-2.mtarget.fr/messages'),
         'username' => env('MTARGET_USERNAME'),

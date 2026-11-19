@@ -2,27 +2,36 @@
 
 namespace App\Domain\Candidature\Listeners;
 
-use App\Domain\Auth\Contracts\SmsGateway;
-use App\Domain\Auth\Sms\NotificationSms;
 use App\Domain\Candidature\Enums\CandidatureDecision;
 use App\Domain\Candidature\Events\CandidatureDecided;
+use App\Domain\Notification\Actions\NotifyUser;
+use App\Domain\Notification\Data\PushMessage;
 
 /**
- * Prévient le candidat par SMS. Le message ne contient aucune donnée sensible (ni motif, ni commentaire) :
- * le détail se consulte une fois connecté. La notification push s'ajoutera avec l'application.
+ * Prévient le candidat de la décision (MOB-21) : notification push, ou SMS s'il n'a pas d'appareil joignable.
+ * Le message ne contient aucune donnée sensible (ni motif, ni commentaire) : le détail se consulte une fois connecté.
  */
 class NotifyCandidateOfDecision
 {
-    public function __construct(private readonly SmsGateway $sms) {}
+    public function __construct(private readonly NotifyUser $notify) {}
 
     public function handle(CandidatureDecided $event): void
     {
-        $phone = $event->candidature->user->phoneNumber();
-
-        if ($phone === null || $event->decision === CandidatureDecision::Hold) {
+        if ($event->decision === CandidatureDecision::Hold) {
             return;
         }
 
-        NotificationSms::send($this->sms, $phone, __("candidature.sms.{$event->decision->value}"), 'candidature');
+        $decision = $event->decision->value;
+
+        $this->notify->handle(
+            $event->candidature->user,
+            new PushMessage(
+                __("notifications.candidature.{$decision}.title"),
+                __("notifications.candidature.{$decision}.body"),
+                ['type' => "candidature.{$decision}", 'candidature' => $event->candidature->uuid],
+            ),
+            __("candidature.sms.{$decision}"),
+            'candidature',
+        );
     }
 }
