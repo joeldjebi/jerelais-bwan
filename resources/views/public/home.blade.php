@@ -164,9 +164,9 @@
         </div>
     </section>
 
-    {{-- 5. PARTOUT EN CÔTE D'IVOIRE : CARTE + TÉLÉSCRIPTEURS --}}
+    {{-- 5. PARTOUT EN CÔTE D'IVOIRE : CARTE DU MONDE (DEPUIS ABIDJAN) + TÉLÉSCRIPTEURS --}}
     <section class="overflow-hidden bg-black text-white" data-nav-theme="dark">
-        <div class="mx-auto grid max-w-[1024px] items-center gap-16 px-5 pt-32 pb-20 sm:pt-40 md:grid-cols-[1fr_1.15fr]">
+        <div class="mx-auto grid max-w-[1024px] items-center gap-12 px-5 pt-32 pb-20 sm:pt-40">
             <div>
                 <p class="text-sm font-semibold tracking-[0.12em] text-relais-500 uppercase" data-anim>{{ __('Partout en Côte d’Ivoire') }}</p>
                 <h2 class="mt-4 text-[clamp(2.75rem,6vw,4.5rem)] leading-[1.02] font-semibold tracking-[-0.04em] text-white" data-anim>{{ __('Un réseau dans chaque commune.') }}</h2>
@@ -182,8 +182,8 @@
                     </div>
                 </dl>
             </div>
-            <div class="relative" data-anim>
-                @include('public.partials.carte-civ')
+            <div class="relative -mx-2 sm:mx-0" data-anim>
+                @include('public.partials.carte-monde')
             </div>
         </div>
 

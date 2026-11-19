@@ -142,10 +142,10 @@
             <x-console.widget tone="navy" class="col-span-2 row-span-2 flex flex-col">
                 <div class="flex items-center justify-between">
                     <p class="flex items-center gap-2 text-[0.8125rem] font-semibold text-white/80"><x-ui.icon name="signal" class="size-4 text-relais-400" />{{ __('Réseau JE RELAIS') }}</p>
-                    <p class="text-[0.75rem] text-white/50">{{ __('Côte d’Ivoire') }}</p>
+                    <p class="text-[0.75rem] text-white/50">{{ __('Depuis Abidjan, vers le monde') }}</p>
                 </div>
-                <div class="mx-auto mt-2 w-full max-w-[22rem] flex-1">
-                    @include('public.partials.carte-civ')
+                <div class="mt-4 flex w-full flex-1 items-center">
+                    @include('public.partials.carte-monde')
                 </div>
             </x-console.widget>
 

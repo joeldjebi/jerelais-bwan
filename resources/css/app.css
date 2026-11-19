@@ -333,7 +333,7 @@
     }
 }
 
-/* Carte du réseau : les points s'allument en onde depuis Abidjan */
+/* Carte du réseau (monde) : les points s'allument en onde depuis Abidjan */
 [data-map-dots] circle {
     fill: rgb(255 255 255 / 0.12);
     transition: fill 0.8s var(--ease-out-expo);
@@ -402,6 +402,25 @@
 
 [data-map][data-lit] [data-map-dots] circle {
     fill: rgb(255 255 255 / 0.38);
+}
+
+/* Carte du monde : libellés plus grands (la carte est plus large que celle d'un pays) */
+.map-world .map-city text {
+    font-size: 22px;
+    stroke-width: 6px;
+}
+
+.map-world .map-hub text {
+    font-size: 26px;
+}
+
+/* Carte du monde : la Côte d'Ivoire en orange, plus dense que le reste */
+[data-map-dots] circle.map-home {
+    fill: rgb(242 140 40 / 0.35);
+}
+
+[data-map][data-lit] [data-map-dots] circle.map-home {
+    fill: var(--color-relais-500);
 }
 
 [data-map][data-lit] [data-map-links] path {
