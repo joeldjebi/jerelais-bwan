@@ -64,7 +64,7 @@ Statuts d’une candidature : `draft` (à compléter) · `submitted` (reçue) ·
 
 ## Envoyer un relais
 
-**Une seule requête, pas de brouillon.** `POST /relais` en `multipart/form-data` avec tout le contenu et les fichiers : `category`, `title`, `description`, `urgency`, la position `lat` + `lng` (ou `declared_commune`), les protections `has_minors` (`true`/`false`), `people_consent`, `credit_mode` (`credit_name` pour un pseudonyme), `appel` pour répondre à un appel, et **`files[]`** : 1 à 10 fichiers (photos, vidéos, sons), **100 Mo maximum chacun**. Le relais est aussitôt reçu par le coordonnateur (`received`), routé vers la commune du GPS (sinon la commune déclarée). Tout ou rien : **422** avec un message par champ, rien n’est créé. `client_uuid` (facultatif) évite les doublons après une coupure.
+**Une seule requête, pas de brouillon.** `POST /relais` en `multipart/form-data` avec tout le contenu et les fichiers : `category`, `title`, `description`, `urgency`, la position `lat` + `lng` (ou `declared_commune`), les protections `has_minors` (`true`/`false`), `people_consent`, `credit_mode` (`anonymous`, `named` ou `pseudonym`, avec `credit_name` pour un pseudonyme), `appel` pour répondre à un appel, et **`files[]`** : 1 à 10 fichiers (photos, vidéos, sons), **100 Mo maximum chacun**. Le relais est aussitôt reçu par le coordonnateur (`received`), routé vers la commune du GPS (sinon la commune déclarée). Tout ou rien : **422** avec un message par champ, rien n’est créé. `client_uuid` (facultatif) évite les doublons après une coupure.
 
 Chaque fichier est ensuite contrôlé en tâche de fond (type réel, antivirus, empreinte, durée, vignette) : `uploaded` → `processing` → `ready` ou `rejected` (raison dans `rejection`), visible avec `GET /relais/{relais}`.
 

@@ -382,7 +382,7 @@ curl -X POST "$BASE/relais" -H "Authorization: Bearer $TOKEN" -H "Accept: applic
 | `declared_place` | non | Lieu en clair |
 | `has_minors` | oui | `true` ou `false` |
 | `people_consent` | oui | `yes`, `no`, `not_applicable` |
-| `credit_mode` | oui | `anonymous`, `name`, `pseudonym` (+ `credit_name` si pseudonyme) |
+| `credit_mode` | oui | `anonymous` (« Un Relais de REFLET TV »), `named` (nom du Relais), `pseudonym` (+ `credit_name`) |
 | `appel` | non | **Réponse à un appel à relais** : quand la rédaction demande de couvrir un sujet, l’écran montre les **titres** des appels de `GET /appels` et l’application envoie l’`uuid` de celui choisi ; le relais y est rattaché (`data.appel`) et remonte en priorité. Vide pour un relais spontané |
 | `files[]` | oui | 1 à 10 fichiers : photos JPEG/PNG/HEIC, vidéos MP4/MOV, sons M4A/MP3/AAC — **100 Mo maximum chacun** |
 | `client_uuid` | non | **Généré automatiquement** s’il est absent. L’application peut en fournir un (uuid créé sur le téléphone) pour qu’un renvoi après une coupure ne crée pas de doublon |
@@ -458,7 +458,7 @@ curl -X POST "$BASE/relais" -H "Authorization: Bearer $TOKEN" \
 | `client_uuid` | Généré par l’application : renvoyer le même rend le même relais (reprise sans doublon) |
 | `category`, `title` | Obligatoires |
 | `location` ou `declared_commune` | Au moins l’un des deux ; le GPS prime pour choisir la commune |
-| `protections` | `has_minors` (oui/non), `people_consent` (`yes`, `no`, `not_applicable`), `credit_mode` (`name`, `pseudonym`, `anonymous`), `credit_name` si pseudonyme |
+| `protections` | `has_minors` (oui/non), `people_consent` (`yes`, `no`, `not_applicable`), `credit_mode` (`named`, `pseudonym`, `anonymous`), `credit_name` si pseudonyme |
 | `medias` | 1 à 10 fichiers : `client_uuid`, `kind` (`photo`, `video`, `audio`), `mime`, `size` (octets), `sha256` |
 | `appel` | Facultatif : `uuid` de l’appel à relais auquel on répond |
 

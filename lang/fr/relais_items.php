@@ -56,6 +56,8 @@ return [
     'complement_by_update' => 'Relais modifié en réponse à la demande de complément.',
 
     'errors' => [
+        'credit_mode_unknown' => 'Mention à l’antenne inconnue : anonymous (« Un Relais de REFLET TV »), named (nom du Relais) ou pseudonym (avec credit_name).',
+        'people_consent_unknown' => 'Accord des personnes filmées inconnu : yes, no ou not_applicable (personne n’est reconnaissable).',
         'appel_unknown' => 'Appel à relais inconnu : choisissez un appel ouvert de GET /appels (son uuid), ou laissez ce champ vide pour un relais spontané.',
         'category_unknown' => 'Catégorie inconnue : choisissez-en une de GET /categories (son uuid ou son slug, ex. vie-de-quartier).',
         'commune_unknown' => 'Commune inconnue ou fermée : choisissez-en une de GET /communes (son uuid ou son slug, ex. abobo).',
