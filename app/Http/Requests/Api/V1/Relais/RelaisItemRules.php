@@ -122,6 +122,19 @@ trait RelaisItemRules
             };
         }
 
+        // Variantes courantes de la mention à l'antenne et de l'accord (anglais, français, majuscules).
+        $aliases = [
+            'credit_mode' => ['name' => 'named', 'nom' => 'named', 'named' => 'named', 'pseudo' => 'pseudonym', 'pseudonyme' => 'pseudonym', 'pseudonym' => 'pseudonym', 'anonyme' => 'anonymous', 'anonymous' => 'anonymous'],
+            'people_consent' => ['oui' => 'yes', 'yes' => 'yes', 'non' => 'no', 'no' => 'no', 'non_applicable' => 'not_applicable', 'sans_objet' => 'not_applicable', 'not_applicable' => 'not_applicable'],
+        ];
+
+        foreach ($aliases as $field => $values) {
+            if (isset($protections[$field]) && is_string($protections[$field])) {
+                $key = str_replace([' ', '-'], '_', strtolower(trim($protections[$field])));
+                $protections[$field] = $values[$key] ?? $protections[$field];
+            }
+        }
+
         if ($protections !== []) {
             $this->merge(['protections' => $protections]);
         }
@@ -159,6 +172,8 @@ trait RelaisItemRules
             'category.exists' => __('relais_items.errors.category_unknown'),
             'declared_commune.uuid' => __('relais_items.errors.commune_unknown'),
             'declared_commune.exists' => __('relais_items.errors.commune_unknown'),
+            'protections.credit_mode.enum' => __('relais_items.errors.credit_mode_unknown'),
+            'protections.people_consent.enum' => __('relais_items.errors.people_consent_unknown'),
             'appel.uuid' => __('relais_items.errors.appel_unknown'),
             'appel.exists' => __('relais_items.errors.appel_unknown'),
         ];
