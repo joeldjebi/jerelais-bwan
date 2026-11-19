@@ -5,10 +5,10 @@ namespace App\Domain\Relais\Actions;
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Audit\AuditLogger;
-use App\Domain\Auth\Contracts\SmsGateway;
-use App\Domain\Auth\Sms\NotificationSms;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Messagerie\Models\Conversation;
+use App\Domain\Notification\Actions\NotifyUser;
+use App\Domain\Notification\Data\PushMessage;
 use App\Domain\Relais\Enums\RelaisStatus;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Relais\Notifications\RelaisStatusChangedByCoordinator;
@@ -25,7 +25,7 @@ use InvalidArgumentException;
 class ChangeRelaisStatus
 {
     public function __construct(
-        private readonly SmsGateway $sms,
+        private readonly NotifyUser $notify,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -71,11 +71,16 @@ class ChangeRelaisStatus
             );
         }
 
-        $phone = $profile->user->phoneNumber();
-
-        if ($phone !== null) {
-            NotificationSms::send($this->sms, $phone, __("relais_profils.sms.{$status->value}"), 'relais_status');
-        }
+        $this->notify->handle(
+            $profile->user,
+            new PushMessage(
+                __("notifications.relais_profile.{$status->value}.title"),
+                __("notifications.relais_profile.{$status->value}.body"),
+                ['type' => "relais_profile.{$status->value}"],
+            ),
+            __("relais_profils.sms.{$status->value}"),
+            'relais_status',
+        );
 
         return $profile;
     }

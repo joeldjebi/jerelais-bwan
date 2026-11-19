@@ -75,6 +75,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Notifications push (MOB-21)
+    |--------------------------------------------------------------------------
+    |
+    | « fcm » : Firebase Cloud Messaging (clé du compte de service dans services.fcm.credentials).
+    | « log » : journal local (développement). « none » : désactivé, le SMS de secours prend le relais.
+    | Un Relais sans appareil joignable par push reçoit le SMS de secours.
+    |
+    */
+
+    'push' => [
+        'driver' => env('PUSH_DRIVER', 'none'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Antivirus (§10)
     |--------------------------------------------------------------------------
     |

@@ -3,6 +3,7 @@
 use App\Domain\Access\Enums\Role;
 use App\Domain\Auth\Data\PhoneNumber;
 use App\Domain\Auth\Enums\UserStatus;
+use App\Domain\Auth\Models\Device;
 use App\Domain\Identity\Actions\DecideIdentityVerification;
 use App\Domain\Identity\Actions\StoreIdentityFile;
 use App\Domain\Identity\Enums\IdentityFileKind;
@@ -549,4 +550,19 @@ it('n’efface rien quand un formulaire envoie aussi ses champs vides, puis envo
         ->assertJsonPath('data.first_name', 'Abou')
         ->assertJsonPath('data.commune.uuid', $this->commune->uuid)
         ->assertJsonPath('data.status', 'submitted');
+});
+
+it('prévient le Relais par notification push quand son identité est vérifiée ou refusée [MOB-01, MOB-21]', function () {
+    $push = fakePush();
+    Device::query()->create(['user_id' => $this->relais->id, 'name' => 'Tecno Spark 10', 'platform' => 'android', 'fcm_token' => 'jeton-fcm-1']);
+    completeIdentity();
+
+    $admin = User::factory()->withTwoFactor()->withRole(Role::Admin)->create();
+    $verification = IdentityVerification::query()->where('user_id', $this->relais->id)->sole();
+
+    Livewire::actingAs($admin)->test(IdentityShowPage::class, ['verification' => $verification])->call('verify');
+
+    expect($push->sent)->toHaveCount(1)
+        ->and($push->sent[0]['message']->title)->toBe('Identité vérifiée')
+        ->and($push->sent[0]['message']->data)->toBe(['type' => 'identity.verified']);
 });

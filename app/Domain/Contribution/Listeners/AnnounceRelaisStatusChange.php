@@ -2,20 +2,20 @@
 
 namespace App\Domain\Contribution\Listeners;
 
-use App\Domain\Auth\Contracts\SmsGateway;
-use App\Domain\Auth\Sms\NotificationSms;
 use App\Domain\Contribution\Events\RelaisQueueChanged;
 use App\Domain\Contribution\Events\RelaisStatusChanged;
+use App\Domain\Notification\Actions\NotifyUser;
+use App\Domain\Notification\Data\PushMessage;
 
 /**
- * Chaque changement de statut est diffusé en temps réel à l'équipe ; le Relais est prévenu par SMS
- * des décisions qui le concernent (MOB-21, SMS de secours en attendant les notifications push).
+ * Chaque changement de statut est diffusé en temps réel à l'équipe ; le Relais est prévenu des décisions qui le
+ * concernent (MOB-21) : notification push, ou SMS s'il n'a pas d'appareil joignable.
  */
 class AnnounceRelaisStatusChange
 {
     private const NOTIFIED = ['validated', 'rejected', 'complement_requested', 'selected', 'broadcast'];
 
-    public function __construct(private readonly SmsGateway $sms) {}
+    public function __construct(private readonly NotifyUser $notify) {}
 
     public function handle(RelaisStatusChanged $event): void
     {
@@ -25,10 +25,18 @@ class AnnounceRelaisStatusChange
             return;
         }
 
-        $phone = $event->relais->user->phoneNumber();
+        $relais = $event->relais;
+        $title = (string) str($relais->title ?? '')->limit(40);
 
-        if ($phone !== null) {
-            NotificationSms::send($this->sms, $phone, __("relais_items.sms.{$event->to}", ['title' => (string) str($event->relais->title ?? '')->limit(40)]), 'relais_item');
-        }
+        $this->notify->handle(
+            $relais->user,
+            new PushMessage(
+                __("notifications.relais.{$event->to}.title"),
+                __("notifications.relais.{$event->to}.body", ['title' => $title]),
+                ['type' => "relais.{$event->to}", 'relais' => $relais->uuid],
+            ),
+            __("relais_items.sms.{$event->to}", ['title' => $title]),
+            'relais_item',
+        );
     }
 }

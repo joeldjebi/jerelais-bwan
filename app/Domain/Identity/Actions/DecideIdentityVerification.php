@@ -5,6 +5,8 @@ namespace App\Domain\Identity\Actions;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Identity\Enums\IdentityStatus;
 use App\Domain\Identity\Models\IdentityVerification;
+use App\Domain\Notification\Actions\NotifyUser;
+use App\Domain\Notification\Data\PushMessage;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -14,10 +16,11 @@ use InvalidArgumentException;
  * Décision de l'administration sur une vérification d'identité (MOB-01).
  * Vérifiée : le Relais devient éligible aux gains et son profil est rattaché à la commune déclarée.
  * Refusée : le Relais corrige ce qui est indiqué dans le commentaire, puis renvoie.
+ * Dans les deux cas, le Relais est prévenu (MOB-21) : notification push, ou SMS sans appareil joignable.
  */
 class DecideIdentityVerification
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(private readonly AuditLogger $audit, private readonly NotifyUser $notify) {}
 
     public function verify(IdentityVerification $verification, User $decider): void
     {
@@ -38,6 +41,8 @@ class DecideIdentityVerification
 
             $this->audit->record('identity.verified', $verification, actor: $decider, communeId: $verification->commune_id);
         });
+
+        $this->notifyRelais($verification, 'verified');
     }
 
     public function reject(IdentityVerification $verification, User $decider, string $comment): void
@@ -58,6 +63,22 @@ class DecideIdentityVerification
         ])->save();
 
         $this->audit->record('identity.rejected', $verification, ['comment' => $comment], actor: $decider, communeId: $verification->commune_id);
+
+        $this->notifyRelais($verification, 'rejected');
+    }
+
+    private function notifyRelais(IdentityVerification $verification, string $decision): void
+    {
+        $this->notify->handle(
+            $verification->user,
+            new PushMessage(
+                __("notifications.identity.{$decision}.title"),
+                __("notifications.identity.{$decision}.body"),
+                ['type' => "identity.{$decision}"],
+            ),
+            __("notifications.identity_sms.{$decision}"),
+            'identity',
+        );
     }
 
     private function ensureSubmitted(IdentityVerification $verification): void
