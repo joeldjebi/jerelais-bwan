@@ -99,6 +99,13 @@ class ChangeRelaisStatus
             $this->audit->record('relais.profile_transferred', $profile, ['from' => $from, 'to' => $commune->id, 'reason' => trim($reason)], actor: $admin, communeId: $commune->id);
         });
 
+        $this->notify->handle(
+            $profile->loadMissing('user')->user,
+            new PushMessage(__('notifications.transferred.title'), __('notifications.transferred.body', ['commune' => $commune->name]), ['type' => 'account.transferred', 'commune' => $commune->uuid]),
+            __('notifications.transferred_sms', ['commune' => $commune->name]),
+            'relais_transfer',
+        );
+
         return $profile;
     }
 }

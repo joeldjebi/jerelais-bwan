@@ -28,6 +28,7 @@ use App\Domain\Media\Storage\S3MultipartStorage;
 use App\Domain\Notification\Contracts\PushGateway;
 use App\Domain\Notification\Push\FcmPushGateway;
 use App\Domain\Notification\Push\LogPushGateway;
+use App\Domain\Relais\Listeners\AnnounceLevelReached;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -95,6 +96,7 @@ class DomainServiceProvider extends ServiceProvider
         Event::listen(CandidatureDecided::class, NotifyCandidateOfDecision::class);
         Event::listen(RelaisStatusChanged::class, AnnounceRelaisStatusChange::class);
         Event::listen(RelaisStatusChanged::class, RecordRelaisCommission::class);
+        Event::listen(RelaisStatusChanged::class, AnnounceLevelReached::class);
 
         Gate::policy(Candidature::class, CandidaturePolicy::class);
         Gate::policy(RelaisItem::class, RelaisItemPolicy::class);

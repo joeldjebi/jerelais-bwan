@@ -4,6 +4,7 @@ namespace App\Domain\Legal\Actions;
 
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Legal\Enums\LegalDocumentType;
+use App\Domain\Legal\Jobs\NotifyLegalUpdate;
 use App\Domain\Legal\Models\LegalDocument;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ class PublishLegalDocument
 
     public function handle(LegalDocumentType $type, string $title, string $body, ?User $actor = null): LegalDocument
     {
-        return DB::transaction(function () use ($type, $title, $body, $actor): LegalDocument {
+        $document = DB::transaction(function () use ($type, $title, $body, $actor): LegalDocument {
             DB::select('select pg_advisory_xact_lock(?)', [crc32('legal:'.$type->value)]);
 
             $version = (int) LegalDocument::query()->ofType($type)->max('version') + 1;
@@ -36,5 +37,12 @@ class PublishLegalDocument
 
             return $document;
         });
+
+        // Nouvelle version publiée depuis la console : les Relais sont invités à la lire et l'accepter.
+        if ($actor !== null && $document->version > 1) {
+            NotifyLegalUpdate::dispatch($document->id)->afterCommit();
+        }
+
+        return $document;
     }
 }

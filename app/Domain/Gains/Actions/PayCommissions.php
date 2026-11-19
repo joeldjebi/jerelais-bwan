@@ -2,6 +2,7 @@
 
 namespace App\Domain\Gains\Actions;
 
+use App\Domain\Access\Scopes\CommuneScope;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Gains\Enums\CommissionStatus;
 use App\Domain\Gains\Enums\PaymentMethod;
@@ -106,5 +107,12 @@ class PayCommissions
 
         $commission->forceFill(['status' => CommissionStatus::Cancelled, 'cancelled_at' => now(), 'cancel_reason' => trim($reason)])->save();
         $this->audit->record('commissions.cancelled', $commission->user, ['commission' => $commission->uuid, 'amount' => $commission->amount, 'reason' => trim($reason)], actor: $admin);
+
+        $commission->loadMissing(['user', 'relaisItem' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)]);
+        $this->notify->handle($commission->user, new PushMessage(
+            __('notifications.gains.cancelled.title'),
+            __('notifications.gains.cancelled.body', ['amount' => number_format($commission->amount, 0, ',', ' ').' FCFA', 'title' => (string) str($commission->relaisItem->title ?? '')->limit(40)]),
+            ['type' => 'gains.cancelled', 'uuid' => $commission->uuid],
+        ), null, 'gains');
     }
 }

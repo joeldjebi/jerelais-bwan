@@ -55,7 +55,7 @@ class BroadcastAndPublish
                 $this->select->markBroadcast($relais, $editor, $broadcastAt, $programme, $url);
             }
 
-            return $this->showcase->publish($relais, $editor, $publicTitle, $publicText, $withImage);
+            return $this->showcase->publish($relais, $editor, $publicTitle, $publicText, $withImage, notify: false);
         });
     }
 }

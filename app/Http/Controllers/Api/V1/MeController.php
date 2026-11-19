@@ -134,6 +134,7 @@ class MeController extends Controller
      * La réponse indique `push_enabled: true` quand un jeton est enregistré. Met aussi à jour la dernière activité de
      * l'appareil, visible par la coordination. Voir « Notifications » dans le guide pour le contenu reçu.
      */
+    #[Group('Notifications', 'Jeton de notifications push de l’appareil et annonces de l’administration (MOB-21).', weight: 2)]
     public function updateDevice(UpdateCurrentDeviceRequest $request): DeviceResource
     {
         /** @var User $user */

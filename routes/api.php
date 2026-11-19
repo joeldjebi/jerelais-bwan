@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Access\Enums\Permission;
+use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\Appels\AppelController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\OtpController;
@@ -63,6 +64,9 @@ Route::name('api.v1.')->group(function () {
         Route::middleware('password.set')->group(function () {
             Route::get('me/stats', [MeController::class, 'stats'])->name('me.stats');
             Route::get('me/badge', [MeController::class, 'badge'])->name('me.badge');
+            Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+            Route::post('announcements/read-all', [AnnouncementController::class, 'readAll'])->name('announcements.read-all');
+            Route::post('announcements/{announcement}/read', [AnnouncementController::class, 'read'])->name('announcements.read');
             Route::get('me/gains', [GainsController::class, 'index'])->name('me.gains');
             Route::get('me/payouts', [GainsController::class, 'payouts'])->name('me.payouts');
             Route::get('me/payout-account', [GainsController::class, 'payoutAccount'])->name('me.payout-account');

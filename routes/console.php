@@ -10,6 +10,9 @@ use App\Domain\Media\Actions\PurgeAbandonedUploads;
 use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Jobs\ProcessMedia;
 use App\Domain\Media\Models\Media;
+use App\Domain\Notification\Enums\AnnouncementStatus;
+use App\Domain\Notification\Jobs\SendAnnouncement;
+use App\Domain\Notification\Models\Announcement;
 use App\Domain\Privacy\Actions\PurgeExpiredData;
 use App\Domain\Reporting\Exports\ReportExporter;
 use App\Domain\Reporting\Mail\PeriodicReport;
@@ -102,6 +105,17 @@ Artisan::command('medias:reprocess {--minutes=10 : Bloqués depuis au moins ce n
     $this->components->info($stuck->count().' média(s) relancé(s).');
 })->purpose('Relance le contrôle des médias restés « reçus » ou « en traitement »');
 
+Artisan::command('announcements:send-due', function () {
+    $due = Announcement::query()
+        ->where('status', AnnouncementStatus::Scheduled->value)
+        ->whereNotNull('scheduled_at')
+        ->where('scheduled_at', '<=', now())
+        ->pluck('id');
+
+    $due->each(fn (int $id) => SendAnnouncement::dispatch($id));
+    $this->components->info($due->count().' annonce(s) programmée(s) lancée(s).');
+})->purpose('Envoie les annonces aux Relais dont l’heure programmée est arrivée');
+
 Artisan::command('appels:close-expired', function (PublishAppel $appels) {
     $expired = AppelRelais::query()->where('status', 'open')->where('deadline_at', '<=', now())->get();
     $expired->each(fn ($appel) => $appels->close($appel));
@@ -109,6 +123,7 @@ Artisan::command('appels:close-expired', function (PublishAppel $appels) {
 })->purpose('Clôt les appels à relais dont la date limite est passée');
 
 Schedule::command('appels:close-expired')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('announcements:send-due')->everyMinute()->withoutOverlapping();
 Schedule::command('relais:release-locks')->everyMinute()->withoutOverlapping();
 Schedule::command('relais:escalate')->everyMinute()->withoutOverlapping();
 Schedule::command('medias:purge-abandoned')->hourly()->withoutOverlapping();
