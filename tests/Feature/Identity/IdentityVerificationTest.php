@@ -591,3 +591,18 @@ it('affiche les pièces en image, et propose d’ouvrir un PDF ou une photo HEIC
         ->assertSee('alt="Selfie avec la pièce"', false)
         ->assertDontSee('alt="Recto de la pièce"', false);
 });
+
+it('renvoie au Relais un lien signé de courte durée vers chacune de ses pièces, image ou PDF [MOB-01]', function () {
+    Storage::disk('identity')->buildTemporaryUrlsUsing(fn (string $path, DateTimeInterface $expiration): string => 'https://s3.wasabisys.test/'.$path.'?X-Amz-Signature=abc');
+    completeIdentity();
+
+    $files = $this->getJson(route('api.v1.identity.show'))->assertOk()->json('data.files');
+
+    expect($files)->not->toBeEmpty();
+
+    foreach ($files as $file) {
+        expect($file['url'])->toStartWith('https://s3.wasabisys.test/')->toContain('X-Amz-Signature=')
+            ->and($file['url_expires_at'])->not->toBeNull()
+            ->and($file)->not->toHaveKey('path');
+    }
+});
