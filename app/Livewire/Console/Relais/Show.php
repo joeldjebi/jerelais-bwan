@@ -4,9 +4,15 @@ namespace App\Livewire\Console\Relais;
 
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Support\CommuneAccess;
+use App\Domain\Audit\AuditLogger;
 use App\Domain\Auth\Actions\RevokeDevice;
 use App\Domain\Auth\Models\Device;
+use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Contribution\Models\RelaisItem;
+use App\Domain\Gains\Enums\CommissionStatus;
+use App\Domain\Gains\Models\Commission;
+use App\Domain\Gains\Models\PayoutAccount;
+use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Relais\Actions\ChangeRelaisStatus;
 use App\Domain\Relais\Enums\RelaisStatus;
 use App\Domain\Relais\Models\RelaisProfile;
@@ -28,6 +34,9 @@ use Livewire\Component;
  * @property-read Collection<int, Device> $devices
  * @property-read array<string, int> $stats
  * @property-read Collection<int, Commune> $communes
+ * @property-read bool $canSeePersonal
+ * @property-read array{candidature: Candidature|null, account: User|null, identity: IdentityVerification|null, payout: PayoutAccount|null, gains: array{due: int, paid: int}} $personal
+ * @property-read int $pushCount
  */
 class Show extends Component
 {
@@ -42,10 +51,59 @@ class Show extends Component
 
     public string $targetCommune = '';
 
+    /** Informations personnelles affichées après un clic (consultation inscrite au journal d'audit). */
+    public bool $revealed = false;
+
     public function mount(RelaisProfile $profile): void
     {
         abort_unless(app(CommuneAccess::class)->canAccessCommune($this->user(), $profile->commune_id), 404);
         $this->profile = $profile;
+    }
+
+    /**
+     * Affiche les informations personnelles du Relais (§9.4) : réservé à l'administration et à la coordination,
+     * chaque consultation est inscrite au journal d'audit.
+     */
+    public function revealPersonal(AuditLogger $audit): void
+    {
+        abort_unless($this->canSeePersonal, 403);
+
+        if (! $this->revealed) {
+            $audit->record('relais.personal_data.viewed', $this->profile, actor: $this->user(), communeId: $this->profile->commune_id);
+        }
+
+        $this->revealed = true;
+    }
+
+    #[Computed]
+    public function canSeePersonal(): bool
+    {
+        $user = $this->user();
+
+        return $user->can(Permission::UsersManage->value) || $user->can(Permission::IdentityView->value);
+    }
+
+    /**
+     * Identité déclarée, compte, vérification d'identité, coordonnées de paiement et gains du Relais.
+     *
+     * @return array{candidature: Candidature|null, account: User|null, identity: IdentityVerification|null, payout: PayoutAccount|null, gains: array{due: int, paid: int}}
+     */
+    #[Computed]
+    public function personal(): array
+    {
+        $userId = $this->profile->user_id;
+        $totals = Commission::query()->where('user_id', $userId)->selectRaw('status, sum(amount) as total')->groupBy('status')->pluck('total', 'status');
+
+        return [
+            'candidature' => Candidature::withoutCommuneRestriction()->where('user_id', $userId)->latest('id')->first(),
+            'account' => User::query()->find($userId),
+            'identity' => IdentityVerification::query()->where('user_id', $userId)->with(['documentType', 'commune:id,name', 'localite:id,name'])->first(),
+            'payout' => PayoutAccount::query()->where('user_id', $userId)->first(),
+            'gains' => [
+                'due' => (int) ($totals[CommissionStatus::Due->value] ?? 0),
+                'paid' => (int) ($totals[CommissionStatus::Paid->value] ?? 0),
+            ],
+        ];
     }
 
     public function open(string $action): void
@@ -109,6 +167,15 @@ class Show extends Component
     public function devices(): Collection
     {
         return Device::query()->where('user_id', $this->profile->user_id)->whereNull('revoked_at')->latest('last_seen_at')->get();
+    }
+
+    /**
+     * Appareils qui peuvent recevoir les notifications push (jeton enregistré).
+     */
+    #[Computed]
+    public function pushCount(): int
+    {
+        return $this->profile->pushDevices()->count();
     }
 
     /**

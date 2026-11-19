@@ -47,6 +47,90 @@
         <x-console.stat :label="__('Fiabilité')" :value="$this->stats['reliability'] < 0 ? '—' : $this->stats['reliability'].' %'" icon="shield" :tint="$this->stats['reliability'] >= 70 ? 'green' : 'orange'" :hint="__('Indicateur interne')" />
     </div>
 
+    <div class="grid gap-6 lg:grid-cols-2">
+        @if ($this->canSeePersonal)
+            <x-console.group :title="__('Informations personnelles')" :footer="__('Chaque consultation est inscrite au journal d’audit (§9.4).')">
+                @if (! $revealed)
+                    <div class="flex flex-col items-center gap-3 px-6 py-8 text-center">
+                        <x-console.tile icon="eye-off" tint="pink" />
+                        <p class="max-w-sm text-[0.875rem] text-mute">{{ __('Nom, naissance, téléphone, e-mail, pièce d’identité et coordonnées de paiement du Relais.') }}</p>
+                        <x-ui.button size="sm" variant="secondary" wire:click="revealPersonal">{{ __('Afficher') }}</x-ui.button>
+                    </div>
+                @else
+                    @php
+                        ['candidature' => $c, 'account' => $account, 'identity' => $idv, 'payout' => $payout, 'gains' => $gains] = $this->personal;
+                        $phone = $account?->phoneNumber();
+                        $fcfa = fn (int $amount): string => number_format($amount, 0, ',', ' ').' FCFA';
+                        $rows = [
+                            __('Nom') => $c?->last_name,
+                            __('Prénoms') => $c?->first_names,
+                            __('Sexe') => $c?->gender?->label(),
+                            __('Naissance') => $c?->birth_date ? $c->birth_date->translatedFormat('j F Y').' ('.__(':age ans', ['age' => (int) $c->birth_date->diffInYears(now())]).')' : null,
+                            __('Profession') => $c?->occupation?->label(),
+                            __('E-mail') => $c?->email ?: $account?->email,
+                            __('Compte créé') => $account?->created_at?->timezone('Africa/Abidjan')->translatedFormat('j F Y'),
+                            __('Dernière connexion') => $account?->last_login_at?->timezone('Africa/Abidjan')->translatedFormat('j F Y, H:i'),
+                        ];
+                    @endphp
+                    <dl class="divide-y divide-line text-[0.9375rem]">
+                        <div class="flex justify-between gap-4 px-4 py-2.5">
+                            <dt class="text-mute">{{ __('Téléphone') }}</dt>
+                            <dd class="text-right font-medium">@if ($phone)<a href="tel:{{ $phone->e164 }}" class="text-tile-blue hover:opacity-80">{{ $phone->e164 }}</a>@else — @endif</dd>
+                        </div>
+                        @foreach ($rows as $label => $value)
+                            <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-mute">{{ $label }}</dt><dd class="text-right font-medium">{{ $value ?: '—' }}</dd></div>
+                        @endforeach
+                        <div class="flex items-center justify-between gap-4 px-4 py-2.5">
+                            <dt class="text-mute">{{ __('Identité') }}</dt>
+                            <dd class="text-right font-medium">
+                                @if ($idv && auth()->user()->can(Permission::UsersManage->value))
+                                    <a href="{{ route('console.identity.show', $idv) }}" wire:navigate class="text-tile-blue hover:opacity-80">{{ $idv->status->label() }}@if ($idv->documentType) · {{ $idv->documentType->name }}@endif</a>
+                                @elseif ($idv)
+                                    {{ $idv->status->label() }}@if ($idv->documentType) · {{ $idv->documentType->name }}@endif
+                                @else
+                                    {{ __('Non soumise') }}
+                                @endif
+                            </dd>
+                        </div>
+                        <div class="flex justify-between gap-4 px-4 py-2.5">
+                            <dt class="text-mute">{{ __('Paiement') }}</dt>
+                            <dd class="text-right font-medium">{{ $payout ? $payout->method->label().' · '.$payout->phone.' · '.$payout->holder_name : __('Non renseigné') }}</dd>
+                        </div>
+                        <div class="flex justify-between gap-4 px-4 py-2.5">
+                            <dt class="text-mute">{{ __('Commissions') }}</dt>
+                            <dd class="text-right font-medium">{{ __(':due à payer · :paid payés', ['due' => $fcfa($gains['due']), 'paid' => $fcfa($gains['paid'])]) }}</dd>
+                        </div>
+                    </dl>
+                @endif
+            </x-console.group>
+        @endif
+
+        <x-console.group :title="__('Notifications push')">
+            <div class="flex items-center gap-3.5 px-4 py-4">
+                <x-console.tile icon="bell" :tint="$this->pushCount > 0 ? 'green' : 'gray'" />
+                <div class="min-w-0 flex-1">
+                    <p class="text-[0.9375rem] font-semibold">{{ $this->pushCount > 0 ? trans_choice('Activées sur :count appareil|Activées sur :count appareils', $this->pushCount) : __('Non activées') }}</p>
+                    <p class="text-[0.8125rem] text-mute">
+                        {{ $this->pushCount > 0
+                            ? __('L’application a enregistré son jeton de notifications : le Relais reçoit les notifications push.')
+                            : __('Aucun jeton de notifications enregistré : le Relais ne reçoit que les SMS de secours et les annonces dans l’application.') }}
+                    </p>
+                </div>
+                <x-console.badge :tone="$this->pushCount > 0 ? 'success' : 'neutral'">{{ $this->pushCount > 0 ? __('Push activé') : __('Pas de push') }}</x-console.badge>
+            </div>
+            @if ($this->devices->isNotEmpty())
+                <ul class="border-t border-line">
+                    @foreach ($this->devices as $device)
+                        <li wire:key="push-{{ $device->uuid }}" class="flex items-center justify-between gap-3 px-4 py-2.5 text-[0.875rem]">
+                            <span class="min-w-0 truncate">{{ $device->name }} <span class="text-mute">· {{ $device->platform->value }}{{ $device->app_version ? ' · v'.$device->app_version : '' }}</span></span>
+                            <span @class(['shrink-0 font-medium', 'text-status-validated' => $device->fcm_token !== null, 'text-mute' => $device->fcm_token === null])>{{ $device->fcm_token !== null ? __('Jeton enregistré') : __('Pas de jeton') }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </x-console.group>
+    </div>
+
     <x-console.group :title="__('Historique des relais')">
         @if ($this->history->isEmpty())
             <x-console.empty icon="inbox" tint="blue" :title="__('Aucun envoi')" :text="__('Les relais envoyés par ce Relais apparaîtront ici.')" />

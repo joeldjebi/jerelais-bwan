@@ -28,6 +28,10 @@ class Index extends Component
     #[Url(except: '')]
     public string $status = '';
 
+    /** Notifications push : « avec » (jeton enregistré), « sans », ou tous. */
+    #[Url(except: '')]
+    public string $push = '';
+
     public function updated(): void
     {
         $this->resetPage();
@@ -47,6 +51,9 @@ class Index extends Component
             ->withCount(['items as validated_count' => fn ($query) => $query->whereIn('state', ['validated', 'selected', 'broadcast', 'archived'])])
             ->when($term !== '', fn ($query) => $query->where(fn ($inner) => $inner->where('display_name', 'ilike', "%{$term}%")->orWhere('number', 'ilike', "%{$term}%")))
             ->when($this->status !== '', fn ($query) => $query->where('status', RelaisStatus::from($this->status)->value))
+            ->withExists('pushDevices as push_enabled')
+            ->when($this->push === 'avec', fn ($query) => $query->has('pushDevices'))
+            ->when($this->push === 'sans', fn ($query) => $query->doesntHave('pushDevices'))
             ->orderBy('display_name')
             ->paginate(30);
     }
