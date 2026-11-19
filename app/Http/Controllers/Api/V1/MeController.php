@@ -124,10 +124,15 @@ class MeController extends Controller
     }
 
     /**
-     * Mettre à jour l'appareil courant.
+     * Enregistrer le jeton de notifications push (FCM).
      *
-     * À appeler après chaque connexion, puis au démarrage si le jeton de notifications push (FCM) ou la version de l'application a changé.
-     * Met aussi à jour la date de dernière activité de l'appareil, visible par la coordination.
+     * Enregistre le jeton Firebase Cloud Messaging de l'appareil connecté (`fcm_token`) et la version de l'application
+     * (`app_version`) : sans ce jeton, le Relais ne reçoit pas de notification push (seulement le SMS de secours).
+     *
+     * À appeler juste après chaque connexion, puis à chaque renouvellement du jeton par Firebase (`onTokenRefresh`) et
+     * après une mise à jour de l'application. `fcm_token: null` coupe les notifications de cet appareil.
+     * La réponse indique `push_enabled: true` quand un jeton est enregistré. Met aussi à jour la dernière activité de
+     * l'appareil, visible par la coordination. Voir « Notifications » dans le guide pour le contenu reçu.
      */
     public function updateDevice(UpdateCurrentDeviceRequest $request): DeviceResource
     {
