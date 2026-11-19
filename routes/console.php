@@ -91,9 +91,10 @@ Artisan::command('medias:reprocess {--minutes=10 : Bloqués depuis au moins ce n
 
         try {
             ProcessMedia::dispatchSync($media->id);
-            $this->components->twoColumnDetail('Média '.$media->id, (string) Media::query()->whereKey($media->id)->value('status'));
+            $status = Media::query()->findOrFail($media->id)->status;
+            $this->components->twoColumnDetail('Média '.$media->id, $status === MediaStatus::Ready ? '<fg=green>ready</>' : $status->value);
         } catch (Throwable $exception) {
-            Media::query()->whereKey($media->id)->update(['status' => MediaStatus::Uploaded->value]);
+            Media::query()->whereKey($media->id)->where('status', MediaStatus::Processing->value)->update(['status' => MediaStatus::Uploaded->value]);
             $this->components->twoColumnDetail('Média '.$media->id, '<fg=red>'.$exception::class.' : '.$exception->getMessage().'</>');
         }
     }
