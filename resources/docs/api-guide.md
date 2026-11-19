@@ -102,7 +102,29 @@ Les référentiels publics (`/auth/register/options`, `/communes`, `/categories`
 
 ## Notifications
 
-À chaque décision (relais validé, rejeté, complément demandé, sélectionné, diffusé ; candidature décidée), à chaque appel à relais de sa zone et à chaque message du coordonnateur, le Relais est prévenu par **SMS**. Les notifications push (FCM) utiliseront le jeton déclaré par `PUT /devices/current`, avec un contenu de la forme `{"type": "relais.status_changed", "uuid": "…", "status": "validated"}` (types : `relais.status_changed`, `appel.created`, `message.received`, `candidature.decided`) ; leur envoi est en cours de branchement avec l’équipe mobile.
+Le Relais reçoit une **notification push** (Firebase Cloud Messaging) sur chaque appareil connecté qui a déclaré son jeton. Sans appareil joignable, il reçoit un **SMS** à la place.
+
+**Ce que l'application doit faire** :
+
+1. Obtenir le jeton FCM de l'appareil (Firebase Messaging, après l'autorisation de notifications sur iOS et sur Android 13 et plus).
+2. L'envoyer par `PUT /devices/current` (champ `fcm_token`) juste après chaque connexion, puis à chaque renouvellement du jeton (`onTokenRefresh`). `push_enabled` passe alors à `true` dans la réponse.
+3. Utiliser le **même projet Firebase** que le serveur (fichiers `google-services.json` et `GoogleService-Info.plist`). Un jeton d'un autre projet est refusé et oublié.
+4. À la déconnexion (`POST /auth/logout`), le jeton est oublié : plus de notification sur cet appareil.
+
+**Contenu reçu** : un titre et un texte en français, prêts à afficher (bloc `notification`), et un bloc `data` pour ouvrir le bon écran. Toutes les valeurs de `data` sont des chaînes.
+
+| `type` | Quand | Autres champs de `data` | Écran à ouvrir |
+|---|---|---|---|
+| `relais.status_changed` | Relais validé, rejeté, complément demandé, sélectionné ou diffusé | `uuid` (relais), `status` : `validated`, `rejected`, `complement_requested`, `selected`, `broadcast` | `GET /relais/{uuid}` |
+| `identity.decided` | Vérification d'identité traitée | `status` : `verified`, `rejected` | `GET /identity` |
+| `candidature.decided` | Candidature traitée | `uuid` (candidature), `status` : `accept`, `reject`, `complement` | `GET /candidature` |
+| `account.status_changed` | Compte de Relais suspendu, radié ou réactivé | `status` : `suspended`, `struck_off`, `active` | `GET /me` |
+| `message.received` | Message du coordonnateur | `uuid` (conversation) | `GET /conversations/{uuid}/messages` |
+| `appel.created` | Appel à relais dans la zone du Relais | `uuid` (appel) | `GET /appels/{uuid}` |
+
+Exemple de `data` : `{"type": "relais.status_changed", "uuid": "0193…", "status": "validated"}`. Un `type` inconnu doit être ignoré (ouvrir l'accueil) : d'autres pourront s'ajouter.
+
+Aucune donnée sensible (motif de refus, commentaire) dans la notification : l'application la récupère par l'API.
 
 ## Données personnelles
 

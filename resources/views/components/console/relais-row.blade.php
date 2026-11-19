@@ -5,7 +5,8 @@
     $urgencyTone = ['urgent' => 'danger', 'important' => 'warning', 'normal' => 'neutral'];
     $stateTone = ['received' => 'info', 'in_review' => 'accent', 'complement_requested' => 'warning', 'sensitive' => 'warning', 'validated' => 'success', 'selected' => 'success', 'broadcast' => 'success', 'rejected' => 'danger', 'archived' => 'neutral'];
     $kindIcon = ['photo' => 'photo', 'video' => 'video', 'audio' => 'mic'];
-    $media = $relais->medias->first();
+    // Vignette du premier fichier contrôlé qui en a une : un fichier encore en traitement ne masque pas les autres.
+    $media = $relais->medias->first(fn ($candidate) => $candidate->status === \App\Domain\Media\Enums\MediaStatus::Ready && $candidate->variants->contains('kind', 'thumbnail')) ?? $relais->medias->first();
     $thumb = $media?->variants->firstWhere('kind', 'thumbnail');
     $overdue = $relais->isOverdue();
     $locked = auth()->user() !== null && $relais->isLockedFor(auth()->user());

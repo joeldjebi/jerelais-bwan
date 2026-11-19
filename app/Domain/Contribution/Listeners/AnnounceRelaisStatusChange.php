@@ -33,7 +33,7 @@ class AnnounceRelaisStatusChange
             new PushMessage(
                 __("notifications.relais.{$event->to}.title"),
                 __("notifications.relais.{$event->to}.body", ['title' => $title]),
-                ['type' => "relais.{$event->to}", 'relais' => $relais->uuid],
+                ['type' => 'relais.status_changed', 'uuid' => $relais->uuid, 'status' => $event->to],
             ),
             __("relais_items.sms.{$event->to}", ['title' => $title]),
             'relais_item',

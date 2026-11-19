@@ -4,12 +4,14 @@ use App\Domain\Audit\Models\AuditLog;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Media\Contracts\VirusScanner;
 use App\Domain\Media\Enums\MediaStatus;
+use App\Domain\Media\Jobs\ProcessMedia;
 use App\Domain\Media\Models\Media;
 use App\Domain\Media\Storage\FakeMultipartStorage;
 use App\Domain\Media\Support\PerceptualHash;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Settings\Settings;
 use Database\Seeders\ListsSeeder;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -248,4 +250,25 @@ it('refuse un fichier plus gros que la taille annoncée, avant tout télécharge
         ->assertJsonValidationErrors(['size' => 'La taille du fichier reçu ne correspond pas à celle annoncée : recommencez l’envoi.']);
 
     expect($media->fresh())->status->toBe(MediaStatus::Rejected)->upload_id->toBeNull();
+});
+
+it('ne laisse pas un média « en traitement » pour toujours après un échec définitif du contrôle', function () {
+    $relais = RelaisItem::factory()->create();
+    $media = attachReadyMedia($relais);
+    $media->forceFill(['status' => MediaStatus::Processing])->save();
+
+    (new ProcessMedia($media->id))->failed(new RuntimeException('clamd injoignable'));
+
+    expect($media->refresh()->status)->toBe(MediaStatus::Uploaded);
+});
+
+it('montre dans les listes la vignette d’un fichier prêt, même si le premier est encore en traitement', function () {
+    $relais = RelaisItem::factory()->create();
+    attachReadyMedia($relais)->forceFill(['status' => MediaStatus::Processing])->save();
+    $ready = attachReadyMedia($relais);
+    $ready->variants()->create(['kind' => 'thumbnail', 'disk' => 'medias', 'path' => 'relais/x/vignettes/y.jpg', 'mime' => 'image/jpeg', 'size' => 10, 'width' => 640, 'height' => 480]);
+
+    $html = Blade::render('<x-console.relais-row :relais="$relais" />', ['relais' => $relais->load('medias.variants')]);
+
+    expect($html)->toContain(route('console.medias.show', [$ready, 'thumbnail']));
 });

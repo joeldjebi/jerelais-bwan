@@ -33,7 +33,7 @@ class NotifyAppelRecipients implements ShouldQueue
 
         $replace = ['title' => str($appel->title)->limit(50), 'deadline' => $appel->deadline_at->timezone('Africa/Abidjan')->translatedFormat('j M à H:i')];
         $sms = (string) __('appels_relais.sms', $replace);
-        $push = new PushMessage(__('notifications.appel.title'), __('notifications.appel.body', $replace), ['type' => 'appel', 'appel' => $appel->uuid]);
+        $push = new PushMessage(__('notifications.appel.title'), __('notifications.appel.body', $replace), ['type' => 'appel.created', 'uuid' => $appel->uuid]);
 
         AppelAudience::profiles($appel)->when($this->profileIds !== null, fn ($query) => $query->whereIn('relais_profiles.id', $this->profileIds))->with('user')->chunkById(200, function ($profiles) use ($notify, $sms, $push): void {
             foreach ($profiles as $profile) {

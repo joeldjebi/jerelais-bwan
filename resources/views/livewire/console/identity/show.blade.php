@@ -11,7 +11,13 @@
     $phone = $v->user?->phoneNumber();
     $name = $v->user?->name ?: __('Sans nom');
     $tone = ['draft' => 'neutral', 'submitted' => 'info', 'verified' => 'success', 'rejected' => 'warning'];
-    $kinds = [...($v->documentType?->sides() ?? []), IdentityFileKind::Selfie, ...($v->files->contains('kind', IdentityFileKind::ProfilePhoto) ? [IdentityFileKind::ProfilePhoto] : [])];
+    // Faces attendues pour le type de pièce, puis tout fichier reçu en plus (type changé après l'envoi, ancien envoi) : rien n'est masqué.
+    $kinds = collect([...($v->documentType?->sides() ?? []), IdentityFileKind::Selfie])
+        ->merge($v->files->pluck('kind'))
+        ->unique(fn ($kind) => $kind->value)
+        ->sortBy(fn ($kind) => array_search($kind, IdentityFileKind::cases(), true))
+        ->values()
+        ->all();
 @endphp
 
 <div class="space-y-7" x-data="{ zoom: null }">

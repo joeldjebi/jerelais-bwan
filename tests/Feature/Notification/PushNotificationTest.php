@@ -38,7 +38,7 @@ it('envoie une notification push au Relais quand son relais est validé, sans SM
         ->and($this->push->sent[0]['token'])->toBe('jeton-fcm-1')
         ->and($this->push->sent[0]['message']->title)->toBe('Relais validé')
         ->and($this->push->sent[0]['message']->body)->toContain('Inondation à Niangon')
-        ->and($this->push->sent[0]['message']->data)->toBe(['type' => 'relais.validated', 'relais' => $this->relais->uuid])
+        ->and($this->push->sent[0]['message']->data)->toBe(['type' => 'relais.status_changed', 'uuid' => $this->relais->uuid, 'status' => 'validated'])
         ->and($this->sms->sent)->toBeEmpty();
 });
 
@@ -48,7 +48,7 @@ it('notifie chaque décision sur le relais : refus, complément, sélection, dif
     RelaisStatusChanged::dispatch($this->relais, 'in_review', $status);
 
     expect($this->push->sent[0]['message']->title)->toBe($title)
-        ->and($this->push->sent[0]['message']->data['type'])->toBe("relais.{$status}");
+        ->and($this->push->sent[0]['message']->data['status'])->toBe($status);
 })->with([
     ['rejected', 'Relais non retenu'],
     ['complement_requested', 'Une question sur votre relais'],
