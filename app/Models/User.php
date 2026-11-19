@@ -8,6 +8,7 @@ use App\Domain\Auth\Enums\UserStatus;
 use App\Domain\Auth\Models\Device;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Formation\Models\QuizAttempt;
+use App\Domain\Gains\Models\Commission;
 use App\Domain\Identity\Enums\IdentityStatus;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Legal\Models\Consent;
@@ -139,6 +140,16 @@ class User extends Authenticatable
     public function identityVerification(): HasOne
     {
         return $this->hasOne(IdentityVerification::class);
+    }
+
+    /**
+     * Commissions du Relais (MOB-26, ADM-27).
+     *
+     * @return HasMany<Commission, $this>
+     */
+    public function commissions(): HasMany
+    {
+        return $this->hasMany(Commission::class);
     }
 
     public function isEligibleForGains(): bool

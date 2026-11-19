@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Auth\RegistrationController;
 use App\Http\Controllers\Api\V1\Candidature\CandidatureController;
 use App\Http\Controllers\Api\V1\DiffusionController;
 use App\Http\Controllers\Api\V1\Formation\FormationController;
+use App\Http\Controllers\Api\V1\GainsController;
 use App\Http\Controllers\Api\V1\Identity\IdentityController;
 use App\Http\Controllers\Api\V1\Legal\LegalController;
 use App\Http\Controllers\Api\V1\MeController;
@@ -62,6 +63,7 @@ Route::name('api.v1.')->group(function () {
         Route::middleware('password.set')->group(function () {
             Route::get('me/stats', [MeController::class, 'stats'])->name('me.stats');
             Route::get('me/badge', [MeController::class, 'badge'])->name('me.badge');
+            Route::get('me/gains', GainsController::class)->name('me.gains');
             Route::get('me/export', [MeController::class, 'export'])->middleware('throttle:5,60')->name('me.export');
             Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
 

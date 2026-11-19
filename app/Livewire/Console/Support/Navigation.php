@@ -49,6 +49,7 @@ class Navigation
             [
                 'label' => __('Administration'),
                 'items' => [
+                    ['label' => __('Paiements'), 'route' => 'console.gains', 'icon' => 'cart', 'tint' => 'green', 'keywords' => 'paiements commissions gains mobile money wave orange money relayeurs', 'permission' => Permission::CommissionsManage],
                     ['label' => __('Paramètres'), 'route' => 'console.settings', 'icon' => 'layers', 'tint' => 'gray', 'keywords' => 'réglages délais médias conservation', 'permission' => Permission::SettingsManage],
                     ['label' => __('Référentiels'), 'route' => 'console.referentiels', 'icon' => 'book', 'tint' => 'blue', 'keywords' => 'localités quartiers lieux catégories motifs rejet listes pièces identité cni passeport', 'permission' => [Permission::TerritoireManage, Permission::SettingsManage]],
                     ['label' => __('Formation et quiz'), 'route' => 'console.formation', 'icon' => 'sparkles', 'tint' => 'orange', 'keywords' => 'fiches quiz questions candidats apprentissage', 'permission' => Permission::SettingsManage],

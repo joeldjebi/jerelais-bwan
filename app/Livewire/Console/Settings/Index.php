@@ -44,6 +44,7 @@ class Index extends Component
             $default = config('jerelais.settings')[$key];
             $rules['values.'.self::field($key)] = match (true) {
                 is_bool($default) => ['boolean'],
+                $default === null && $group === 'gains' => ['nullable', 'integer', 'min:1', 'max:10000000'],
                 $default === null => ['nullable', 'integer', 'min:1', 'max:36500'],
                 default => ['required', 'integer', 'min:1', 'max:100000'],
             };
