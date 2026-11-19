@@ -24,6 +24,9 @@ use App\Domain\Media\Antivirus\FakeVirusScanner;
 use App\Domain\Media\Contracts\VirusScanner;
 use App\Domain\Media\Storage\MultipartStorage;
 use App\Domain\Media\Storage\S3MultipartStorage;
+use App\Domain\Notification\Contracts\PushGateway;
+use App\Domain\Notification\Push\FcmPushGateway;
+use App\Domain\Notification\Push\LogPushGateway;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -46,6 +49,12 @@ class DomainServiceProvider extends ServiceProvider
             'none' => new NullSmsGateway,
             'mtarget' => MtargetSmsGateway::fromConfig(),
             default => throw new InvalidArgumentException('Passerelle SMS non configurée : '.config('jerelais.sms.driver')),
+        });
+
+        $this->app->bind(PushGateway::class, fn () => match (config('jerelais.push.driver')) {
+            'fcm' => FcmPushGateway::fromConfig(),
+            'log', 'none' => new LogPushGateway,
+            default => throw new InvalidArgumentException('Passerelle push non configurée : '.config('jerelais.push.driver')),
         });
 
         $this->app->bind(VirusScanner::class, function () {

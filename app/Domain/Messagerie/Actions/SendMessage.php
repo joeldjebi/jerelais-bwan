@@ -3,12 +3,12 @@
 namespace App\Domain\Messagerie\Actions;
 
 use App\Domain\Audit\AuditLogger;
-use App\Domain\Auth\Contracts\SmsGateway;
-use App\Domain\Auth\Sms\NotificationSms;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Messagerie\Models\Conversation;
 use App\Domain\Messagerie\Models\Message;
+use App\Domain\Notification\Actions\NotifyUser;
+use App\Domain\Notification\Data\PushMessage;
 use App\Domain\Relais\Enums\RelaisStatus;
 use App\Domain\Relais\Models\RelaisProfile;
 use App\Domain\Territoire\Models\Commune;
@@ -27,7 +27,7 @@ class SendMessage
     public const SMS_COOLDOWN_MINUTES = 60;
 
     public function __construct(
-        private readonly SmsGateway $sms,
+        private readonly NotifyUser $notify,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -137,18 +137,26 @@ class SendMessage
         $conversation->forceFill([$field => now()])->save();
     }
 
+    /**
+     * Notification push à chaque message ; sans appareil joignable, SMS limité à un par période (coût).
+     */
     private function remindRelais(Conversation $conversation): void
     {
+        $user = $conversation->relaisProfile->user;
+        $push = new PushMessage(__('notifications.conversation.title'), __('notifications.conversation.body'), ['type' => 'conversation', 'conversation' => $conversation->uuid]);
+
+        if (NotifyUser::canReceivePush($user)) {
+            $this->notify->handle($user, $push, __('conversations.sms'), 'conversation');
+
+            return;
+        }
+
         if ($conversation->relais_notified_at !== null && $conversation->relais_notified_at->gt(now()->subMinutes(self::SMS_COOLDOWN_MINUTES))) {
             return;
         }
 
-        $phone = $conversation->relaisProfile->user->phoneNumber();
-
-        if ($phone !== null) {
-            if (NotificationSms::send($this->sms, $phone, __('conversations.sms'), 'conversation')) {
-                $conversation->forceFill(['relais_notified_at' => now()])->save();
-            }
+        if ($this->notify->sendSms($user, __('conversations.sms'), 'conversation')) {
+            $conversation->forceFill(['relais_notified_at' => now()])->save();
         }
     }
 }

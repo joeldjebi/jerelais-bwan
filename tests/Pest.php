@@ -8,6 +8,8 @@ use App\Domain\Media\Enums\MediaStatus;
 use App\Domain\Media\Models\Media;
 use App\Domain\Media\Storage\FakeMultipartStorage;
 use App\Domain\Media\Storage\MultipartStorage;
+use App\Domain\Notification\Contracts\PushGateway;
+use App\Domain\Notification\Push\FakePushGateway;
 use App\Domain\Territoire\Models\Commune;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,6 +44,18 @@ function fakeSms(): FakeSmsGateway
 {
     $gateway = new FakeSmsGateway;
     app()->instance(SmsGateway::class, $gateway);
+
+    return $gateway;
+}
+
+/**
+ * Active les notifications push avec une passerelle en mémoire et la retourne.
+ */
+function fakePush(): FakePushGateway
+{
+    $gateway = new FakePushGateway;
+    config(['jerelais.push.driver' => 'fake']);
+    app()->instance(PushGateway::class, $gateway);
 
     return $gateway;
 }
