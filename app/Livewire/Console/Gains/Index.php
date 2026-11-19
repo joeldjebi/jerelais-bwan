@@ -9,6 +9,7 @@ use App\Domain\Gains\Enums\CommissionStatus;
 use App\Domain\Gains\Enums\PaymentMethod;
 use App\Domain\Gains\Exceptions\CommissionRefused;
 use App\Domain\Gains\Models\Commission;
+use App\Domain\Gains\Models\Payout;
 use App\Domain\Identity\Enums\IdentityStatus;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -29,7 +30,7 @@ use Livewire\WithPagination;
  * référence) et l'historique. Réservé à l'administration.
  *
  * @property-read LengthAwarePaginator<int, User> $due
- * @property-read LengthAwarePaginator<int, Commission> $history
+ * @property-read LengthAwarePaginator<int, Payout>|LengthAwarePaginator<int, Commission> $history
  * @property-read array{due_total: int, due_relais: int, paid_month: int} $stats
  * @property-read User|null $payee
  * @property-read Collection<int, Commission> $payeeCommissions
@@ -67,7 +68,9 @@ class Index extends Component
 
     public function updatedTab(): void
     {
-        $this->resetPage();
+        $this->resetPage('dus');
+        $this->resetPage('historique');
+        unset($this->history);
     }
 
     public function openPay(string $uuid): void
@@ -77,8 +80,10 @@ class Index extends Component
         $this->payeeUuid = $uuid;
         unset($this->payee, $this->payeeCommissions);
         abort_if($this->payee === null, 404);
-        $this->method = PaymentMethod::Wave->value;
-        $this->phone = (string) $this->payee->phoneNumber()?->e164;
+        // Coordonnées choisies par le Relais dans l'application, sinon son numéro de compte.
+        $account = $this->payee->payoutAccount;
+        $this->method = $account?->method->value ?? PaymentMethod::Wave->value;
+        $this->phone = $account->phone ?? (string) $this->payee->phoneNumber()?->e164;
         $this->reference = '';
         $this->paying = true;
     }
@@ -152,21 +157,32 @@ class Index extends Component
             ->with([
                 'relaisProfile' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'user_id', 'display_name', 'number', 'commune_id')->with('commune:id,name'),
                 'identityVerification:id,user_id,status',
+                'payoutAccount',
             ])
             ->orderByDesc('due_total')
             ->paginate(20, pageName: 'dus');
     }
 
     /**
-     * @return LengthAwarePaginator<int, Commission>
+     * Paiements effectués (onglet « Historique ») ou commissions annulées (onglet « Annulées »).
+     *
+     * @return LengthAwarePaginator<int, Payout>|LengthAwarePaginator<int, Commission>
      */
     #[Computed]
     public function history(): LengthAwarePaginator
     {
-        return Commission::query()
-            ->whereIn('status', [CommissionStatus::Paid->value, CommissionStatus::Cancelled->value])
-            ->with(['user:id,name', 'payer:id,name', 'relaisItem' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'uuid', 'title')])
-            ->latest('updated_at')
+        if ($this->tab === 'annulees') {
+            return Commission::query()
+                ->where('status', CommissionStatus::Cancelled->value)
+                ->with(['user:id,name', 'relaisItem' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'uuid', 'title')])
+                ->latest('cancelled_at')
+                ->paginate(30, pageName: 'historique');
+        }
+
+        return Payout::query()
+            ->withCount('commissions')
+            ->with(['user:id,name', 'payer:id,name'])
+            ->latest('paid_at')
             ->paginate(30, pageName: 'historique');
     }
 
@@ -179,14 +195,14 @@ class Index extends Component
         return [
             'due_total' => (int) Commission::query()->due()->sum('amount'),
             'due_relais' => Commission::query()->due()->distinct()->count('user_id'),
-            'paid_month' => (int) Commission::query()->where('status', CommissionStatus::Paid->value)->where('paid_at', '>=', now()->startOfMonth())->sum('amount'),
+            'paid_month' => (int) Payout::query()->where('paid_at', '>=', now()->startOfMonth())->sum('amount'),
         ];
     }
 
     #[Computed]
     public function payee(): ?User
     {
-        return $this->payeeUuid === null ? null : User::query()->where('uuid', $this->payeeUuid)->with('identityVerification:id,user_id,status')->first();
+        return $this->payeeUuid === null ? null : User::query()->where('uuid', $this->payeeUuid)->with(['identityVerification:id,user_id,status', 'payoutAccount'])->first();
     }
 
     /**

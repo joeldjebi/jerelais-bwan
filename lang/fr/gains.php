@@ -23,5 +23,7 @@ return [
         'not_due' => 'Cette commission n’est plus à payer.',
         'identity_not_verified' => 'Identité du Relais non vérifiée : vérifiez-la avant de payer.',
         'not_paid' => 'Cette commission n’a pas été payée.',
+        'phone_invalid' => 'Numéro Mobile Money invalide : indiquez un numéro ivoirien, par exemple 0707070707 ou +2250707070707.',
+        'method_unknown' => 'Opérateur inconnu : wave, orange_money, mtn_momo ou moov_money.',
     ],
 ];

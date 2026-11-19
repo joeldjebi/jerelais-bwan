@@ -9,6 +9,8 @@ use App\Domain\Auth\Models\Device;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Formation\Models\QuizAttempt;
 use App\Domain\Gains\Models\Commission;
+use App\Domain\Gains\Models\Payout;
+use App\Domain\Gains\Models\PayoutAccount;
 use App\Domain\Identity\Enums\IdentityStatus;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Legal\Models\Consent;
@@ -150,6 +152,26 @@ class User extends Authenticatable
     public function commissions(): HasMany
     {
         return $this->hasMany(Commission::class);
+    }
+
+    /**
+     * Coordonnées Mobile Money pour recevoir les commissions (MOB-26).
+     *
+     * @return HasOne<PayoutAccount, $this>
+     */
+    public function payoutAccount(): HasOne
+    {
+        return $this->hasOne(PayoutAccount::class);
+    }
+
+    /**
+     * Paiements reçus (MOB-26).
+     *
+     * @return HasMany<Payout, $this>
+     */
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(Payout::class);
     }
 
     public function isEligibleForGains(): bool
