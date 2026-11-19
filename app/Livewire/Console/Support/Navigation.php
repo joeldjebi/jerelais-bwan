@@ -30,6 +30,7 @@ class Navigation
             [
                 'label' => __('Rédaction'),
                 'items' => [
+                    ['label' => __('Diffusions'), 'route' => 'console.diffusions', 'icon' => 'signal', 'tint' => 'teal', 'keywords' => 'diffusions vitrine vu sur reflet tv diffusé application', 'permission' => Permission::RelaisArbitrate],
                     ['label' => __('Exploitation'), 'route' => 'console.editorial', 'icon' => 'sparkles', 'tint' => 'purple', 'keywords' => 'rédaction sélection arbitrage diffusé émission', 'permission' => Permission::RelaisArbitrate],
                     ['label' => __('Appels à relais'), 'route' => 'console.appels', 'icon' => 'bell', 'tint' => 'orange', 'keywords' => 'appels zone sujet consignes', 'permission' => [Permission::AppelsCreate, Permission::AppelsCreateLocal]],
                     ['label' => __('Collections'), 'route' => 'console.collections', 'icon' => 'layers', 'tint' => 'teal', 'keywords' => 'collections dossiers sujets événements', 'permission' => Permission::RelaisArbitrate],

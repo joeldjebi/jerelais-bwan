@@ -129,6 +129,8 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::livewire('relais/{profile}', RelaisProfilePage::class)->middleware('permission:'.Permission::RelaisProfilesSuspend->value.'|'.Permission::RelaisValidate->value)->name('relais.show');
         Route::livewire('messagerie', MessageriePage::class)->middleware('permission:'.Permission::RelaisValidate->value)->name('messagerie');
         Route::livewire('redaction', EditorialPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('editorial');
+        // Diffusions « Vu sur REFLET TV » : onglet Vitrine de l'exploitation (ce que l'application affiche avec GET /diffusions).
+        Route::get('diffusions', fn () => redirect()->route('console.editorial', ['onglet' => 'vitrine']))->middleware('permission:'.Permission::RelaisArbitrate->value)->name('diffusions');
         Route::livewire('collections', CollectionsPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('collections');
         Route::livewire('collections/{collection}', CollectionPage::class)->middleware('permission:'.Permission::RelaisArbitrate->value)->name('collections.show');
         Route::post('relais/{relais}/export', [ExportController::class, 'relais'])->name('export.relais');

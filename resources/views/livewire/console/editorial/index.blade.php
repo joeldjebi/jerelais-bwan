@@ -5,16 +5,17 @@
         :subtitle="__('Des relais validés à l’antenne : arbitrez les sujets sensibles, sélectionnez, affectez, téléchargez en qualité d’origine et marquez les diffusions.')"
     />
 
-    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4" data-bento>
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-5" data-bento>
         <x-console.stat :label="__('À arbitrer')" value="" :count="$this->counts['a-arbitrer']" icon="flag" :tint="$this->counts['a-arbitrer'] > 0 ? 'orange' : 'gray'" :hint="__('Sujets sensibles')" />
         <x-console.stat :label="__('À exploiter')" value="" :count="$this->counts['a-exploiter']" icon="check" tint="green" :hint="__('Validés par les coordonnateurs')" />
         <x-console.stat :label="__('Sélectionnés')" value="" :count="$this->counts['selection']" icon="sparkles" tint="purple" :hint="__('En préparation')" />
         <x-console.stat :label="__('Diffusés')" value="" :count="$this->counts['diffuses']" icon="signal" tint="brand" :hint="__('Passés à l’antenne')" />
+        <x-console.stat :label="__('Sur la vitrine')" value="" :count="$this->counts['vitrine']" icon="sparkles" tint="teal" :hint="__('Visibles dans l’application')" />
     </div>
 
     <x-console.group :title="trans_choice(':count relais|:count relais', $this->items->total())">
         <div class="flex flex-wrap items-center gap-3 border-b border-line p-3">
-            <x-console.segmented property="tab" :current="$tab" :options="['a-arbitrer' => __('À arbitrer'), 'a-exploiter' => __('À exploiter'), 'selection' => __('Sélection'), 'diffuses' => __('Diffusés')]" />
+            <x-console.segmented property="tab" :current="$tab" :options="['a-arbitrer' => __('À arbitrer'), 'a-exploiter' => __('À exploiter'), 'selection' => __('Sélection'), 'diffuses' => __('Diffusés'), 'vitrine' => __('Vitrine')]" />
             @if ($tab === 'selection')
                 <label class="ml-auto inline-flex items-center gap-2 text-[0.875rem]">
                     <input type="checkbox" wire:model.live="mine" class="ios-check">{{ __('Affectés à moi') }}
@@ -22,8 +23,12 @@
             @endif
         </div>
 
+        @if ($tab === 'vitrine')
+            <p class="border-b border-line px-4 py-3 text-[0.8125rem] text-mute">{{ __('Relais publiés sur la vitrine « Vu sur REFLET TV » : exactement ce que l’application affiche (GET /diffusions) et la page publique du site. Pour en ajouter : ouvrir un relais diffusé, puis « Publier sur la vitrine ».') }}</p>
+        @endif
+
         @if ($this->items->isEmpty())
-            <x-console.empty icon="sparkles" tint="purple" :title="__('Rien pour l’instant')" :text="__('Les relais apparaissent ici dès qu’ils sont validés ou transmis par un coordonnateur.')" />
+            <x-console.empty icon="sparkles" tint="purple" :title="__('Rien pour l’instant')" :text="$tab === 'vitrine' ? __('Aucun relais publié sur la vitrine. Onglet « Diffusés » → ouvrir un relais → « Publier sur la vitrine ».') : __('Les relais apparaissent ici dès qu’ils sont validés ou transmis par un coordonnateur.')" />
         @else
             <ul>
                 @foreach ($this->items as $relais)

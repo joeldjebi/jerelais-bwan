@@ -33,6 +33,7 @@
                 <span class="truncate text-[0.9375rem] font-semibold">{{ $relais->title ?: __('Sans titre') }}</span>
                 @if ($relais->urgency->value !== 'normal')<x-console.badge :tone="$urgencyTone[$relais->urgency->value]">{{ $relais->urgency->label() }}</x-console.badge>@endif
                 @if ($relais->has_minors)<x-console.badge tone="warning">{{ __('Mineurs') }}</x-console.badge>@endif
+                @if ($relais->showcased_at)<x-console.badge tone="success">{{ __('Sur la vitrine') }}</x-console.badge>@endif
             </span>
             <span class="block truncate text-[0.8125rem] text-mute">
                 {{ collect([$relais->category?->name, $relais->commune?->name, $relais->relaisProfile?->display_name])->filter()->join(' · ') }}
