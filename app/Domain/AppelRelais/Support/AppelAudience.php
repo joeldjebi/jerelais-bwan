@@ -128,7 +128,7 @@ class AppelAudience
      * @param  Builder<RelaisProfile>  $query
      * @param  list<int>  $communes
      */
-    private static function livesIn(Builder $query, array $communes): void
+    public static function livesIn(Builder $query, array $communes): void
     {
         $query->whereIn('relais_profiles.commune_id', $communes)
             ->orWhere(fn (Builder $unplaced) => $unplaced->whereNull('relais_profiles.commune_id')->where(fn (Builder $fallback) => $fallback

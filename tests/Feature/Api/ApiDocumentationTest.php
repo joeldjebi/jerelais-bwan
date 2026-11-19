@@ -47,7 +47,7 @@ it('donne à chaque opération un titre, une description, un groupe et une répo
     $document = openApiDocument();
     $groups = collect($document['tags'])->pluck('name')->all();
 
-    expect($groups)->toBe(['Authentification', 'Mon compte', 'Vérification d’identité', 'Référentiels', 'Mes gains', 'Candidature', 'Textes juridiques', 'Formation et quiz', 'Relais', 'Médias', 'Appels à relais', 'Messagerie', 'Diffusions']);
+    expect($groups)->toBe(['Authentification', 'Mon compte', 'Notifications', 'Vérification d’identité', 'Référentiels', 'Mes gains', 'Candidature', 'Textes juridiques', 'Formation et quiz', 'Relais', 'Médias', 'Appels à relais', 'Messagerie', 'Diffusions']);
 
     foreach (openApiOperations($document) as ['method' => $method, 'path' => $path, 'operation' => $operation]) {
         $where = "$method $path";

@@ -10,6 +10,8 @@ use App\Domain\Media\Storage\MultipartStorage;
 use App\Domain\Media\Support\MediaInspector;
 use App\Domain\Media\Support\PerceptualHash;
 use App\Domain\Media\Support\TemporaryPath;
+use App\Domain\Notification\Actions\NotifyUser;
+use App\Domain\Notification\Data\PushMessage;
 use App\Domain\Settings\Settings;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -148,5 +150,13 @@ class ProcessMedia implements ShouldQueue
         $media->forceFill(['status' => MediaStatus::Rejected, 'rejection' => $reason, 'processed_at' => now()])->save();
 
         $audit->record('media.rejected', $media->relaisItem, ['media' => $media->uuid, 'reason' => $reason, ...$extra], communeId: $media->relaisItem->commune_id);
+
+        // Le Relais est prévenu (push seulement) : il peut envoyer un autre fichier.
+        $relais = $media->relaisItem->loadMissing('user');
+        app(NotifyUser::class)->handle($relais->user, new PushMessage(
+            __('notifications.media_rejected.title'),
+            __('notifications.media_rejected.body', ['title' => (string) str($relais->title ?: __('Sans titre'))->limit(40), 'reason' => __("media.rejections.{$reason}")]),
+            ['type' => 'relais.media_rejected', 'uuid' => $relais->uuid, 'media' => $media->uuid],
+        ), null, 'media_rejected');
     }
 }

@@ -13,7 +13,10 @@ use App\Domain\Notification\Data\PushMessage;
  */
 class AnnounceRelaisStatusChange
 {
-    private const NOTIFIED = ['validated', 'rejected', 'complement_requested', 'selected', 'broadcast'];
+    private const NOTIFIED = ['received', 'in_review', 'validated', 'rejected', 'complement_requested', 'selected', 'broadcast'];
+
+    /** Étapes signalées par notification push seulement : pas de SMS de secours (coût). */
+    private const PUSH_ONLY = ['received', 'in_review'];
 
     public function __construct(private readonly NotifyUser $notify) {}
 
@@ -40,8 +43,19 @@ class AnnounceRelaisStatusChange
                 __("notifications.relais.{$event->to}.body", ['title' => $title]),
                 ['type' => 'relais.status_changed', 'uuid' => $relais->uuid, 'status' => $event->to],
             ),
-            __("relais_items.sms.{$event->to}", ['title' => $title]),
+            $this->smsFor($event->to, $title),
             'relais_item',
         );
+    }
+
+    private function smsFor(string $status, string $title): ?string
+    {
+        if (in_array($status, self::PUSH_ONLY, true)) {
+            return null;
+        }
+
+        $text = __("relais_items.sms.{$status}", ['title' => $title]);
+
+        return is_string($text) ? $text : null;
     }
 }

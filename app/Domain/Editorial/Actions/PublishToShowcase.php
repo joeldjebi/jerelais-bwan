@@ -6,6 +6,8 @@ use App\Domain\Audit\AuditLogger;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\Broadcast;
 use App\Domain\Editorial\Exceptions\EditorialRefused;
+use App\Domain\Notification\Actions\NotifyUser;
+use App\Domain\Notification\Data\PushMessage;
 use App\Models\User;
 
 /**
@@ -15,10 +17,18 @@ use App\Models\User;
  */
 class PublishToShowcase
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly NotifyUser $notify,
+    ) {}
 
-    public function publish(RelaisItem $relais, User $editor, string $title, string $text, bool $withImage): RelaisItem
+    /**
+     * @param  bool  $notify  prévenir le Relais de la première publication (non : déjà prévenu de la diffusion)
+     */
+    public function publish(RelaisItem $relais, User $editor, string $title, string $text, bool $withImage, bool $notify = true): RelaisItem
     {
+        $first = $relais->showcased_at === null;
+
         if (! $relais->state instanceof Broadcast) {
             throw new EditorialRefused(__('editorial.errors.showcase_not_broadcast'));
         }
@@ -35,6 +45,14 @@ class PublishToShowcase
         ])->save();
 
         $this->audit->record('relais.showcased', $relais, ['title' => $relais->showcase_title, 'image' => $withImage], actor: $editor, communeId: $relais->commune_id);
+
+        if ($first && $notify) {
+            $this->notify->handle($relais->loadMissing('user')->user, new PushMessage(
+                __('notifications.showcased.title'),
+                __('notifications.showcased.body', ['title' => (string) str($relais->showcase_title)->limit(40)]),
+                ['type' => 'relais.showcased', 'uuid' => $relais->uuid],
+            ), null, 'showcase');
+        }
 
         return $relais;
     }
