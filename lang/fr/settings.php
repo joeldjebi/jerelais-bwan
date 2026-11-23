@@ -8,7 +8,7 @@ return [
         'levels' => ['Niveaux des Relais', 'Nombre de relais validés pour atteindre chaque niveau (Bronze dès le premier relais validé, MOB-24).'],
         'alerts' => ['Alertes', 'Afflux inhabituel de relais sur une même commune, signe d’un événement (ADM-03).'],
         'candidature' => ['Candidatures', 'Conditions d’admission des Relais (MOB-05, §9.3).'],
-        'gains' => ['Commissions des Relais', 'Montant versé au Relais pour chaque relais validé, et en plus pour chaque relais diffusé. Vide : pas de commission. Paiement par Mobile Money depuis « Paiements ».'],
+        'gains' => ['Portefeuille des Relais', 'Gain crédité sur le portefeuille du Relais à chaque relais diffusé (vide : aucun gain). Le Relais demande ensuite un retrait depuis l’application, payé par Mobile Money depuis « Paiements ».'],
         'retention' => ['Conservation des données', 'Durées avant purge automatique (§9.4). Vide : aucune purge.'],
     ],
 
@@ -41,8 +41,8 @@ return [
             'minors_allowed' => 'Admettre des candidats mineurs',
         ],
         'gains' => [
-            'amount_per_validated' => 'Par relais validé',
-            'amount_per_broadcast' => 'En plus, par relais diffusé',
+            'amount_per_broadcast' => 'Gain par relais diffusé',
+            'min_withdrawal' => 'Retrait minimum',
         ],
         'retention' => [
             'rejected_candidatures_days' => 'Candidatures refusées',
@@ -78,8 +78,8 @@ return [
             'minimum_age' => 'ans',
         ],
         'gains' => [
-            'amount_per_validated' => 'FCFA',
             'amount_per_broadcast' => 'FCFA',
+            'min_withdrawal' => 'FCFA',
         ],
         'retention' => [
             'rejected_candidatures_days' => 'jours',

@@ -166,7 +166,14 @@ class Show extends Component
                 corrections: $choice === RelaisDecision::Validate ? $this->corrections : [],
             );
         } catch (InvalidArgumentException|RelaisLocked $exception) {
-            $this->addError('decision', $exception->getMessage());
+            // Message affiché à côté du champ concerné (floutage, motif, commentaire), sinon en bas de la feuille.
+            $field = match ($exception->getMessage()) {
+                __('relais_items.errors.blur_required') => 'blur',
+                __('relais_items.errors.reason_required') => 'reason',
+                __('relais_items.errors.comment_required') => 'comment',
+                default => 'decision',
+            };
+            $this->addError($field, $exception->getMessage());
 
             return;
         }

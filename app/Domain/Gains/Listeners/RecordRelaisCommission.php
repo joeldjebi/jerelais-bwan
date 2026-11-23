@@ -11,9 +11,9 @@ use App\Domain\Notification\Data\PushMessage;
 use App\Domain\Settings\Settings;
 
 /**
- * Commissions des Relais (MOB-26, ADM-27) : un montant dû à la validation et un autre à la diffusion, selon les
- * Paramètres (vide : pas de commission). Une seule commission de chaque sorte par relais. Un relais finalement
- * rejeté voit ses commissions encore dues annulées ; une commission déjà payée n'est jamais touchée.
+ * Portefeuille des Relais (MOB-26, ADM-27) : un gain est crédité quand le relais est diffusé (validé par le
+ * coordonnateur puis par la rédaction), selon le montant des Paramètres (vide : aucun gain). Un seul gain par relais.
+ * Un relais finalement rejeté voit son gain annulé tant qu'il est encore disponible dans le portefeuille.
  */
 class RecordRelaisCommission
 {
@@ -36,11 +36,12 @@ class RecordRelaisCommission
             return;
         }
 
-        $kind = CommissionKind::tryFrom($event->to);
-
-        if ($kind === null) {
+        // Gain crédité quand toutes les étapes sont franchies : coordonnateur, rédaction, diffusion.
+        if ($event->to !== CommissionKind::Broadcast->value) {
             return;
         }
+
+        $kind = CommissionKind::Broadcast;
 
         $amount = $this->settings->get($kind->amountSetting());
 

@@ -41,7 +41,7 @@ Numéros acceptés : numéro ivoirien à 10 chiffres (`0700000001`, `07 00 00 00
 
 ## Vérification d’identité et commissions
 
-Le Relais complète son profil quand il le souhaite ; il est **obligatoire seulement pour recevoir ses commissions** (voir « Mes gains et paiements »). Ni la connexion ni l’envoi de relais n’en dépendent.
+Le Relais complète son profil quand il le souhaite ; il est **obligatoire seulement pour recevoir ses commissions** (voir « Mes gains et portefeuille »). Ni la connexion ni l’envoi de relais n’en dépendent.
 
 **En une seule requête :** `POST /identity` (multipart) avec `last_name`, `first_name`, `gender`, `birth_date` (`26/04/2000`), `commune` et/ou `localite`, `document_type` (une `value` de `GET /auth/register/options`), et les fichiers : faces de la pièce selon `sides` (`recto` + `verso`, ou `page`), `selfie`. Le dossier part aussitôt en vérification (`submitted`). Tout ou rien : **422** liste chaque champ ou fichier à corriger, sans rien enregistrer.
 
@@ -78,13 +78,15 @@ Statuts d’un relais vus par le Relais : `uploading` (fichiers en cours d’env
 
 Limites par défaut, modifiables par l’administration et lisibles dans `GET /settings` : vidéo de 3 minutes, audio de 10 minutes, 10 médias par relais. Taille : 100 Mo par fichier en une requête, 500 Mo en envoi par morceaux.
 
-## Mes gains et paiements
+## Mes gains et portefeuille
 
-Le Relais gagne une **commission** pour chaque relais validé, et une autre pour chaque relais diffusé (montants fixés par l'administration). L'administration le paie par **Mobile Money** ; il est payé seulement si son **identité est vérifiée**.
+Chaque relais **diffusé** (validé par le coordonnateur puis par la rédaction) **crédite le portefeuille** du Relais d'un montant fixé par l'administration (notification `gains.earned`). Le Relais demande ensuite un **retrait** vers son compte Mobile Money ; l'administration le paie (notification `gains.paid`) ou le refuse avec un motif (notification `gains.withdrawal_rejected`, la somme revient dans le portefeuille).
 
-1. **Coordonnées de paiement** — `GET /me/payout-account` : `data` (ou `null` si rien n'est enregistré) et `meta.methods` (opérateurs à proposer dans une liste : `value` à envoyer, `label` à afficher). `PUT /me/payout-account` (JSON) : `method` (`wave`, `orange_money`, `mtn_momo`, `moov_money`), `phone` (numéro Mobile Money, `0707070707` ou `+2250707070707`), `holder_name` (nom du titulaire). Remplace les coordonnées précédentes ; l'administration paie sur ce numéro.
-2. **Commissions** — `GET /me/gains` (filtre facultatif `?status=due` ou `?status=paid`) : `amount` (FCFA), `label` (« Relais validé » / « Relais diffusé »), `status` (`due` : à recevoir, `paid` : payée), `relais` (uuid, titre). `meta.totals.due` et `meta.totals.paid` : totaux ; `meta.gains_eligible` : `false` tant que l'identité n'est pas vérifiée (inviter à compléter `POST /identity`) ; `meta.payout_account_set` : `false` tant que les coordonnées ne sont pas enregistrées (inviter à les saisir).
-3. **Paiements reçus** — `GET /me/payouts` : historique des versements (`amount`, `method_label`, `reference` de la transaction, `paid_at`, `commissions` soldées) et `meta.total_received`. À chaque paiement, le Relais reçoit la notification `gains.paid`.
+1. **Coordonnées Mobile Money** — `GET /me/payout-account` : `data` (ou `null`) et `meta.methods` (opérateurs à proposer dans une liste : `value` à envoyer, `label` à afficher). `PUT /me/payout-account` (JSON) : `method` (`wave`, `orange_money`, `mtn_momo`, `moov_money`), `phone` (`0707070707` ou `+2250707070707`), `holder_name` (titulaire). Le retrait part vers ces coordonnées.
+2. **Portefeuille** — `GET /me/wallet` : `available` (retirable), `pending` (retrait en cours), `withdrawn` (déjà reçu), `earned` (total gagné), `min_withdrawal`, `can_withdraw` et `blockers` (liste `{code, message}` à afficher quand le retrait est impossible : `identity` identité à vérifier, `payout_account` coordonnées à saisir, `pending` retrait déjà en cours, `balance` solde sous le minimum), `payout_account`, `pending_withdrawal`.
+3. **Demander un retrait** — `POST /me/wallet/withdrawals` (JSON) `{"amount": 5000}` → **201** avec la demande (`status: requested`). **422** avec le motif dans `errors.amount` si le montant est sous le minimum, au-dessus du solde disponible, ou si une condition manque. Un seul retrait en cours à la fois.
+4. **Historique des retraits** — `GET /me/payouts` : `amount`, `status` (`requested` en attente, `paid` payé avec `reference` et `paid_at`, `rejected` refusé avec `rejection_reason`), `method_label`, `phone` ; `meta.total_received`.
+5. **Gains crédités** — `GET /me/gains` : un gain par relais diffusé (`amount`, `relais` uuid et titre), `meta.totals.earned`.
 
 ## Images et fichiers
 
@@ -152,9 +154,10 @@ Le Relais reçoit une **notification push** (Firebase Cloud Messaging) sur chaqu
 | `legal.updated` | Nouvelle version de la charte, des conditions ou de la politique de confidentialité | `document` : `charte`, `conditions`, `confidentialite`, `version` | `GET /legal`, puis `POST /consents` |
 | `message.received` | Message du coordonnateur | `uuid` (conversation) | `GET /conversations/{uuid}/messages` |
 | `appel.created` | Appel à relais dans la zone du Relais | `uuid` (appel) | `GET /appels/{uuid}` |
-| `gains.earned` | Nouvelle commission gagnée (relais validé ou diffusé) | `uuid` (commission), `amount` (FCFA) | `GET /me/gains` |
-| `gains.cancelled` | Commission annulée par l'administration | `uuid` (commission) | `GET /me/gains` |
-| `gains.paid` | Commissions payées par Mobile Money | `uuid` (paiement), `amount` (FCFA) | `GET /me/payouts` |
+| `gains.earned` | Gain crédité sur le portefeuille (relais diffusé) | `uuid` (gain), `amount` (FCFA) | `GET /me/wallet` |
+| `gains.cancelled` | Gain annulé par l'administration | `uuid` (gain) | `GET /me/wallet` |
+| `gains.withdrawal_rejected` | Demande de retrait refusée (la somme revient dans le portefeuille) | `uuid` (retrait) | `GET /me/payouts` |
+| `gains.paid` | Retrait payé par Mobile Money | `uuid` (retrait), `amount` (FCFA) | `GET /me/payouts` |
 | `announcement` | Annonce de l'administration | `uuid` (annonce), `screen` : écran à ouvrir (`home`, `announcements`, `appels`, `relais`, `gains`, `identity`, `profile`) | `screen`, et `POST /announcements/{uuid}/read` |
 
 **Annonces de l'administration** : l'administration peut écrire à tous les Relais ou à une partie (régions, communes, un Relais, identités à vérifier, coordonnées de paiement manquantes). Chaque annonce arrive en notification push (`type: announcement`) **et** reste dans la boîte de réception de l'application : `GET /announcements` (titre, message, `screen`, `is_read` ; `meta.unread_count` pour la pastille), `POST /announcements/{uuid}/read` quand le Relais l'ouvre, `POST /announcements/read-all`. Groupe « Notifications » de la documentation, avec l'enregistrement du jeton.

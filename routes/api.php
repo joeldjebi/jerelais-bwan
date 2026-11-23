@@ -68,6 +68,8 @@ Route::name('api.v1.')->group(function () {
             Route::post('announcements/read-all', [AnnouncementController::class, 'readAll'])->name('announcements.read-all');
             Route::post('announcements/{announcement}/read', [AnnouncementController::class, 'read'])->name('announcements.read');
             Route::get('me/gains', [GainsController::class, 'index'])->name('me.gains');
+            Route::get('me/wallet', [GainsController::class, 'wallet'])->name('me.wallet');
+            Route::post('me/wallet/withdrawals', [GainsController::class, 'requestWithdrawal'])->middleware('throttle:10,1')->name('me.wallet.withdraw');
             Route::get('me/payouts', [GainsController::class, 'payouts'])->name('me.payouts');
             Route::get('me/payout-account', [GainsController::class, 'payoutAccount'])->name('me.payout-account');
             Route::put('me/payout-account', [GainsController::class, 'updatePayoutAccount'])->middleware('throttle:10,1')->name('me.payout-account.update');

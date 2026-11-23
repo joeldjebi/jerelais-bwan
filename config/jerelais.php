@@ -191,9 +191,10 @@ return [
         'levels.gold_validated' => 30,
         'alerts.surge_threshold' => 5,
         'alerts.surge_window_minutes' => 30,
-        // Commissions des Relais en FCFA (MOB-26, ADM-27) ; vide : pas de commission.
-        'gains.amount_per_validated' => null,
+        // Portefeuille des Relais en FCFA (MOB-26, ADM-27) : gain crédité à chaque relais diffusé (vide : aucun gain),
+        // retrait minimum.
         'gains.amount_per_broadcast' => null,
+        'gains.min_withdrawal' => 1000,
         'retention.rejected_candidatures_days' => null,
         'retention.inactive_accounts_days' => null,
         'retention.rejected_relais_days' => null,
@@ -210,8 +211,8 @@ return [
         'candidature.minors_allowed',
         'levels.silver_validated',
         'levels.gold_validated',
-        'gains.amount_per_validated',
         'gains.amount_per_broadcast',
+        'gains.min_withdrawal',
     ],
 
 ];

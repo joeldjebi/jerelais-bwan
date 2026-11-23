@@ -4,44 +4,46 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Scopes\CommuneScope;
 use App\Domain\Audit\AuditLogger;
+use App\Domain\Gains\Actions\ManageWithdrawals;
 use App\Domain\Gains\Enums\CommissionStatus;
 use App\Domain\Gains\Enums\PaymentMethod;
+use App\Domain\Gains\Enums\PayoutStatus;
+use App\Domain\Gains\Exceptions\CommissionRefused;
 use App\Domain\Gains\Models\Commission;
 use App\Domain\Gains\Models\PayoutAccount;
+use App\Domain\Gains\Support\Wallet;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Gains\UpdatePayoutAccountRequest;
 use App\Http\Resources\V1\CommissionResource;
 use App\Http\Resources\V1\PayoutAccountResource;
 use App\Http\Resources\V1\PayoutResource;
 use App\Models\User;
+use Dedoc\Scramble\Attributes\BodyParameter;
 use Dedoc\Scramble\Attributes\Group;
-use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
 
-#[Group('Mes gains', 'Commissions gagnées, coordonnées Mobile Money pour être payé et historique des paiements reçus (MOB-26).', weight: 3)]
+#[Group('Mes gains', 'Portefeuille : gains crédités à chaque relais diffusé, coordonnées Mobile Money, demandes de retrait et historique (MOB-26).', weight: 3)]
 class GainsController extends Controller
 {
     /**
-     * Mes commissions.
+     * Mes gains.
      *
-     * Commissions gagnées pour mes relais validés et diffusés, la plus récente d'abord (20 par page).
-     * `status=due` : à recevoir ; `status=paid` : déjà reçues. Les commissions annulées ne sont jamais renvoyées.
-     * `meta.totals` : `due` (à recevoir) et `paid` (déjà reçu), en FCFA. `meta.gains_eligible` : identité vérifiée,
-     * condition pour être payé. `meta.payout_account_set` : coordonnées Mobile Money enregistrées.
+     * Gains crédités sur le portefeuille (un par relais diffusé), le plus récent d'abord (20 par page) : montant, relais.
+     * Les gains annulés ne sont jamais renvoyés. Pour le solde et les retraits : `GET /me/wallet`.
+     * `meta.totals.earned` : total gagné. `meta.gains_eligible` : identité vérifiée (condition pour retirer).
+     * `meta.payout_account_set` : coordonnées Mobile Money enregistrées.
      */
-    #[QueryParameter('status', 'Filtre : `due` (à recevoir) ou `paid` (reçues). Sans filtre : toutes.', type: 'string', example: 'due')]
     public function index(Request $request): AnonymousResourceCollection
     {
         /** @var User $user */
         $user = $request->user();
-        $status = CommissionStatus::tryFrom($request->string('status')->toString());
 
         $commissions = Commission::query()
             ->where('user_id', $user->id)
             ->where('status', '!=', CommissionStatus::Cancelled->value)
-            ->when($status !== null && $status !== CommissionStatus::Cancelled, fn ($query) => $query->where('status', $status?->value))
             ->with(['relaisItem' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'uuid', 'title')])
             ->latest('id')
             ->paginate(20);
@@ -51,6 +53,7 @@ class GainsController extends Controller
 
         return CommissionResource::collection($commissions)->additional(['meta' => [
             'totals' => [
+                'earned' => (int) ($totals[CommissionStatus::Due->value] ?? 0) + (int) ($totals[CommissionStatus::Paid->value] ?? 0),
                 'due' => (int) ($totals[CommissionStatus::Due->value] ?? 0),
                 'paid' => (int) ($totals[CommissionStatus::Paid->value] ?? 0),
                 'currency' => 'XOF',
@@ -61,24 +64,69 @@ class GainsController extends Controller
     }
 
     /**
-     * Mes paiements reçus.
+     * Mon portefeuille.
      *
-     * Historique des versements Mobile Money reçus, le plus récent d'abord (20 par page) : montant, opérateur,
-     * référence de la transaction, date et commissions soldées. `meta.total_received` : total reçu en FCFA.
+     * Solde du portefeuille (MOB-26) : `available` (retirable), `pending` (retrait en cours), `withdrawn` (déjà reçu),
+     * `earned` (total gagné), en FCFA. Chaque relais diffusé crédite le portefeuille. `min_withdrawal` : retrait minimum.
+     * `can_withdraw` et `blockers` disent si un retrait est possible et, sinon, pourquoi (identité à vérifier,
+     * coordonnées Mobile Money à enregistrer, retrait déjà en cours, solde insuffisant) : messages prêts à afficher.
+     */
+    public function wallet(Request $request, Wallet $wallet): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $blockers = $wallet->blockers($user);
+        $account = $user->payoutAccount;
+
+        return response()->json(['data' => [
+            ...$wallet->summary($user),
+            'currency' => 'XOF',
+            'min_withdrawal' => $wallet->minimumWithdrawal(),
+            'can_withdraw' => $blockers === [],
+            'blockers' => array_map(fn (string $key, string $message): array => ['code' => $key, 'message' => $message], array_keys($blockers), array_values($blockers)),
+            'payout_account' => $account === null ? null : (new PayoutAccountResource($account))->resolve($request),
+            'pending_withdrawal' => ($pending = $user->payouts()->where('status', PayoutStatus::Requested->value)->latest('id')->first()) === null ? null : (new PayoutResource($pending))->resolve($request),
+        ]]);
+    }
+
+    /**
+     * Demander un retrait.
+     *
+     * Retire `amount` FCFA du portefeuille vers le compte Mobile Money enregistré (`PUT /me/payout-account`).
+     * Conditions : identité vérifiée, coordonnées enregistrées, aucun retrait en cours, montant entre le minimum et le
+     * solde disponible (422 sinon, avec le motif dans `errors.amount`). L'administration paie ensuite par Mobile Money :
+     * notification `gains.paid` (ou `gains.withdrawal_rejected`, la somme revient alors dans le portefeuille).
+     */
+    #[BodyParameter('amount', 'Montant à retirer, en FCFA (entier).', type: 'int', example: 5000)]
+    public function requestWithdrawal(Request $request, ManageWithdrawals $withdrawals): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $request->validate(['amount' => ['required', 'integer', 'min:1']]);
+
+        try {
+            $payout = $withdrawals->request($user, $request->integer('amount'));
+        } catch (CommissionRefused $exception) {
+            throw ValidationException::withMessages(['amount' => $exception->getMessage()]);
+        }
+
+        return (new PayoutResource($payout))->response()->setStatusCode(201);
+    }
+
+    /**
+     * Mes retraits.
+     *
+     * Historique des retraits du portefeuille, le plus récent d'abord (20 par page) : montant, statut
+     * (`requested` en attente, `paid` payé avec sa référence, `rejected` refusé avec son motif), opérateur, numéro.
+     * `meta.total_received` : total déjà reçu en FCFA.
      */
     public function payouts(Request $request): AnonymousResourceCollection
     {
         /** @var User $user */
         $user = $request->user();
 
-        $payouts = $user->payouts()
-            ->withCount('commissions')
-            ->with(['commissions.relaisItem' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'uuid', 'title')])
-            ->latest('paid_at')
-            ->paginate(20);
-
-        return PayoutResource::collection($payouts)->additional(['meta' => [
-            'total_received' => (int) $user->payouts()->sum('amount'),
+        return PayoutResource::collection($user->payouts()->latest('id')->paginate(20))->additional(['meta' => [
+            'total_received' => (int) $user->payouts()->where('status', PayoutStatus::Paid->value)->sum('amount'),
             'currency' => 'XOF',
         ]]);
     }
