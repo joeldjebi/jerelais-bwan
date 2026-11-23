@@ -155,13 +155,23 @@ class User extends Authenticatable
     }
 
     /**
-     * Coordonnées Mobile Money pour recevoir les commissions (MOB-26).
+     * Numéro Mobile Money par défaut (le premier enregistré) (MOB-26).
      *
      * @return HasOne<PayoutAccount, $this>
      */
     public function payoutAccount(): HasOne
     {
-        return $this->hasOne(PayoutAccount::class);
+        return $this->hasOne(PayoutAccount::class)->oldestOfMany();
+    }
+
+    /**
+     * Numéros Mobile Money enregistrés, deux au plus (MOB-26), le premier enregistré d'abord.
+     *
+     * @return HasMany<PayoutAccount, $this>
+     */
+    public function payoutAccounts(): HasMany
+    {
+        return $this->hasMany(PayoutAccount::class)->orderBy('id');
     }
 
     /**

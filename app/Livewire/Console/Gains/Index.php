@@ -222,7 +222,7 @@ class Index extends Component
             ->whereHas('commissions', fn ($query) => $query->whereIn('status', [CommissionStatus::Due->value, CommissionStatus::Paid->value]))
             ->withSum(['commissions as earned_total' => fn ($query) => $query->whereIn('status', [CommissionStatus::Due->value, CommissionStatus::Paid->value])], 'amount')
             ->withSum(['payouts as withdrawn_total' => fn ($query) => $query->whereIn('status', [PayoutStatus::Requested->value, PayoutStatus::Paid->value])], 'amount')
-            ->with(['relaisProfile' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'user_id', 'display_name', 'number'), 'payoutAccount', 'identityVerification:id,user_id,status'])
+            ->with(['relaisProfile' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'user_id', 'display_name', 'number'), 'payoutAccounts', 'identityVerification:id,user_id,status'])
             ->orderByDesc('earned_total')
             ->paginate(20, pageName: 'liste');
     }
@@ -265,7 +265,7 @@ class Index extends Component
     #[Computed]
     public function holder(): ?User
     {
-        return $this->holderUuid === null ? null : User::query()->where('uuid', $this->holderUuid)->first();
+        return $this->holderUuid === null ? null : User::query()->where('uuid', $this->holderUuid)->with('payoutAccounts')->first();
     }
 
     /**

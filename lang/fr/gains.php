@@ -37,6 +37,8 @@ return [
         'not_paid' => 'Cette commission n’a pas été payée.',
         'identity_not_verified_relais' => 'Faites vérifier votre identité pour retirer vos gains.',
         'payout_account_missing' => 'Enregistrez d’abord vos coordonnées Mobile Money.',
+        'payout_account_unknown' => 'Numéro Mobile Money introuvable : choisissez l’un de vos numéros enregistrés.',
+        'payout_accounts_full' => 'Vous avez déjà enregistré :max numéros Mobile Money : modifiez ou supprimez-en un.',
         'withdrawal_pending' => 'Un retrait est déjà en cours : attendez qu’il soit traité.',
         'balance_below_minimum' => 'Votre solde n’atteint pas le minimum de retrait (:min).',
         'amount_below_minimum' => 'Le retrait minimum est de :min.',

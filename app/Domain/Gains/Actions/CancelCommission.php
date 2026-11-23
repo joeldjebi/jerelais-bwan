@@ -42,10 +42,12 @@ class CancelCommission
         $commission->forceFill(['status' => CommissionStatus::Cancelled, 'cancelled_at' => now(), 'cancel_reason' => trim($reason)])->save();
         $this->audit->record('commissions.cancelled', $commission->user, ['commission' => $commission->uuid, 'amount' => $commission->amount, 'reason' => trim($reason)], actor: $admin);
 
-        $this->notify->handle($commission->user, new PushMessage(
-            __('notifications.gains.cancelled.title'),
-            __('notifications.gains.cancelled.body', ['amount' => Wallet::fcfa($commission->amount), 'title' => (string) str($commission->relaisItem->title ?? '')->limit(40)]),
-            ['type' => 'gains.cancelled', 'uuid' => $commission->uuid],
-        ), null, 'gains');
+        $body = __('notifications.gains.cancelled.body', ['amount' => Wallet::fcfa($commission->amount), 'title' => (string) str($commission->relaisItem->title ?? '')->limit(40)]);
+        $this->notify->handle(
+            $commission->user,
+            new PushMessage(__('notifications.gains.cancelled.title'), $body, ['type' => 'gains.cancelled', 'uuid' => $commission->uuid]),
+            __('JE RELAIS : :body', ['body' => $body]),
+            'gains',
+        );
     }
 }

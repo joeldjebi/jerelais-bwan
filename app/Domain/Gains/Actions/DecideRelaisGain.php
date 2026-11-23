@@ -178,9 +178,17 @@ class DecideRelaisGain
         ], fn (mixed $value): bool => $value !== null), actor: $decider, communeId: $relais->commune_id);
     }
 
+    /**
+     * Notification push ; SMS de secours si le Relais n'a pas d'appareil joignable (il s'agit de son argent).
+     */
     private function tell(RelaisItem $relais, string $title, string $body, string $type, Commission $commission): void
     {
-        $this->notify->handle($relais->loadMissing('user')->user, new PushMessage($title, $body, ['type' => $type, 'uuid' => $commission->uuid, 'amount' => $commission->amount]), null, 'gains');
+        $this->notify->handle(
+            $relais->loadMissing('user')->user,
+            new PushMessage($title, $body, ['type' => $type, 'uuid' => $commission->uuid, 'amount' => $commission->amount]),
+            __('JE RELAIS : :body', ['body' => $body]),
+            'gains',
+        );
     }
 
     private function title(RelaisItem $relais): string

@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $amount
  * @property PayoutStatus $status
  * @property PaymentMethod $method
+ * @property string|null $provider simulation, manual, ou le prestataire de paiement
  * @property string|null $reference
  * @property string|null $phone
  * @property string|null $holder_name
@@ -34,11 +35,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read User $user
  * @property-read User|null $payer
  */
-#[Fillable(['user_id', 'amount', 'status', 'method', 'reference', 'phone', 'holder_name', 'requested_at', 'paid_at', 'paid_by'])]
+#[Fillable(['user_id', 'amount', 'status', 'method', 'provider', 'reference', 'phone', 'holder_name', 'requested_at', 'paid_at', 'paid_by'])]
 #[Hidden(['phone'])]
 class Payout extends Model
 {
     use HasPublicUuid;
+
+    public function isSimulated(): bool
+    {
+        return $this->provider === 'simulation';
+    }
 
     /**
      * @return array<string, string>

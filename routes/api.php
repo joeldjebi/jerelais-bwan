@@ -73,6 +73,10 @@ Route::name('api.v1.')->group(function () {
             Route::get('me/payouts', [GainsController::class, 'payouts'])->name('me.payouts');
             Route::get('me/payout-account', [GainsController::class, 'payoutAccount'])->name('me.payout-account');
             Route::put('me/payout-account', [GainsController::class, 'updatePayoutAccount'])->middleware('throttle:10,1')->name('me.payout-account.update');
+            Route::get('me/payout-accounts', [GainsController::class, 'payoutAccounts'])->name('me.payout-accounts');
+            Route::post('me/payout-accounts', [GainsController::class, 'storePayoutAccount'])->middleware('throttle:10,1')->name('me.payout-accounts.store');
+            Route::put('me/payout-accounts/{payoutAccount}', [GainsController::class, 'updatePayoutAccountByUuid'])->middleware('throttle:10,1')->name('me.payout-accounts.update');
+            Route::delete('me/payout-accounts/{payoutAccount}', [GainsController::class, 'destroyPayoutAccount'])->middleware('throttle:10,1')->name('me.payout-accounts.destroy');
             Route::get('me/export', [MeController::class, 'export'])->middleware('throttle:5,60')->name('me.export');
             Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
 

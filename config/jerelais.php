@@ -90,6 +90,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Retraits du portefeuille (MOB-26)
+    |--------------------------------------------------------------------------
+    |
+    | « simulation » : le retrait est accepté aussitôt (référence SIM-…), sans envoi d'argent.
+    | « manual » : le retrait attend d'être payé par Mobile Money depuis la console.
+    | Le prestataire de paiement réel sera branché ici.
+    |
+    */
+
+    'payouts' => [
+        'driver' => env('PAYOUT_DRIVER', 'simulation'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Antivirus (§10)
     |--------------------------------------------------------------------------
     |
