@@ -28,6 +28,8 @@ class ClamAvScanner implements VirusScanner
 
         $socket = @stream_socket_client("tcp://{$this->host}:{$this->port}", $errorCode, $errorMessage, $this->timeoutSeconds);
 
+        $sent = false;
+
         if ($socket === false) {
             fclose($file);
 
@@ -36,20 +38,24 @@ class ClamAvScanner implements VirusScanner
 
         try {
             stream_set_timeout($socket, $this->timeoutSeconds);
-            fwrite($socket, "zINSTREAM\0");
+            $sent = @fwrite($socket, "zINSTREAM\0") !== false;
 
-            while (! feof($file)) {
+            while ($sent && ! feof($file)) {
                 $chunk = fread($file, self::CHUNK_BYTES);
 
                 if ($chunk === false || $chunk === '') {
                     break;
                 }
 
-                fwrite($socket, pack('N', strlen($chunk)).$chunk);
+                // clamd coupe la connexion quand le fichier dépasse sa limite (StreamMaxLength) : on lit alors sa réponse.
+                $sent = @fwrite($socket, pack('N', strlen($chunk)).$chunk) !== false;
             }
 
-            fwrite($socket, pack('N', 0));
-            $response = trim((string) stream_get_contents($socket), "\0\n ");
+            if ($sent) {
+                @fwrite($socket, pack('N', 0));
+            }
+
+            $response = trim((string) @stream_get_contents($socket), "\0\n ");
         } finally {
             fclose($file);
             fclose($socket);
@@ -61,6 +67,10 @@ class ClamAvScanner implements VirusScanner
 
         if (preg_match('/^stream: (.+) FOUND$/', $response, $matches) === 1) {
             return $matches[1];
+        }
+
+        if (str_contains($response, 'size limit exceeded') || ($response === '' && ! $sent)) {
+            throw VirusScanUnavailable::because('fichier plus grand que la limite d’analyse de clamd (StreamMaxLength, MaxScanSize, MaxFileSize dans clamd.conf)');
         }
 
         throw VirusScanUnavailable::because($response === '' ? 'réponse vide' : $response);
