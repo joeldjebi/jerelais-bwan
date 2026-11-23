@@ -17,8 +17,10 @@ use App\Domain\Editorial\Actions\ArbitrateRelaisItem;
 use App\Domain\Editorial\Actions\BroadcastAndPublish;
 use App\Domain\Editorial\Actions\PublishToShowcase;
 use App\Domain\Editorial\Actions\SelectRelaisItem;
+use App\Domain\Editorial\Enums\ShowcaseVisual;
 use App\Domain\Editorial\Exceptions\EditorialRefused;
 use App\Domain\Editorial\Models\RelaisCollection;
+use App\Domain\Editorial\Support\ShowcaseVisuals;
 use App\Domain\Media\Actions\FindMediaDuplicates;
 use App\Domain\Media\Models\Media;
 use App\Domain\Messagerie\Actions\SendMessage;
@@ -30,10 +32,13 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 /**
  * Vérification et décision d'un relais (COO-11 à COO-18). L'ouverture réserve le relais 10 minutes.
@@ -46,9 +51,12 @@ use Livewire\Component;
  * @property-read bool $canExport
  * @property-read Collection<int, User> $journalists
  * @property-read Collection<int, RelaisCollection> $collectionsList
+ * @property-read bool $hasThumbnail
  */
 class Show extends Component
 {
+    use WithFileUploads;
+
     #[Locked]
     public RelaisItem $relais;
 
@@ -91,7 +99,11 @@ class Show extends Component
 
     public string $showcaseText = '';
 
-    public bool $showcaseImage = false;
+    /** Visuel public : none, original, blurred, edited (ShowcaseVisual). */
+    public string $showcaseVisual = 'none';
+
+    /** Version floutée déposée par la rédaction (visuel « edited »). */
+    public ?TemporaryUploadedFile $editedFile = null;
 
     public function mount(RelaisItem $relais, LockRelaisItem $lock): void
     {
@@ -193,7 +205,8 @@ class Show extends Component
         $this->broadcastProgramme = (string) $this->relais->programme;
         $this->showcaseTitle = (string) ($this->relais->showcase_title ?? $this->relais->title);
         $this->showcaseText = (string) $this->relais->showcase_text;
-        $this->showcaseImage = $this->relais->showcased_at !== null ? $this->relais->showcase_with_image : ! ($this->relais->blur_required || $this->relais->has_minors);
+        $this->showcaseVisual = $this->defaultVisual()->value;
+        $this->editedFile = null;
         $this->editorial = $sheet;
     }
 
@@ -282,15 +295,17 @@ class Show extends Component
             'broadcastUrl' => ['nullable', 'url:https,http', 'max:500'],
             'showcaseTitle' => ['required', 'string', 'max:150'],
             'showcaseText' => ['nullable', 'string', 'max:1000'],
+            ...$this->visualRules(),
         ], attributes: [
             'broadcastAt' => __('date de diffusion'), 'broadcastProgramme' => __('émission'), 'broadcastUrl' => __('lien'),
-            'showcaseTitle' => __('titre public'), 'showcaseText' => __('texte public'),
+            'showcaseTitle' => __('titre public'), 'showcaseText' => __('texte public'), 'editedFile' => __('version floutée'),
         ]);
 
         try {
             $publish->handle(
                 $this->relais, $this->user(), CarbonImmutable::parse($this->broadcastAt, 'Africa/Abidjan'),
-                $this->broadcastProgramme, $this->broadcastUrl, $this->showcaseTitle, $this->showcaseText, $this->showcaseImage,
+                $this->broadcastProgramme, $this->broadcastUrl, $this->showcaseTitle, $this->showcaseText,
+                ShowcaseVisual::from($this->showcaseVisual), $this->editedFile,
             );
         } catch (EditorialRefused $exception) {
             $this->addError('editorial', $exception->getMessage());
@@ -307,10 +322,14 @@ class Show extends Component
     public function showcase(PublishToShowcase $publish): void
     {
         $this->authorizeEditorial();
-        $this->validate(['showcaseTitle' => ['required', 'string', 'max:150'], 'showcaseText' => ['nullable', 'string', 'max:1000']], attributes: ['showcaseTitle' => __('titre public')]);
+        $this->validate([
+            'showcaseTitle' => ['required', 'string', 'max:150'],
+            'showcaseText' => ['nullable', 'string', 'max:1000'],
+            ...$this->visualRules(),
+        ], attributes: ['showcaseTitle' => __('titre public'), 'editedFile' => __('version floutée')]);
 
         try {
-            $publish->publish($this->relais, $this->user(), $this->showcaseTitle, $this->showcaseText, $this->showcaseImage);
+            $publish->publish($this->relais, $this->user(), $this->showcaseTitle, $this->showcaseText, ShowcaseVisual::from($this->showcaseVisual), edited: $this->editedFile);
         } catch (EditorialRefused $exception) {
             $this->addError('editorial', $exception->getMessage());
 
@@ -439,6 +458,46 @@ class Show extends Component
     public function stats(): array
     {
         return app(RelaisVerification::class)->relaisStats($this->relais);
+    }
+
+    /**
+     * Le relais a-t-il une vignette contrôlée (image d'origine ou à flouter) ?
+     */
+    #[Computed]
+    public function hasThumbnail(): bool
+    {
+        return app(ShowcaseVisuals::class)->hasThumbnail($this->relais);
+    }
+
+    /**
+     * Visuel proposé par défaut : celui déjà publié, sinon l'image floutée si un floutage est demandé.
+     */
+    private function defaultVisual(): ShowcaseVisual
+    {
+        if ($this->relais->showcased_at !== null) {
+            return $this->relais->showcase_visual;
+        }
+
+        if (! $this->hasThumbnail) {
+            return ShowcaseVisual::None;
+        }
+
+        return $this->relais->blur_required || $this->relais->has_minors ? ShowcaseVisual::Blurred : ShowcaseVisual::Original;
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function visualRules(): array
+    {
+        return [
+            'showcaseVisual' => ['required', Rule::enum(ShowcaseVisual::class)],
+            'editedFile' => [
+                Rule::requiredIf($this->showcaseVisual === ShowcaseVisual::Edited->value && $this->relais->showcase_media_path === null),
+                'nullable', 'file', 'max:'.(ShowcaseVisuals::EDITED_MAX_MB * 1024),
+                'mimetypes:image/jpeg,image/png,video/mp4,video/quicktime',
+            ],
+        ];
     }
 
     public function render(): View

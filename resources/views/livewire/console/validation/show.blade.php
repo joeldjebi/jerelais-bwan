@@ -52,17 +52,31 @@
     @endif
 
     @if ($this->duplicates !== [])
-        <div class="rounded-[1.2rem] bg-status-rejected/[0.08] p-4" role="alert" data-enter>
-            <div class="flex items-center gap-3">
+        @php $identicalCount = collect($this->duplicates)->where('identical', true)->count(); @endphp
+        <div class="overflow-hidden rounded-[1.2rem] bg-status-rejected/[0.08]" role="alert" data-enter x-data="{ open: false }">
+            <button type="button" x-on:click="open = ! open" :aria-expanded="open.toString()" aria-controls="doublons"
+                class="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-status-rejected/[0.05]">
                 <x-console.tile icon="layers" tint="pink" />
-                <p class="text-[0.9375rem] font-semibold">{{ __('Doublon possible (COO-13)') }}</p>
-            </div>
-            <ul class="mt-2 space-y-1 pl-11 text-[0.875rem]">
+                <span class="min-w-0 flex-1">
+                    <span class="block text-[0.9375rem] font-semibold">{{ __('Doublon possible (COO-13)') }}</span>
+                    <span class="block text-[0.8125rem] text-mute">
+                        {{ trans_choice(':count relais au média proche|:count relais au média proche', count($this->duplicates)) }}@if ($identicalCount > 0) · {{ trans_choice(':count identique|:count identiques', $identicalCount) }}@endif
+                    </span>
+                </span>
+                <span class="text-[0.8125rem] font-medium text-tile-blue" x-text="open ? @js(__('Masquer')) : @js(__('Afficher'))"></span>
+                <svg class="size-4 text-mute transition-transform duration-300" :class="open && 'rotate-180'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <ul id="doublons" x-show="open" x-cloak x-transition.opacity.duration.200ms class="max-h-80 divide-y divide-status-rejected/10 overflow-y-auto border-t border-status-rejected/10 text-[0.875rem]">
                 @foreach ($this->duplicates as $match)
-                    <li>
+                    @php $other = $match['other']->relaisItem; $visible = Gate::allows('view', $other); @endphp
+                    <li class="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5">
                         <x-console.badge tone="danger">{{ $match['identical'] ? __('Média identique') : __('Média très proche') }}</x-console.badge>
-                        <span class="font-medium">{{ Gate::allows('view', $match['other']->relaisItem) ? ($match['other']->relaisItem->title ?: __('Sans titre')) : __('Relais d’une autre commune') }}</span>
-                        <span class="text-mute">· {{ $match['other']->relaisItem->commune?->name }} · {{ $match['other']->relaisItem->state->label() }} · {{ $date($match['other']->relaisItem->received_at) }}</span>
+                        @if ($visible)
+                            <a href="{{ route('console.validation.show', $other) }}" wire:navigate class="font-medium text-tile-blue hover:opacity-80">{{ $other->title ?: __('Sans titre') }}</a>
+                        @else
+                            <span class="font-medium">{{ __('Relais d’une autre commune') }}</span>
+                        @endif
+                        <span class="text-mute">· {{ collect([$other->commune?->name, $other->state->label(), $date($other->received_at)])->filter()->join(' · ') }}</span>
                     </li>
                 @endforeach
             </ul>
@@ -515,11 +529,7 @@
                                     <label for="publish-text" class="block text-[0.8125rem] font-medium">{{ __('Texte public (facultatif)') }}</label>
                                     <textarea id="publish-text" wire:model="showcaseText" rows="3" class="{{ $textarea }}"></textarea>
                                 </div>
-                                @if ($r->blur_required || $r->has_minors)
-                                    <p class="rounded-[0.8rem] bg-status-pending/12 px-3 py-2 text-[0.8125rem]">{{ __('Floutage demandé ou mineurs : l’image ne sera pas publiée.') }}</p>
-                                @else
-                                    <label class="flex items-center gap-3 text-[0.9375rem]"><input type="checkbox" wire:model="showcaseImage" class="ios-check">{{ __('Publier l’image') }}</label>
-                                @endif
+                                @include('livewire.console.partials.showcase-visual', ['relais' => $r, 'current' => $showcaseVisual, 'hasThumbnail' => $this->hasThumbnail, 'upload' => true])
                                 <p class="text-[0.8125rem] text-mute">{{ __('Seuls ce titre, ce texte, la commune et le crédit choisi par le Relais sont publics. Jamais la position.') }}</p>
                             @elseif ($editorial === 'showcase')
                                 <x-console.input :label="__('Titre public')" name="showcaseTitle" wire:model="showcaseTitle" />
@@ -527,7 +537,7 @@
                                     <label for="showcase-text" class="block text-[0.8125rem] font-medium">{{ __('Texte public (facultatif)') }}</label>
                                     <textarea id="showcase-text" wire:model="showcaseText" rows="3" class="{{ $textarea }}"></textarea>
                                 </div>
-                                <label class="flex items-center gap-3 text-[0.9375rem]"><input type="checkbox" wire:model="showcaseImage" class="ios-check">{{ __('Publier l’image') }}</label>
+                                @include('livewire.console.partials.showcase-visual', ['relais' => $r, 'current' => $showcaseVisual, 'hasThumbnail' => $this->hasThumbnail, 'upload' => true])
                                 <p class="text-[0.8125rem] text-mute">{{ __('Seuls ce titre, ce texte, la commune et le crédit choisi par le Relais sont publics. Jamais la position.') }}</p>
                             @else
                                 <x-console.select :label="__('Collection existante')" name="collection" wire:model="collection">
