@@ -284,7 +284,7 @@ it('diffuse et publie un relais validé en un geste : diffusé, sur la page d’
         ->set('broadcastProgramme', 'Journal de 20 h')
         ->set('showcaseTitle', 'Niangon sous les eaux')
         ->set('showcaseText', 'Les habitants s’organisent.')
-        ->set('showcaseImage', true)
+        ->set('showcaseVisual', 'original')
         ->call('broadcastAndPublish')
         ->assertHasNoErrors();
 
@@ -308,7 +308,7 @@ it('ne publie jamais l’image d’un relais avec des mineurs, et réserve le ge
     Livewire::actingAs($this->redacteur)->test(Show::class, ['relais' => $relais])
         ->call('openEditorial', 'publish')
         ->set('broadcastProgramme', 'Journal de 20 h')
-        ->set('showcaseImage', true)
+        ->set('showcaseVisual', 'original')
         ->call('broadcastAndPublish')
         ->assertHasErrors('editorial');
 

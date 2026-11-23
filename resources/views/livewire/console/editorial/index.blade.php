@@ -65,11 +65,7 @@
                     <label for="publish-text" class="block text-[0.8125rem] font-medium">{{ __('Texte public (facultatif)') }}</label>
                     <textarea id="publish-text" wire:model="showcaseText" rows="3" class="mt-1.5 block w-full rounded-[0.8rem] border-0 bg-black/[0.055] p-3.5 text-[0.9375rem] focus:bg-surface focus:shadow-[0_0_0_3px_rgb(10_132_255/0.3)] focus:outline-none dark:bg-white/[0.08]"></textarea>
                 </div>
-                @if ($relais->blur_required || $relais->has_minors)
-                    <p class="rounded-[0.8rem] bg-status-pending/12 px-3 py-2 text-[0.8125rem]">{{ __('Floutage demandé ou mineurs : l’image ne sera pas publiée.') }}</p>
-                @else
-                    <label class="flex items-center gap-3 text-[0.9375rem]"><input type="checkbox" wire:model="showcaseImage" class="ios-check">{{ __('Publier l’image') }}</label>
-                @endif
+                @include('livewire.console.partials.showcase-visual', ['relais' => $relais, 'current' => $showcaseVisual, 'hasThumbnail' => $this->publishingHasThumbnail, 'upload' => true])
                 @error('publish') <p class="text-[0.8125rem] font-medium text-status-rejected">{{ $message }}</p> @enderror
             </form>
         @endif

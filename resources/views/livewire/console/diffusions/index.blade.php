@@ -28,8 +28,8 @@
             <ul data-stagger>
                 @foreach ($this->diffusions as $relais)
                     <li wire:key="diffusion-{{ $relais->uuid }}" class="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start">
-                        @if ($relais->showcase_with_image)
-                            <img src="{{ route('showcase.image', $relais) }}" alt="" loading="lazy" class="aspect-video w-full shrink-0 rounded-xl object-cover sm:w-44">
+                        @if ($imageUrl = \App\Http\Controllers\Public\ShowcaseController::imageUrl($relais))
+                            <img src="{{ $imageUrl }}" alt="" loading="lazy" class="aspect-video w-full shrink-0 rounded-xl object-cover sm:w-44">
                         @else
                             <span class="grid aspect-video w-full shrink-0 place-items-center rounded-xl bg-black/[0.045] text-mute sm:w-44 dark:bg-white/[0.06]"><x-ui.icon name="signal" class="size-6" /></span>
                         @endif
