@@ -100,7 +100,7 @@ it('exige l’indication de floutage pour valider un relais avec des mineurs [CO
     $component = Livewire::actingAs($this->coordo)->test(Show::class, ['relais' => $mineurs])
         ->call('open', 'validate')
         ->call('decide', 'validate')
-        ->assertHasErrors('decision');
+        ->assertHasErrors('blur');
 
     expect($mineurs->fresh()->state)->toBeInstanceOf(InReview::class);
 
@@ -114,7 +114,7 @@ it('rejette avec un motif de la liste des relais [COO-14, COO-15]', function () 
     Livewire::actingAs($this->coordo)->test(Show::class, ['relais' => $this->relais])
         ->call('open', 'reject')
         ->call('decide', 'reject')
-        ->assertHasErrors('decision')
+        ->assertHasErrors('reason')
         ->set('reason', $reason->uuid)
         ->call('decide', 'reject')
         ->assertHasNoErrors();
@@ -126,7 +126,7 @@ it('demande un complément ou transmet à la rédaction, avec un commentaire obl
     Livewire::actingAs($this->coordo)->test(Show::class, ['relais' => $this->relais])
         ->call('open', 'complement')
         ->call('decide', 'complement')
-        ->assertHasErrors('decision')
+        ->assertHasErrors('comment')
         ->set('comment', 'Pouvez-vous filmer le panneau de la rue ?')
         ->call('decide', 'complement');
 

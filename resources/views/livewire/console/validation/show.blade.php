@@ -401,7 +401,7 @@
                             </x-console.select>
                             <x-console.input :label="__('Lieu')" name="corrections.declared_place" wire:model="corrections.declared_place" />
                             @if ($needsBlur)
-                                <fieldset class="rounded-[1rem] bg-status-pending/12 p-4">
+                                <fieldset @class(['rounded-[1rem] bg-status-pending/12 p-4', 'ring-2 ring-status-rejected' => $errors->has('blur')])>
                                     <legend class="sr-only">{{ __('Floutage') }}</legend>
                                     <p class="text-[0.875rem] font-semibold">{{ __('Des personnes ou des mineurs sont identifiables : un floutage est-il nécessaire ?') }}</p>
                                     <div class="mt-3 flex gap-2">
@@ -411,6 +411,7 @@
                                             </label>
                                         @endforeach
                                     </div>
+                                    @error('blur') <p class="mt-2 text-[0.8125rem] font-medium text-status-rejected">{{ $message }}</p> @enderror
                                 </fieldset>
                             @endif
                         @elseif ($sheet === 'reject')
@@ -427,12 +428,14 @@
                                     @endforeach
                                 </ul>
                             </x-console.group>
+                            @error('reason') <p class="-mt-2 text-[0.8125rem] font-medium text-status-rejected">{{ $message }}</p> @enderror
                         @endif
 
                         @if ($sheet !== '')
                             <div>
                                 <label for="decision-comment" class="block text-[0.8125rem] font-medium">{{ $sheet === 'validate' ? __('Commentaire (facultatif)') : __('Commentaire') }}</label>
                                 <textarea id="decision-comment" wire:model="comment" rows="3" class="{{ $textarea }}"></textarea>
+                                @error('comment') <p class="mt-1 text-[0.8125rem] font-medium text-status-rejected">{{ $message }}</p> @enderror
                             </div>
                         @endif
 

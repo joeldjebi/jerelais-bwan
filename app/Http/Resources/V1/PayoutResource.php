@@ -7,7 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Paiement reçu par le Relais (MOB-26) : montant, moyen, référence et commissions soldées.
+ * Retrait du portefeuille (MOB-26) : montant, statut (en attente, payé, refusé), opérateur, numéro crédité,
+ * référence de la transaction une fois payé, motif en cas de refus.
  *
  * @mixin Payout
  */
@@ -22,12 +23,15 @@ class PayoutResource extends JsonResource
             'uuid' => $this->uuid,
             'amount' => $this->amount,
             'currency' => 'XOF',
+            'status' => $this->status->value,
+            'status_label' => $this->status->label(),
             'method' => $this->method->value,
             'method_label' => $this->method->label(),
+            'phone' => $this->phone,
             'reference' => $this->reference,
-            'paid_at' => $this->paid_at->toIso8601ZuluString(),
-            'commissions_count' => (int) ($this->commissions_count ?? 0),
-            'commissions' => CommissionResource::collection($this->whenLoaded('commissions')),
+            'rejection_reason' => $this->rejection_reason,
+            'requested_at' => ($this->requested_at ?? $this->paid_at)?->toIso8601ZuluString(),
+            'paid_at' => $this->paid_at?->toIso8601ZuluString(),
         ];
     }
 }

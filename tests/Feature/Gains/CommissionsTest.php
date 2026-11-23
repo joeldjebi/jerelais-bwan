@@ -4,11 +4,10 @@ use App\Domain\Access\Enums\Role;
 use App\Domain\Audit\Models\AuditLog;
 use App\Domain\Contribution\Events\RelaisStatusChanged;
 use App\Domain\Contribution\Models\RelaisItem;
-use App\Domain\Gains\Actions\PayCommissions;
+use App\Domain\Gains\Actions\ManageWithdrawals;
 use App\Domain\Gains\Enums\CommissionStatus;
-use App\Domain\Gains\Enums\PaymentMethod;
+use App\Domain\Gains\Enums\PayoutStatus;
 use App\Domain\Gains\Models\Commission;
-use App\Domain\Gains\Models\Payout;
 use App\Domain\Gains\Models\PayoutAccount;
 use App\Domain\Identity\Enums\IdentityStatus;
 use App\Domain\Identity\Models\IdentityVerification;
@@ -19,11 +18,16 @@ use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 use Livewire\Livewire;
 
+/*
+ * Portefeuille des Relais (MOB-26, ADM-27) : gain crédité à la diffusion, retrait demandé depuis l'application,
+ * payé par Mobile Money (ou refusé) depuis la console.
+ */
+
 beforeEach(function () {
     $this->sms = fakeSms();
     $this->admin = User::factory()->withTwoFactor()->withRole(Role::Admin)->create();
-    app(Settings::class)->set('gains.amount_per_validated', 2000);
-    app(Settings::class)->set('gains.amount_per_broadcast', 3000);
+    app(Settings::class)->set('gains.amount_per_broadcast', 2000);
+    app(Settings::class)->set('gains.min_withdrawal', 1000);
     $this->relais = RelaisItem::factory()->create(['commune_id' => Commune::factory()->create()->id, 'title' => 'Inondation à Niangon']);
     $this->user = $this->relais->user;
 });
@@ -33,97 +37,141 @@ function verifyIdentityOf(User $user): void
     IdentityVerification::query()->forceCreate(['user_id' => $user->id, 'status' => IdentityStatus::Verified]);
 }
 
-it('crée une commission à la validation puis une autre à la diffusion, une seule de chaque [MOB-26]', function () {
+function readyForWithdrawal(User $user): void
+{
+    verifyIdentityOf($user);
+    PayoutAccount::query()->create(['user_id' => $user->id, 'method' => 'orange_money', 'phone' => '+2250707070707', 'holder_name' => 'Awa Traoré']);
+}
+
+it('crédite le portefeuille une seule fois quand le relais est diffusé, jamais à la simple validation [MOB-26]', function () {
     RelaisStatusChanged::dispatch($this->relais, 'in_review', 'validated');
-    RelaisStatusChanged::dispatch($this->relais, 'in_review', 'validated');
+    expect(Commission::query()->count())->toBe(0);
+
+    RelaisStatusChanged::dispatch($this->relais, 'selected', 'broadcast');
     RelaisStatusChanged::dispatch($this->relais, 'selected', 'broadcast');
 
-    $commissions = Commission::query()->where('relais_item_id', $this->relais->id)->orderBy('id')->get();
-
-    expect($commissions)->toHaveCount(2)
-        ->and($commissions->pluck('kind.value')->all())->toBe(['validated', 'broadcast'])
-        ->and($commissions->pluck('amount')->all())->toBe([2000, 3000])
-        ->and($commissions->every(fn ($commission) => $commission->user_id === $this->user->id && $commission->status === CommissionStatus::Due))->toBeTrue();
+    $commission = Commission::query()->sole();
+    expect($commission->kind->value)->toBe('broadcast')
+        ->and($commission->amount)->toBe(2000)
+        ->and($commission->status)->toBe(CommissionStatus::Due);
 });
 
-it('ne crée aucune commission tant que les montants ne sont pas fixés [ADM-27]', function () {
-    app(Settings::class)->set('gains.amount_per_validated', null);
+it('ne crédite rien tant que le montant n’est pas fixé [ADM-27]', function () {
+    app(Settings::class)->set('gains.amount_per_broadcast', null);
 
-    RelaisStatusChanged::dispatch($this->relais, 'in_review', 'validated');
+    RelaisStatusChanged::dispatch($this->relais, 'selected', 'broadcast');
 
     expect(Commission::query()->count())->toBe(0);
 });
 
-it('annule la commission encore due d’un relais finalement rejeté, jamais une commission payée [ADM-27]', function () {
-    $due = Commission::factory()->create(['relais_item_id' => $this->relais->id]);
-    $paid = Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'status' => CommissionStatus::Paid]);
+it('montre le portefeuille et explique pourquoi un retrait est encore impossible [MOB-26]', function () {
+    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'amount' => 500]);
+    Sanctum::actingAs($this->user);
 
-    RelaisStatusChanged::dispatch($this->relais, 'validated', 'rejected');
+    $this->getJson(route('api.v1.me.wallet'))
+        ->assertOk()
+        ->assertJsonPath('data.earned', 500)
+        ->assertJsonPath('data.available', 500)
+        ->assertJsonPath('data.min_withdrawal', 1000)
+        ->assertJsonPath('data.can_withdraw', false)
+        ->assertJsonPath('data.blockers.*.code', ['identity', 'payout_account', 'balance']);
 
-    expect($due->refresh()->status)->toBe(CommissionStatus::Cancelled)
-        ->and($due->cancel_reason)->not->toBeNull()
-        ->and($paid->refresh()->status)->toBe(CommissionStatus::Paid);
+    $this->postJson(route('api.v1.me.wallet.withdraw'), ['amount' => 500])->assertUnprocessable()->assertJsonValidationErrors('amount');
 });
 
-it('paie toutes les commissions dues d’un Relais vérifié, trace le paiement et prévient le Relais [ADM-27]', function () {
-    verifyIdentityOf($this->user);
-    $first = Commission::factory()->create(['relais_item_id' => $this->relais->id, 'amount' => 2000]);
-    $second = Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'amount' => 3000]);
+it('laisse le Relais demander un retrait, une seule demande à la fois, dans la limite de son solde [MOB-26]', function () {
+    readyForWithdrawal($this->user);
+    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'amount' => 3000]);
+    Sanctum::actingAs($this->user);
+
+    $this->postJson(route('api.v1.me.wallet.withdraw'), ['amount' => 500])->assertUnprocessable()->assertJsonPath('errors.amount.0', 'Le retrait minimum est de 1 000 FCFA.');
+    $this->postJson(route('api.v1.me.wallet.withdraw'), ['amount' => 5000])->assertUnprocessable()->assertJsonValidationErrors('amount');
+
+    $this->postJson(route('api.v1.me.wallet.withdraw'), ['amount' => 2000])
+        ->assertCreated()
+        ->assertJsonPath('data.status', 'requested')
+        ->assertJsonPath('data.method', 'orange_money')
+        ->assertJsonPath('data.phone', '+2250707070707');
+
+    $this->postJson(route('api.v1.me.wallet.withdraw'), ['amount' => 1000])->assertUnprocessable()->assertJsonPath('errors.amount.0', 'Un retrait est déjà en cours : attendez qu’il soit traité.');
+
+    $this->getJson(route('api.v1.me.wallet'))->assertJsonPath('data.available', 1000)->assertJsonPath('data.pending', 2000)->assertJsonPath('data.pending_withdrawal.amount', 2000);
+});
+
+it('paie une demande de retrait depuis la console, trace le paiement et prévient le Relais [ADM-27]', function () {
+    readyForWithdrawal($this->user);
+    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'amount' => 3000]);
+    $payout = app(ManageWithdrawals::class)->request($this->user, 3000);
 
     Livewire::actingAs($this->admin)->test(GainsPage::class)
-        ->assertSee('5 000 FCFA')
-        ->call('openPay', $this->user->uuid)
-        ->assertSet('paying', true)
+        ->assertSee('3 000 FCFA')
+        ->call('openPay', $payout->uuid)
+        ->assertSet('method', 'orange_money')
+        ->assertSet('phone', '+2250707070707')
         ->call('pay')
         ->assertHasErrors('reference')
-        ->set('method', PaymentMethod::OrangeMoney->value)
         ->set('reference', 'OM-2026-0042')
         ->call('pay')
         ->assertHasNoErrors()
         ->assertSet('paying', false);
 
-    foreach ([$first, $second] as $commission) {
-        $commission->refresh();
-        expect($commission->status)->toBe(CommissionStatus::Paid)
-            ->and($commission->payment_method)->toBe(PaymentMethod::OrangeMoney)
-            ->and($commission->payment_reference)->toBe('OM-2026-0042')
-            ->and($commission->paid_by)->toBe($this->admin->id);
-    }
-
-    $payout = Payout::query()->sole();
-    expect($payout->amount)->toBe(5000)
+    $payout->refresh();
+    expect($payout->status)->toBe(PayoutStatus::Paid)
         ->and($payout->reference)->toBe('OM-2026-0042')
-        ->and($first->payout_id)->toBe($payout->id)
-        ->and(AuditLog::query()->where('action', 'commissions.paid')->sole()->payload)->toMatchArray(['amount' => 5000, 'method' => 'orange_money'])
-        ->and(collect($this->sms->sent)->last()['message'])->toContain('5 000 FCFA')->toContain('Orange Money');
+        ->and($payout->paid_by)->toBe($this->admin->id)
+        ->and(AuditLog::query()->where('action', 'withdrawal.paid')->sole()->payload)->toMatchArray(['amount' => 3000, 'method' => 'orange_money'])
+        ->and(collect($this->sms->sent)->last()['message'])->toContain('3 000 FCFA')->toContain('Orange Money');
+
+    Sanctum::actingAs($this->user);
+    $this->getJson(route('api.v1.me.wallet'))->assertJsonPath('data.available', 0)->assertJsonPath('data.withdrawn', 3000);
+    $this->getJson(route('api.v1.me.payouts'))->assertJsonPath('data.0.status', 'paid')->assertJsonPath('data.0.reference', 'OM-2026-0042')->assertJsonPath('meta.total_received', 3000);
 });
 
-it('bloque le paiement d’un Relais dont l’identité n’est pas vérifiée [MOB-01, ADM-27]', function () {
-    $commission = Commission::factory()->create(['relais_item_id' => $this->relais->id]);
+it('refuse une demande de retrait avec un motif : la somme revient dans le portefeuille [ADM-27]', function () {
+    readyForWithdrawal($this->user);
+    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'amount' => 3000]);
+    $payout = app(ManageWithdrawals::class)->request($this->user, 2000);
 
     Livewire::actingAs($this->admin)->test(GainsPage::class)
-        ->assertSee('Identité non vérifiée')
-        ->call('openPay', $this->user->uuid)
-        ->set('reference', 'W-1')
-        ->call('pay')
-        ->assertHasErrors('reference');
+        ->call('openReject', $payout->uuid)
+        ->call('reject')
+        ->assertHasErrors('rejectReason')
+        ->set('rejectReason', 'Numéro injoignable.')
+        ->call('reject')
+        ->assertHasNoErrors();
 
-    expect($commission->refresh()->status)->toBe(CommissionStatus::Due);
+    expect($payout->refresh()->status)->toBe(PayoutStatus::Rejected)->and($payout->rejection_reason)->toBe('Numéro injoignable.');
+
+    Sanctum::actingAs($this->user);
+    $this->getJson(route('api.v1.me.wallet'))->assertJsonPath('data.available', 3000)->assertJsonPath('data.pending', 0);
 });
 
-it('annule une commission avec un motif obligatoire [ADM-27]', function () {
-    $commission = Commission::factory()->create(['relais_item_id' => $this->relais->id]);
+it('annule un gain encore disponible avec un motif, jamais un gain déjà retiré [ADM-27]', function () {
+    readyForWithdrawal($this->user);
+    $first = Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'amount' => 2000]);
 
     Livewire::actingAs($this->admin)->test(GainsPage::class)
-        ->call('askCancel', $commission->uuid)
+        ->set('tab', 'soldes')
+        ->call('openHolder', $this->user->uuid)
+        ->call('askCancel', $first->uuid)
         ->call('cancel')
         ->assertHasErrors('cancelReason')
         ->set('cancelReason', 'Doublon d’un autre relais.')
         ->call('cancel')
         ->assertHasNoErrors();
 
-    expect($commission->refresh()->status)->toBe(CommissionStatus::Cancelled)
-        ->and(AuditLog::query()->where('action', 'commissions.cancelled')->exists())->toBeTrue();
+    expect($first->refresh()->status)->toBe(CommissionStatus::Cancelled);
+
+    $second = Commission::factory()->create(['relais_item_id' => RelaisItem::factory()->create(['user_id' => $this->user->id])->id, 'kind' => 'broadcast', 'amount' => 2000]);
+    app(ManageWithdrawals::class)->request($this->user, 2000);
+
+    Livewire::actingAs($this->admin)->test(GainsPage::class)
+        ->call('askCancel', $second->uuid)
+        ->set('cancelReason', 'Essai')
+        ->call('cancel')
+        ->assertHasErrors('cancelReason');
+
+    expect($second->refresh()->status)->toBe(CommissionStatus::Due);
 });
 
 it('réserve la page Paiements à l’administration [Annexe A]', function () {
@@ -134,27 +182,7 @@ it('réserve la page Paiements à l’administration [Annexe A]', function () {
     }
 });
 
-it('montre au Relais ses gains dans l’application, sans les commissions annulées [MOB-26]', function () {
-    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'amount' => 2000]);
-    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'amount' => 3000, 'status' => CommissionStatus::Paid, 'payment_method' => PaymentMethod::Wave, 'payment_reference' => 'W-9']);
-    Commission::factory()->create(['user_id' => $this->user->id, 'relais_item_id' => RelaisItem::factory()->create(['user_id' => $this->user->id])->id, 'status' => CommissionStatus::Cancelled]);
-    Commission::factory()->create();
-
-    Sanctum::actingAs($this->user);
-
-    $this->getJson(route('api.v1.me.gains'))
-        ->assertOk()
-        ->assertJsonCount(2, 'data')
-        ->assertJsonPath('meta.totals.due', 2000)
-        ->assertJsonPath('meta.totals.paid', 3000)
-        ->assertJsonPath('meta.gains_eligible', false)
-        ->assertJsonPath('data.0.status', 'paid')
-        ->assertJsonPath('data.0.payment_method_label', 'Wave')
-        ->assertJsonPath('data.0.relais.title', 'Inondation à Niangon')
-        ->assertJsonPath('data.1.amount', 2000);
-});
-
-it('laisse le Relais enregistrer ses coordonnées Mobile Money, reprises par l’administration au paiement [MOB-26]', function () {
+it('laisse le Relais enregistrer ses coordonnées Mobile Money [MOB-26]', function () {
     Sanctum::actingAs($this->user);
 
     $this->getJson(route('api.v1.me.payout-account'))->assertOk()->assertJsonPath('data', null)->assertJsonPath('meta.methods.0.value', 'wave');
@@ -165,46 +193,21 @@ it('laisse le Relais enregistrer ses coordonnées Mobile Money, reprises par l�
 
     $this->putJson(route('api.v1.me.payout-account'), ['method' => 'orange_money', 'phone' => '0707070707', 'holder_name' => 'Awa Traoré'])
         ->assertOk()
-        ->assertJsonPath('data.method', 'orange_money')
         ->assertJsonPath('data.method_label', 'Orange Money')
-        ->assertJsonPath('data.phone', '+2250707070707')
-        ->assertJsonPath('data.holder_name', 'Awa Traoré');
+        ->assertJsonPath('data.phone', '+2250707070707');
 
-    $this->putJson(route('api.v1.me.payout-account'), ['method' => 'wave', 'phone' => '+2250102030405', 'holder_name' => 'Awa Traoré'])->assertOk();
-
-    expect(PayoutAccount::query()->where('user_id', $this->user->id)->sole()->method->value)->toBe('wave');
-
-    Commission::factory()->create(['relais_item_id' => $this->relais->id]);
-
-    Livewire::actingAs($this->admin)->test(GainsPage::class)
-        ->assertSee('+2250102030405')
-        ->call('openPay', $this->user->uuid)
-        ->assertSet('method', 'wave')
-        ->assertSet('phone', '+2250102030405');
+    expect(PayoutAccount::query()->where('user_id', $this->user->id)->sole()->holder_name)->toBe('Awa Traoré');
 });
 
-it('donne au Relais l’historique de ses paiements reçus et filtre ses commissions [MOB-26]', function () {
-    verifyIdentityOf($this->user);
-    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'amount' => 2000]);
-    app(PayCommissions::class)->pay($this->user, $this->admin, PaymentMethod::Wave, 'W-77', '+2250707070707');
-    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'amount' => 3000]);
-
+it('liste les gains crédités du Relais, sans les gains annulés [MOB-26]', function () {
+    Commission::factory()->create(['relais_item_id' => $this->relais->id, 'kind' => 'broadcast', 'amount' => 2000]);
+    Commission::factory()->create(['user_id' => $this->user->id, 'relais_item_id' => RelaisItem::factory()->create(['user_id' => $this->user->id])->id, 'kind' => 'broadcast', 'status' => CommissionStatus::Cancelled]);
     Sanctum::actingAs($this->user);
 
-    $this->getJson(route('api.v1.me.payouts'))
+    $this->getJson(route('api.v1.me.gains'))
         ->assertOk()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.amount', 2000)
-        ->assertJsonPath('data.0.method_label', 'Wave')
-        ->assertJsonPath('data.0.reference', 'W-77')
-        ->assertJsonPath('data.0.commissions_count', 1)
-        ->assertJsonPath('data.0.commissions.0.relais.title', 'Inondation à Niangon')
-        ->assertJsonPath('meta.total_received', 2000);
-
-    $this->getJson(route('api.v1.me.gains', ['status' => 'due']))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.amount', 3000);
-    $this->getJson(route('api.v1.me.gains', ['status' => 'paid']))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.amount', 2000)
-        ->assertJsonPath('meta.gains_eligible', true)
-        ->assertJsonPath('meta.payout_account_set', false);
-
-    Livewire::actingAs($this->admin)->test(GainsPage::class)->set('tab', 'historique')->assertSee('W-77')->assertSee('2 000 FCFA');
+        ->assertJsonPath('data.0.relais.title', 'Inondation à Niangon')
+        ->assertJsonPath('meta.totals.earned', 2000);
 });

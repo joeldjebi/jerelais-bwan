@@ -9,9 +9,8 @@ use App\Domain\Auth\Actions\RevokeDevice;
 use App\Domain\Auth\Models\Device;
 use App\Domain\Candidature\Models\Candidature;
 use App\Domain\Contribution\Models\RelaisItem;
-use App\Domain\Gains\Enums\CommissionStatus;
-use App\Domain\Gains\Models\Commission;
 use App\Domain\Gains\Models\PayoutAccount;
+use App\Domain\Gains\Support\Wallet;
 use App\Domain\Identity\Models\IdentityVerification;
 use App\Domain\Relais\Actions\ChangeRelaisStatus;
 use App\Domain\Relais\Enums\RelaisStatus;
@@ -35,7 +34,7 @@ use Livewire\Component;
  * @property-read array<string, int> $stats
  * @property-read Collection<int, Commune> $communes
  * @property-read bool $canSeePersonal
- * @property-read array{candidature: Candidature|null, account: User|null, identity: IdentityVerification|null, payout: PayoutAccount|null, gains: array{due: int, paid: int}} $personal
+ * @property-read array{candidature: Candidature|null, account: User|null, identity: IdentityVerification|null, payout: PayoutAccount|null, gains: array{earned: int, available: int, pending: int, withdrawn: int}} $personal
  * @property-read int $pushCount
  */
 class Show extends Component
@@ -86,23 +85,19 @@ class Show extends Component
     /**
      * Identité déclarée, compte, vérification d'identité, coordonnées de paiement et gains du Relais.
      *
-     * @return array{candidature: Candidature|null, account: User|null, identity: IdentityVerification|null, payout: PayoutAccount|null, gains: array{due: int, paid: int}}
+     * @return array{candidature: Candidature|null, account: User|null, identity: IdentityVerification|null, payout: PayoutAccount|null, gains: array{earned: int, available: int, pending: int, withdrawn: int}}
      */
     #[Computed]
     public function personal(): array
     {
         $userId = $this->profile->user_id;
-        $totals = Commission::query()->where('user_id', $userId)->selectRaw('status, sum(amount) as total')->groupBy('status')->pluck('total', 'status');
 
         return [
             'candidature' => Candidature::withoutCommuneRestriction()->where('user_id', $userId)->latest('id')->first(),
             'account' => User::query()->find($userId),
             'identity' => IdentityVerification::query()->where('user_id', $userId)->with(['documentType', 'commune:id,name', 'localite:id,name'])->first(),
             'payout' => PayoutAccount::query()->where('user_id', $userId)->first(),
-            'gains' => [
-                'due' => (int) ($totals[CommissionStatus::Due->value] ?? 0),
-                'paid' => (int) ($totals[CommissionStatus::Paid->value] ?? 0),
-            ],
+            'gains' => app(Wallet::class)->summary(User::query()->findOrFail($userId)),
         ];
     }
 
