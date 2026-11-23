@@ -16,7 +16,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Détail d'une vérification d'identité : identité déclarée à l'inscription, commune, pièce, selfie et photo de profil ;
+ * Détail d'une vérification d'identité : identité déclarée à l'inscription, commune, pièce et selfie (aussi photo du badge) ;
  * décision de l'administration (MOB-01).
  *
  * @property-read Candidature|null $identity

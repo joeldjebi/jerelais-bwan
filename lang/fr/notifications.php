@@ -40,7 +40,7 @@ return [
     'transferred_sms' => 'JE RELAIS : vous êtes maintenant rattaché à la commune de :commune.',
 
     'gains' => [
-        'earned' => ['title' => 'Nouveau gain', 'body' => '+:amount pour « :title ».'],
+        'earned' => ['title' => 'Nouveau gain', 'body' => '+:amount crédités sur votre portefeuille pour « :title ».'],
         'cancelled' => ['title' => 'Commission annulée', 'body' => 'La commission de :amount pour « :title » a été annulée. Ouvrez l’application pour en savoir plus.'],
     ],
 

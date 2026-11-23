@@ -6,7 +6,7 @@
     <x-console.page-header
         :eyebrow="__('Réseau')"
         :title="__('Vérifications d’identité')"
-        :subtitle="__('Commune, pièce d’identité, selfie et photo de profil envoyés par les Relais. Une identité vérifiée rend le Relais éligible aux gains.')"
+        :subtitle="__('Commune, pièce d’identité (photo ou PDF) et selfie envoyés par les Relais. Le selfie sert aussi de photo du badge. Une identité vérifiée rend le Relais éligible aux gains.')"
     />
 
     <div class="grid grid-cols-3 gap-4" data-bento>

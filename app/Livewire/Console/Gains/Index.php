@@ -4,12 +4,15 @@ namespace App\Livewire\Console\Gains;
 
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Scopes\CommuneScope;
-use App\Domain\Gains\Actions\PayCommissions;
+use App\Domain\Gains\Actions\CancelCommission;
+use App\Domain\Gains\Actions\ManageWithdrawals;
 use App\Domain\Gains\Enums\CommissionStatus;
 use App\Domain\Gains\Enums\PaymentMethod;
+use App\Domain\Gains\Enums\PayoutStatus;
 use App\Domain\Gains\Exceptions\CommissionRefused;
 use App\Domain\Gains\Models\Commission;
 use App\Domain\Gains\Models\Payout;
+use App\Domain\Gains\Support\Wallet;
 use App\Domain\Identity\Enums\IdentityStatus;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -26,33 +29,45 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Paiements des Relais (ADM-27) : ce qui est dû à chaque Relais, son versement par Mobile Money (enregistré avec sa
- * référence) et l'historique. Réservé à l'administration.
+ * Paiements des Relais (ADM-27) : demandes de retrait du portefeuille à payer par Mobile Money (ou à refuser),
+ * historique des retraits, soldes des portefeuilles (avec annulation motivée d'un gain), gains annulés.
  *
- * @property-read LengthAwarePaginator<int, User> $due
- * @property-read LengthAwarePaginator<int, Payout>|LengthAwarePaginator<int, Commission> $history
- * @property-read array{due_total: int, due_relais: int, paid_month: int} $stats
- * @property-read User|null $payee
- * @property-read Collection<int, Commission> $payeeCommissions
+ * @property-read LengthAwarePaginator<int, Payout> $requests
+ * @property-read LengthAwarePaginator<int, Payout> $history
+ * @property-read LengthAwarePaginator<int, User> $balances
+ * @property-read LengthAwarePaginator<int, Commission> $cancelled
+ * @property-read array{pending_total: int, pending_count: int, paid_month: int, balances_total: int} $stats
+ * @property-read Payout|null $payout
+ * @property-read User|null $holder
+ * @property-read Collection<int, Commission> $holderCommissions
  */
 #[Title('Paiements')]
 class Index extends Component
 {
     use WithPagination;
 
-    #[Url(except: 'a-payer')]
-    public string $tab = 'a-payer';
+    #[Url(except: 'demandes')]
+    public string $tab = 'demandes';
 
     #[Locked]
-    public ?string $payeeUuid = null;
+    public ?string $payoutUuid = null;
 
     public bool $paying = false;
+
+    public bool $rejecting = false;
 
     public string $method = 'wave';
 
     public string $phone = '';
 
     public string $reference = '';
+
+    public string $rejectReason = '';
+
+    #[Locked]
+    public ?string $holderUuid = null;
+
+    public bool $viewing = false;
 
     #[Locked]
     public ?string $cancelUuid = null;
@@ -68,27 +83,26 @@ class Index extends Component
 
     public function updatedTab(): void
     {
-        $this->resetPage('dus');
-        $this->resetPage('historique');
-        unset($this->history);
+        $this->resetPage('liste');
     }
 
     public function openPay(string $uuid): void
     {
-        abort_unless(Str::isUuid($uuid), 404);
-        $this->resetErrorBag();
-        $this->payeeUuid = $uuid;
-        unset($this->payee, $this->payeeCommissions);
-        abort_if($this->payee === null, 404);
-        // Coordonnées choisies par le Relais dans l'application, sinon son numéro de compte.
-        $account = $this->payee->payoutAccount;
-        $this->method = $account?->method->value ?? PaymentMethod::Wave->value;
-        $this->phone = $account->phone ?? (string) $this->payee->phoneNumber()?->e164;
+        $this->selectPayout($uuid);
+        $this->method = $this->payout?->method->value ?? PaymentMethod::Wave->value;
+        $this->phone = (string) $this->payout?->phone;
         $this->reference = '';
         $this->paying = true;
     }
 
-    public function pay(PayCommissions $pay): void
+    public function openReject(string $uuid): void
+    {
+        $this->selectPayout($uuid);
+        $this->rejectReason = '';
+        $this->rejecting = true;
+    }
+
+    public function pay(ManageWithdrawals $withdrawals): void
     {
         $this->authorizeAccess();
         $this->validate([
@@ -97,11 +111,11 @@ class Index extends Component
             'reference' => ['required', 'string', 'max:120'],
         ], attributes: ['method' => __('moyen de paiement'), 'phone' => __('numéro'), 'reference' => __('référence de la transaction')]);
 
-        $payee = $this->payee;
-        abort_if($payee === null, 404);
+        $payout = $this->payout;
+        abort_if($payout === null, 404);
 
         try {
-            $total = $pay->pay($payee, $this->admin(), PaymentMethod::from($this->method), $this->reference, $this->phone);
+            $paid = $withdrawals->pay($payout, $this->admin(), $this->reference, PaymentMethod::from($this->method), $this->phone);
         } catch (CommissionRefused $exception) {
             $this->addError('reference', $exception->getMessage());
 
@@ -109,9 +123,38 @@ class Index extends Component
         }
 
         $this->paying = false;
-        $this->payeeUuid = null;
-        unset($this->due, $this->stats, $this->history);
-        $this->dispatch('toast', message: __('Paiement de :amount FCFA enregistré. Le Relais est prévenu.', ['amount' => number_format($total, 0, ',', ' ')]));
+        $this->refreshLists();
+        $this->dispatch('toast', message: __('Retrait de :amount payé. Le Relais est prévenu.', ['amount' => Wallet::fcfa($paid->amount)]));
+    }
+
+    public function reject(ManageWithdrawals $withdrawals): void
+    {
+        $this->authorizeAccess();
+        $this->validate(['rejectReason' => ['required', 'string', 'max:500']], attributes: ['rejectReason' => __('motif')]);
+
+        $payout = $this->payout;
+        abort_if($payout === null, 404);
+
+        try {
+            $withdrawals->reject($payout, $this->admin(), $this->rejectReason);
+        } catch (CommissionRefused $exception) {
+            $this->addError('rejectReason', $exception->getMessage());
+
+            return;
+        }
+
+        $this->rejecting = false;
+        $this->refreshLists();
+        $this->dispatch('toast', message: __('Retrait refusé : la somme revient dans le portefeuille du Relais.'));
+    }
+
+    public function openHolder(string $uuid): void
+    {
+        abort_unless(Str::isUuid($uuid), 404);
+        $this->holderUuid = $uuid;
+        unset($this->holder, $this->holderCommissions);
+        abort_if($this->holder === null, 404);
+        $this->viewing = true;
     }
 
     public function askCancel(string $uuid): void
@@ -123,14 +166,14 @@ class Index extends Component
         $this->cancelling = true;
     }
 
-    public function cancel(PayCommissions $pay): void
+    public function cancel(CancelCommission $cancel): void
     {
         $this->authorizeAccess();
         $this->validate(['cancelReason' => ['required', 'string', 'max:500']], attributes: ['cancelReason' => __('motif')]);
         $commission = Commission::query()->where('uuid', (string) $this->cancelUuid)->firstOrFail();
 
         try {
-            $pay->cancel($commission, $this->admin(), $this->cancelReason);
+            $cancel->handle($commission, $this->admin(), $this->cancelReason);
         } catch (CommissionRefused $exception) {
             $this->addError('cancelReason', $exception->getMessage());
 
@@ -138,83 +181,111 @@ class Index extends Component
         }
 
         $this->cancelling = false;
-        unset($this->due, $this->stats, $this->payeeCommissions);
-        $this->dispatch('toast', message: __('Commission annulée.'));
+        $this->refreshLists();
+        unset($this->holderCommissions);
+        $this->dispatch('toast', message: __('Gain annulé.'));
     }
 
     /**
-     * Relais à qui l'on doit quelque chose, le plus gros montant d'abord.
-     *
-     * @return LengthAwarePaginator<int, User>
+     * @return LengthAwarePaginator<int, Payout>
      */
     #[Computed]
-    public function due(): LengthAwarePaginator
+    public function requests(): LengthAwarePaginator
     {
-        return User::query()
-            ->whereHas('commissions', fn ($query) => $query->due())
-            ->withSum(['commissions as due_total' => fn ($query) => $query->due()], 'amount')
-            ->withCount(['commissions as due_count' => fn ($query) => $query->due()])
-            ->with([
-                'relaisProfile' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'user_id', 'display_name', 'number', 'commune_id')->with('commune:id,name'),
-                'identityVerification:id,user_id,status',
-                'payoutAccount',
-            ])
-            ->orderByDesc('due_total')
-            ->paginate(20, pageName: 'dus');
+        return Payout::query()->where('status', PayoutStatus::Requested->value)
+            ->with(['user:id,uuid,name,phone', 'user.identityVerification:id,user_id,status'])
+            ->oldest('requested_at')
+            ->paginate(20, pageName: 'liste');
     }
 
     /**
-     * Paiements effectués (onglet « Historique ») ou commissions annulées (onglet « Annulées »).
-     *
-     * @return LengthAwarePaginator<int, Payout>|LengthAwarePaginator<int, Commission>
+     * @return LengthAwarePaginator<int, Payout>
      */
     #[Computed]
     public function history(): LengthAwarePaginator
     {
-        if ($this->tab === 'annulees') {
-            return Commission::query()
-                ->where('status', CommissionStatus::Cancelled->value)
-                ->with(['user:id,name', 'relaisItem' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'uuid', 'title')])
-                ->latest('cancelled_at')
-                ->paginate(30, pageName: 'historique');
-        }
-
-        return Payout::query()
-            ->withCount('commissions')
-            ->with(['user:id,name', 'payer:id,name'])
-            ->latest('paid_at')
-            ->paginate(30, pageName: 'historique');
+        return Payout::query()->whereIn('status', [PayoutStatus::Paid->value, PayoutStatus::Rejected->value])
+            ->with(['user:id,uuid,name', 'payer:id,name'])
+            ->latest('updated_at')
+            ->paginate(30, pageName: 'liste');
     }
 
     /**
-     * @return array{due_total: int, due_relais: int, paid_month: int}
+     * Portefeuilles crédités, le plus gros gain total d'abord.
+     *
+     * @return LengthAwarePaginator<int, User>
+     */
+    #[Computed]
+    public function balances(): LengthAwarePaginator
+    {
+        return User::query()
+            ->whereHas('commissions', fn ($query) => $query->whereIn('status', [CommissionStatus::Due->value, CommissionStatus::Paid->value]))
+            ->withSum(['commissions as earned_total' => fn ($query) => $query->whereIn('status', [CommissionStatus::Due->value, CommissionStatus::Paid->value])], 'amount')
+            ->withSum(['payouts as withdrawn_total' => fn ($query) => $query->whereIn('status', [PayoutStatus::Requested->value, PayoutStatus::Paid->value])], 'amount')
+            ->with(['relaisProfile' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'user_id', 'display_name', 'number'), 'payoutAccount', 'identityVerification:id,user_id,status'])
+            ->orderByDesc('earned_total')
+            ->paginate(20, pageName: 'liste');
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, Commission>
+     */
+    #[Computed]
+    public function cancelled(): LengthAwarePaginator
+    {
+        return Commission::query()->where('status', CommissionStatus::Cancelled->value)
+            ->with(['user:id,name', 'relaisItem' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'uuid', 'title')])
+            ->latest('cancelled_at')
+            ->paginate(30, pageName: 'liste');
+    }
+
+    /**
+     * @return array{pending_total: int, pending_count: int, paid_month: int, balances_total: int}
      */
     #[Computed]
     public function stats(): array
     {
+        $earned = (int) Commission::query()->whereIn('status', [CommissionStatus::Due->value, CommissionStatus::Paid->value])->sum('amount');
+        $withdrawn = (int) Payout::query()->whereIn('status', [PayoutStatus::Requested->value, PayoutStatus::Paid->value])->sum('amount');
+
         return [
-            'due_total' => (int) Commission::query()->due()->sum('amount'),
-            'due_relais' => Commission::query()->due()->distinct()->count('user_id'),
-            'paid_month' => (int) Payout::query()->where('paid_at', '>=', now()->startOfMonth())->sum('amount'),
+            'pending_total' => (int) Payout::query()->where('status', PayoutStatus::Requested->value)->sum('amount'),
+            'pending_count' => Payout::query()->where('status', PayoutStatus::Requested->value)->count(),
+            'paid_month' => (int) Payout::query()->where('status', PayoutStatus::Paid->value)->where('paid_at', '>=', now()->startOfMonth())->sum('amount'),
+            'balances_total' => max(0, $earned - $withdrawn),
         ];
     }
 
     #[Computed]
-    public function payee(): ?User
+    public function payout(): ?Payout
     {
-        return $this->payeeUuid === null ? null : User::query()->where('uuid', $this->payeeUuid)->with(['identityVerification:id,user_id,status', 'payoutAccount'])->first();
+        return $this->payoutUuid === null ? null : Payout::query()->where('uuid', $this->payoutUuid)->with('user')->first();
+    }
+
+    #[Computed]
+    public function holder(): ?User
+    {
+        return $this->holderUuid === null ? null : User::query()->where('uuid', $this->holderUuid)->first();
     }
 
     /**
      * @return Collection<int, Commission>
      */
     #[Computed]
-    public function payeeCommissions(): Collection
+    public function holderCommissions(): Collection
     {
-        return $this->payee === null ? new Collection : Commission::query()
-            ->where('user_id', $this->payee->id)->due()
+        return $this->holder === null ? new Collection : Commission::query()
+            ->where('user_id', $this->holder->id)
             ->with(['relaisItem' => fn ($query) => $query->withoutGlobalScope(CommuneScope::class)->select('id', 'uuid', 'title')])
-            ->oldest()->get();
+            ->latest('id')->get();
+    }
+
+    /**
+     * @return array{earned: int, available: int, pending: int, withdrawn: int}
+     */
+    public function walletOf(User $user): array
+    {
+        return app(Wallet::class)->summary($user);
     }
 
     public static function isVerified(User $user): bool
@@ -225,6 +296,20 @@ class Index extends Component
     public function render(): View
     {
         return view('livewire.console.gains.index');
+    }
+
+    private function selectPayout(string $uuid): void
+    {
+        abort_unless(Str::isUuid($uuid), 404);
+        $this->resetErrorBag();
+        $this->payoutUuid = $uuid;
+        unset($this->payout);
+        abort_if($this->payout === null, 404);
+    }
+
+    private function refreshLists(): void
+    {
+        unset($this->requests, $this->history, $this->balances, $this->cancelled, $this->stats, $this->payout);
     }
 
     private function admin(): User

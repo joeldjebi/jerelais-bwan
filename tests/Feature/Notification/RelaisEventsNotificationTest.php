@@ -6,9 +6,10 @@ use App\Domain\Contribution\Actions\TransitionRelaisItem;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\Broadcast;
 use App\Domain\Contribution\States\InReview;
+use App\Domain\Contribution\States\Selected;
 use App\Domain\Contribution\States\Validated;
 use App\Domain\Editorial\Actions\PublishToShowcase;
-use App\Domain\Gains\Actions\PayCommissions;
+use App\Domain\Gains\Actions\CancelCommission;
 use App\Domain\Gains\Models\Commission;
 use App\Domain\Legal\Actions\PublishLegalDocument;
 use App\Domain\Legal\Enums\LegalDocumentType;
@@ -43,24 +44,26 @@ function pushTypes(): array
     return collect(test()->push->sent)->pluck('message.data.type')->all();
 }
 
-it('annonce un nouveau gain et le niveau Bronze au premier relais validé', function () {
-    app(Settings::class)->set('gains.amount_per_validated', 2000);
+it('annonce le niveau Bronze au premier relais validé, puis le gain crédité au portefeuille à la diffusion', function () {
+    app(Settings::class)->set('gains.amount_per_broadcast', 2000);
 
     app(TransitionRelaisItem::class)->handle($this->relais, Validated::class, $this->admin);
 
-    expect(pushTypes())->toContain('relais.status_changed', 'gains.earned', 'account.level');
+    expect(pushTypes())->toContain('relais.status_changed', 'account.level')->not->toContain('gains.earned');
+    $level = collect($this->push->sent)->first(fn ($sent) => $sent['message']->data['type'] === 'account.level');
+    expect($level['message']->data['level'])->toBe('bronze');
+
+    app(TransitionRelaisItem::class)->handle($this->relais->refresh(), Selected::class, $this->admin);
+    app(TransitionRelaisItem::class)->handle($this->relais->refresh(), Broadcast::class, $this->admin);
 
     $gain = collect($this->push->sent)->first(fn ($sent) => $sent['message']->data['type'] === 'gains.earned');
-    $level = collect($this->push->sent)->first(fn ($sent) => $sent['message']->data['type'] === 'account.level');
-
-    expect($gain['message']->body)->toContain('2 000 FCFA')->toContain('Marché inondé')
-        ->and($level['message']->data['level'])->toBe('bronze');
+    expect($gain['message']->body)->toContain('2 000 FCFA')->toContain('portefeuille')->toContain('Marché inondé');
 });
 
 it('prévient de l’annulation d’une commission par l’administration', function () {
     $commission = Commission::factory()->create(['relais_item_id' => $this->relais->id, 'amount' => 2000]);
 
-    app(PayCommissions::class)->cancel($commission, $this->admin, 'Doublon');
+    app(CancelCommission::class)->handle($commission, $this->admin, 'Doublon');
 
     expect(pushTypes())->toBe(['gains.cancelled']);
 });

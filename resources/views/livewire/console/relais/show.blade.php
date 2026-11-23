@@ -97,8 +97,8 @@
                             <dd class="text-right font-medium">{{ $payout ? $payout->method->label().' · '.$payout->phone.' · '.$payout->holder_name : __('Non renseigné') }}</dd>
                         </div>
                         <div class="flex justify-between gap-4 px-4 py-2.5">
-                            <dt class="text-mute">{{ __('Commissions') }}</dt>
-                            <dd class="text-right font-medium">{{ __(':due à payer · :paid payés', ['due' => $fcfa($gains['due']), 'paid' => $fcfa($gains['paid'])]) }}</dd>
+                            <dt class="text-mute">{{ __('Portefeuille') }}</dt>
+                            <dd class="text-right font-medium">{{ __(':available disponibles · :withdrawn retirés', ['available' => $fcfa($gains['available']), 'withdrawn' => $fcfa($gains['withdrawn'])]) }}</dd>
                         </div>
                     </dl>
                 @endif
