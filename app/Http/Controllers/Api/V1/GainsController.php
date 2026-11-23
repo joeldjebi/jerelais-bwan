@@ -23,9 +23,12 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Http\Response;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-#[Group('Mes gains', 'Portefeuille : gains crédités à chaque relais diffusé, coordonnées Mobile Money, demandes de retrait et historique (MOB-26).', weight: 3)]
+#[Group('Mes gains', 'Portefeuille : gains accordés par l’administration, numéros Mobile Money (deux au plus), retrait immédiat et historique (MOB-26).', weight: 3)]
 class GainsController extends Controller
 {
     /**
@@ -70,6 +73,8 @@ class GainsController extends Controller
      * `earned` (total gagné), en FCFA. Chaque relais diffusé crédite le portefeuille. `min_withdrawal` : retrait minimum.
      * `can_withdraw` et `blockers` disent si un retrait est possible et, sinon, pourquoi (identité à vérifier,
      * coordonnées Mobile Money à enregistrer, retrait déjà en cours, solde insuffisant) : messages prêts à afficher.
+     * `payout_accounts` : numéros Mobile Money enregistrés (deux au plus), à proposer au moment du retrait ;
+     * `payout_account` : le premier d'entre eux (numéro par défaut).
      */
     public function wallet(Request $request, Wallet $wallet): JsonResponse
     {
@@ -85,27 +90,32 @@ class GainsController extends Controller
             'can_withdraw' => $blockers === [],
             'blockers' => array_map(fn (string $key, string $message): array => ['code' => $key, 'message' => $message], array_keys($blockers), array_values($blockers)),
             'payout_account' => $account === null ? null : (new PayoutAccountResource($account))->resolve($request),
+            'payout_accounts' => PayoutAccountResource::collection($user->payoutAccounts)->resolve($request),
             'pending_withdrawal' => ($pending = $user->payouts()->where('status', PayoutStatus::Requested->value)->latest('id')->first()) === null ? null : (new PayoutResource($pending))->resolve($request),
         ]]);
     }
 
     /**
-     * Demander un retrait.
+     * Retirer.
      *
-     * Retire `amount` FCFA du portefeuille vers le compte Mobile Money enregistré (`PUT /me/payout-account`).
-     * Conditions : identité vérifiée, coordonnées enregistrées, aucun retrait en cours, montant entre le minimum et le
-     * solde disponible (422 sinon, avec le motif dans `errors.amount`). L'administration paie ensuite par Mobile Money :
-     * notification `gains.paid` (ou `gains.withdrawal_rejected`, la somme revient alors dans le portefeuille).
+     * Retire `amount` FCFA du portefeuille vers l'un des numéros Mobile Money enregistrés (`payout_account` : son
+     * `uuid` ; sans lui, le premier numéro enregistré). Le retrait est envoyé immédiatement : **201** avec
+     * `status: paid`, la `reference` de la transaction et le numéro crédité, notification `gains.paid`.
+     * Pendant la phase de test, l'envoi est **simulé** (`provider: simulation`, référence `SIM-…`, aucun argent envoyé).
+     * Si le prestataire échoue, le retrait reste `requested` et l'administration le traite depuis la console.
+     * Conditions : identité vérifiée, au moins un numéro enregistré, aucun retrait en attente, montant entre le minimum
+     * et le solde disponible (422 sinon, avec le motif dans `errors.amount`).
      */
     #[BodyParameter('amount', 'Montant à retirer, en FCFA (entier).', type: 'int', example: 5000)]
+    #[BodyParameter('payout_account', 'UUID du numéro Mobile Money à créditer (facultatif : premier numéro enregistré).', required: false, type: 'string', example: '9d6f2c1e-1a2b-4c3d-8e9f-0a1b2c3d4e5f')]
     public function requestWithdrawal(Request $request, ManageWithdrawals $withdrawals): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
-        $request->validate(['amount' => ['required', 'integer', 'min:1']]);
+        $request->validate(['amount' => ['required', 'integer', 'min:1'], 'payout_account' => ['nullable', 'uuid']]);
 
         try {
-            $payout = $withdrawals->request($user, $request->integer('amount'));
+            $payout = $withdrawals->request($user, $request->integer('amount'), $request->filled('payout_account') ? $request->string('payout_account')->toString() : null);
         } catch (CommissionRefused $exception) {
             throw ValidationException::withMessages(['amount' => $exception->getMessage()]);
         }
@@ -117,7 +127,8 @@ class GainsController extends Controller
      * Mes retraits.
      *
      * Historique des retraits du portefeuille, le plus récent d'abord (20 par page) : montant, statut
-     * (`requested` en attente, `paid` payé avec sa référence, `rejected` refusé avec son motif), opérateur, numéro.
+     * (`requested` en attente, `paid` payé avec sa référence, `rejected` refusé avec son motif), opérateur
+     * (`method_label`) et numéro crédité (`phone`, tel qu'il était au moment du retrait), `provider`.
      * `meta.total_received` : total déjà reçu en FCFA.
      */
     public function payouts(Request $request): AnonymousResourceCollection
@@ -132,10 +143,72 @@ class GainsController extends Controller
     }
 
     /**
-     * Mes coordonnées de paiement.
+     * Mes numéros de retrait.
      *
-     * Opérateur Mobile Money, numéro et nom du titulaire où le Relais veut être payé. `data: null` tant qu'elles ne
-     * sont pas enregistrées. `meta.methods` : opérateurs proposés (`value` à envoyer, `label` à afficher).
+     * Numéros Mobile Money enregistrés (deux au plus), le premier enregistré d'abord : `uuid` (à envoyer au retrait),
+     * opérateur, numéro, titulaire. `meta.max` : nombre maximum ; `meta.methods` : opérateurs proposés.
+     */
+    public function payoutAccounts(Request $request): AnonymousResourceCollection
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return PayoutAccountResource::collection($user->payoutAccounts)->additional(['meta' => ['max' => PayoutAccount::MAX_PER_USER, 'methods' => self::methods()]]);
+    }
+
+    /**
+     * Ajouter un numéro de retrait.
+     *
+     * Opérateur (`method` : `wave`, `orange_money`, `mtn_momo`, `moov_money`), numéro (`phone`, ivoirien, par exemple
+     * `0707070707`) et titulaire (`holder_name`). **201**. 422 si le Relais a déjà deux numéros (`errors.phone`).
+     */
+    public function storePayoutAccount(UpdatePayoutAccountRequest $request, AuditLogger $audit): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($user->payoutAccounts()->count() >= PayoutAccount::MAX_PER_USER) {
+            throw ValidationException::withMessages(['phone' => __('gains.errors.payout_accounts_full', ['max' => PayoutAccount::MAX_PER_USER])]);
+        }
+
+        $account = PayoutAccount::query()->create(['user_id' => $user->id, ...$this->accountFields($request)]);
+        $audit->record('payout_account.created', $user, ['method' => $account->method->value, 'phone' => $request->phone()->masked()], actor: $user);
+
+        return (new PayoutAccountResource($account))->response()->setStatusCode(201);
+    }
+
+    /**
+     * Modifier un numéro de retrait.
+     *
+     * Mêmes champs que l'ajout. Les retraits déjà faits gardent l'ancien numéro. 404 si le numéro n'est pas le sien.
+     */
+    public function updatePayoutAccountByUuid(UpdatePayoutAccountRequest $request, string $payoutAccount, AuditLogger $audit): JsonResource
+    {
+        $account = $this->ownAccount($request, $payoutAccount);
+        $account->update($this->accountFields($request));
+        $audit->record('payout_account.updated', $account->user, ['method' => $account->method->value, 'phone' => $request->phone()->masked()], actor: $account->user);
+
+        return new PayoutAccountResource($account);
+    }
+
+    /**
+     * Supprimer un numéro de retrait.
+     *
+     * **204**. Les retraits déjà faits gardent le numéro crédité. 404 si le numéro n'est pas le sien.
+     */
+    public function destroyPayoutAccount(Request $request, string $payoutAccount, AuditLogger $audit): Response
+    {
+        $account = $this->ownAccount($request, $payoutAccount);
+        $account->delete();
+        $audit->record('payout_account.deleted', $account->user, ['method' => $account->method->value], actor: $account->user);
+
+        return response()->noContent();
+    }
+
+    /**
+     * Mes coordonnées de paiement (numéro par défaut).
+     *
+     * Ancienne route, conservée : le premier numéro enregistré, ou `data: null`. Préférer `GET /me/payout-accounts`.
      */
     public function payoutAccount(Request $request): JsonResponse
     {
@@ -150,30 +223,51 @@ class GainsController extends Controller
     }
 
     /**
-     * Enregistrer mes coordonnées de paiement.
+     * Enregistrer mes coordonnées de paiement (numéro par défaut).
      *
-     * Opérateur (`method` : `wave`, `orange_money`, `mtn_momo`, `moov_money`), numéro Mobile Money (`phone`, ivoirien,
-     * par exemple `0707070707`) et nom du titulaire (`holder_name`). Remplace les coordonnées précédentes.
-     * L'administration paie sur ce numéro ; la modification est inscrite au journal d'audit.
+     * Ancienne route, conservée : crée ou remplace le premier numéro enregistré. Préférer
+     * `POST /me/payout-accounts` et `PUT /me/payout-accounts/{uuid}`.
      */
     public function updatePayoutAccount(UpdatePayoutAccountRequest $request, AuditLogger $audit): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
-        $method = PaymentMethod::from($request->string('method')->toString());
+        $account = $user->payoutAccount;
+        $fields = $this->accountFields($request);
 
-        $account = PayoutAccount::query()->updateOrCreate(['user_id' => $user->id], [
-            'method' => $method,
-            'phone' => $request->phone()->e164,
-            'holder_name' => trim($request->string('holder_name')->toString()),
-        ]);
+        if ($account === null) {
+            $account = PayoutAccount::query()->create(['user_id' => $user->id, ...$fields]);
+        } else {
+            $account->update($fields);
+        }
 
-        $audit->record('payout_account.updated', $user, ['method' => $method->value, 'phone' => $request->phone()->masked()], actor: $user);
+        $audit->record('payout_account.updated', $user, ['method' => $account->method->value, 'phone' => $request->phone()->masked()], actor: $user);
 
         return response()->json([
             'data' => (new PayoutAccountResource($account))->resolve($request),
             'meta' => ['methods' => self::methods()],
         ]);
+    }
+
+    /**
+     * @return array{method: PaymentMethod, phone: string, holder_name: string}
+     */
+    private function accountFields(UpdatePayoutAccountRequest $request): array
+    {
+        return [
+            'method' => PaymentMethod::from($request->string('method')->toString()),
+            'phone' => $request->phone()->e164,
+            'holder_name' => trim($request->string('holder_name')->toString()),
+        ];
+    }
+
+    private function ownAccount(Request $request, string $uuid): PayoutAccount
+    {
+        /** @var User $user */
+        $user = $request->user();
+        abort_unless(Str::isUuid($uuid), 404);
+
+        return $user->payoutAccounts()->where('uuid', $uuid)->firstOrFail();
     }
 
     /**

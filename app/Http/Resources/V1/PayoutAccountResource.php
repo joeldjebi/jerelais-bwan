@@ -19,6 +19,7 @@ class PayoutAccountResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'uuid' => $this->uuid,
             'method' => $this->method->value,
             'method_label' => $this->method->label(),
             'phone' => $this->phone,

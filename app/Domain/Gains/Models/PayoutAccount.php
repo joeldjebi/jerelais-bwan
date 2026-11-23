@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Coordonnées Mobile Money où le Relais veut recevoir ses commissions (MOB-26). Numéro chiffré.
+ * Numéro Mobile Money où le Relais reçoit ses retraits (MOB-26), deux au plus par Relais. Numéro chiffré.
  *
  * @property int $id
  * @property string $uuid
@@ -26,6 +26,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PayoutAccount extends Model
 {
     use HasPublicUuid;
+
+    /**
+     * Nombre de numéros Mobile Money qu'un Relais peut enregistrer.
+     */
+    public const int MAX_PER_USER = 2;
 
     /**
      * Moyens proposés au Relais (Mobile Money uniquement).
