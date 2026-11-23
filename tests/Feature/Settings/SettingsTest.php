@@ -1,7 +1,12 @@
 <?php
 
+use App\Domain\Access\Enums\Role;
+use App\Domain\Settings\Models\Setting;
 use App\Domain\Settings\Settings;
+use App\Livewire\Console\Settings\Index;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
+use Livewire\Livewire;
 
 it('retourne la valeur par défaut du cahier des charges [ADM-23]', function (string $key, mixed $expected) {
     expect(app(Settings::class)->get($key))->toBe($expected);
@@ -40,4 +45,20 @@ it('n’expose à l’application que les paramètres publics', function () {
     expect($public)->toHaveKey('media.video_max_seconds')
         ->and($public)->not->toHaveKey('validation.sla_urgent_minutes')
         ->and($public)->not->toHaveKey('retention.broadcast_relais_days');
+});
+
+it('ignore une valeur enregistrée pour un paramètre retiré de la configuration, et la page reste enregistrable', function () {
+    Setting::query()->create(['key' => 'gains.amount_per_validated', 'value' => 100]);
+    Cache::flush();
+
+    expect(app(Settings::class)->all())->not->toHaveKey('gains.amount_per_validated');
+
+    $admin = User::factory()->withTwoFactor()->withRole(Role::Admin)->create();
+
+    Livewire::actingAs($admin)->test(Index::class)
+        ->set('values.gains__amount_per_broadcast', 1000)
+        ->call('save', 'gains')
+        ->assertHasNoErrors();
+
+    expect(app(Settings::class)->get('gains.amount_per_broadcast'))->toBe(1000);
 });
