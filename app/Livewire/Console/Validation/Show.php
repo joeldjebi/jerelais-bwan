@@ -21,6 +21,11 @@ use App\Domain\Editorial\Enums\ShowcaseVisual;
 use App\Domain\Editorial\Exceptions\EditorialRefused;
 use App\Domain\Editorial\Models\RelaisCollection;
 use App\Domain\Editorial\Support\ShowcaseVisuals;
+use App\Domain\Gains\Actions\DecideRelaisGain;
+use App\Domain\Gains\Exceptions\CommissionRefused;
+use App\Domain\Gains\Models\Commission;
+use App\Domain\Gains\Models\GainDecision;
+use App\Domain\Gains\Support\Wallet;
 use App\Domain\Media\Actions\FindMediaDuplicates;
 use App\Domain\Media\Models\Media;
 use App\Domain\Messagerie\Actions\SendMessage;
@@ -52,6 +57,9 @@ use Livewire\WithFileUploads;
  * @property-read Collection<int, User> $journalists
  * @property-read Collection<int, RelaisCollection> $collectionsList
  * @property-read bool $hasThumbnail
+ * @property-read bool $canDecideGain
+ * @property-read Commission|null $currentGain
+ * @property-read Collection<int, GainDecision> $gainHistory
  */
 class Show extends Component
 {
@@ -101,6 +109,13 @@ class Show extends Component
 
     /** Visuel public : none, original, blurred, edited (ShowcaseVisual). */
     public string $showcaseVisual = 'none';
+
+    /** Décision de rémunération en cours de saisie : credit, decline, amend, cancel. */
+    public string $gainMode = '';
+
+    public string $gainAmount = '';
+
+    public string $gainReason = '';
 
     /** Version floutée déposée par la rédaction (visuel « edited »). */
     public ?TemporaryUploadedFile $editedFile = null;
@@ -383,6 +398,77 @@ class Show extends Component
     /**
      * Ouvre (ou reprend) la conversation rattachée à ce relais.
      */
+    public function openGain(string $mode): void
+    {
+        abort_unless($this->canDecideGain && in_array($mode, ['credit', 'decline', 'amend', 'cancel'], true), 403);
+        $this->resetErrorBag();
+        $this->gainMode = $mode;
+        $this->gainAmount = $mode === 'amend' ? (string) $this->currentGain?->amount : '';
+        $this->gainReason = '';
+    }
+
+    /**
+     * Rémunération du relais (ADM-27) : montant libre décidé par l'administration ou le superviseur, historisé.
+     */
+    public function saveGain(DecideRelaisGain $gains): void
+    {
+        abort_unless($this->canDecideGain, 403);
+        $amountRule = ['required', 'integer', 'min:1', 'max:10000000'];
+        $this->validate([
+            'gainAmount' => in_array($this->gainMode, ['credit', 'amend'], true) ? $amountRule : ['nullable'],
+            'gainReason' => in_array($this->gainMode, ['decline', 'amend', 'cancel'], true) ? ['required', 'string', 'max:500'] : ['nullable', 'string', 'max:500'],
+        ], attributes: ['gainAmount' => __('montant'), 'gainReason' => __('motif')]);
+
+        $user = $this->user();
+        $amount = (int) $this->gainAmount;
+
+        try {
+            match ($this->gainMode) {
+                'credit' => $gains->credit($this->relais, $user, $amount, $this->gainReason),
+                'decline' => $gains->decline($this->relais, $user, $this->gainReason),
+                'amend' => $gains->amend($this->relais, $user, $amount, $this->gainReason),
+                'cancel' => $gains->cancel($this->relais, $user, $this->gainReason),
+                default => abort(422),
+            };
+        } catch (CommissionRefused $exception) {
+            $this->addError('gainAmount', $exception->getMessage());
+
+            return;
+        }
+
+        $message = match ($this->gainMode) {
+            'credit' => __(':amount crédités sur le portefeuille du Relais.', ['amount' => Wallet::fcfa($amount)]),
+            'decline' => __('Décision enregistrée : pas de rémunération.'),
+            'amend' => __('Montant corrigé : :amount.', ['amount' => Wallet::fcfa($amount)]),
+            default => __('Rémunération annulée.'),
+        };
+
+        $this->gainMode = '';
+        unset($this->currentGain, $this->gainHistory);
+        $this->dispatch('toast', message: $message);
+    }
+
+    #[Computed]
+    public function canDecideGain(): bool
+    {
+        return $this->user()->hasPermissionTo(Permission::GainsDecide->value) && DecideRelaisGain::isRewardable($this->relais);
+    }
+
+    #[Computed]
+    public function currentGain(): ?Commission
+    {
+        return app(DecideRelaisGain::class)->current($this->relais);
+    }
+
+    /**
+     * @return Collection<int, GainDecision>
+     */
+    #[Computed]
+    public function gainHistory(): Collection
+    {
+        return GainDecision::query()->where('relais_item_id', $this->relais->id)->with('decider:id,name')->latest('id')->get();
+    }
+
     public function writeToRelais(SendMessage $send): mixed
     {
         Gate::authorize('validate', $this->relais);

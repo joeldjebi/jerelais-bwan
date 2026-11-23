@@ -7,6 +7,9 @@ enum CommissionKind: string
     case Validated = 'validated';
     case Broadcast = 'broadcast';
 
+    /** Rémunération décidée par l'administration ou le superviseur, montant libre. */
+    case Reward = 'reward';
+
     public function label(): string
     {
         return __("gains.kinds.{$this->value}");

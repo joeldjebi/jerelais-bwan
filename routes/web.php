@@ -44,6 +44,7 @@ use App\Livewire\Console\Referentiels\Index as ReferentielsPage;
 use App\Livewire\Console\Relais\Index as RelaisPage;
 use App\Livewire\Console\Relais\Show as RelaisProfilePage;
 use App\Livewire\Console\Reports\Index as ReportsPage;
+use App\Livewire\Console\Rewards\Index as RewardsPage;
 use App\Livewire\Console\Settings\Index as SettingsPage;
 use App\Livewire\Console\Team\Index as TeamPage;
 use App\Livewire\Console\Validation\Index as ValidationPage;
@@ -120,6 +121,8 @@ Route::middleware(['auth', 'staff'])->prefix('console')->name('console.')->group
         Route::livewire('parametres', SettingsPage::class)->middleware('permission:'.Permission::SettingsManage->value)->name('settings');
         // Notifications aux Relais (MOB-21) : annonce push, SMS de secours, immédiate ou programmée.
         Route::livewire('notifications', AnnouncementsPage::class)->middleware('permission:'.Permission::NotificationsSend->value)->name('announcements');
+        // Rémunération décidée relais par relais (ADM-27) : administration et superviseurs.
+        Route::livewire('remunerations', RewardsPage::class)->middleware('permission:'.Permission::GainsDecide->value)->name('rewards');
         // Paiements des Relais (ADM-27) : commissions dues, versement Mobile Money enregistré avec sa référence.
         Route::livewire('paiements', GainsPage::class)->middleware('permission:'.Permission::CommissionsManage->value)->name('gains');
         Route::livewire('candidatures', CandidaturesPage::class)->middleware('permission:'.Permission::CandidaturesValidate->value)->name('candidatures');

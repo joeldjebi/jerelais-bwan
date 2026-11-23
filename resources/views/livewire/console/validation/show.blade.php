@@ -338,6 +338,73 @@
                 </div>
             </x-console.group>
 
+            @if ($this->canDecideGain || $this->gainHistory->isNotEmpty())
+                @php $gain = $this->currentGain; @endphp
+                <x-console.group :title="__('Rémunération')" :footer="__('Montant libre, décidé relais par relais par l’administration ou le superviseur. Chaque décision est historisée.')">
+                    <div class="flex items-center gap-3 px-4 py-3.5">
+                        <x-console.tile icon="cart" :tint="$gain ? 'green' : 'gray'" />
+                        <div class="min-w-0 flex-1">
+                            @if ($gain)
+                                <p class="text-[1.25rem] font-bold tabular-nums">{{ number_format($gain->amount, 0, ',', ' ') }} FCFA</p>
+                                <p class="text-[0.8125rem] text-mute">{{ $gain->status->value === 'paid' ? __('Crédité, déjà retiré') : __('Crédité sur le portefeuille du Relais') }}</p>
+                            @elseif ($this->gainHistory->first()?->decision === 'declined')
+                                <p class="text-[0.9375rem] font-semibold">{{ __('Pas de rémunération') }}</p>
+                                <p class="truncate text-[0.8125rem] text-mute">{{ $this->gainHistory->first()->reason }}</p>
+                            @else
+                                <p class="text-[0.9375rem] font-semibold">{{ __('À décider') }}</p>
+                                <p class="text-[0.8125rem] text-mute">{{ __('Aucune rémunération décidée pour ce relais.') }}</p>
+                            @endif
+                        </div>
+                    </div>
+                    @if ($this->canDecideGain)
+                        <div class="flex flex-wrap gap-2 border-t border-line p-3">
+                            @if ($gain)
+                                <x-ui.button size="sm" variant="secondary" wire:click="openGain('amend')">{{ __('Corriger le montant') }}</x-ui.button>
+                                <x-ui.button size="sm" variant="ghost" class="text-status-rejected!" wire:click="openGain('cancel')">{{ __('Annuler') }}</x-ui.button>
+                            @else
+                                <x-ui.button size="sm" variant="success" icon="cart" wire:click="openGain('credit')">{{ __('Rémunérer') }}</x-ui.button>
+                                @if ($this->gainHistory->first()?->decision !== 'declined')
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openGain('decline')">{{ __('Ne pas rémunérer') }}</x-ui.button>
+                                @endif
+                            @endif
+                        </div>
+                        @if ($gainMode !== '')
+                            <form wire:submit="saveGain" class="space-y-3 border-t border-line p-3">
+                                @if (in_array($gainMode, ['credit', 'amend'], true))
+                                    <div>
+                                        <label for="gain-amount" class="block text-[0.8125rem] font-medium">{{ __('Montant (FCFA)') }}</label>
+                                        <input id="gain-amount" type="number" min="1" step="1" inputmode="numeric" wire:model="gainAmount" class="{{ $textarea }} mt-1.5!" placeholder="2000">
+                                    </div>
+                                @endif
+                                <div>
+                                    <label for="gain-reason" class="block text-[0.8125rem] font-medium">{{ $gainMode === 'credit' ? __('Note (facultative)') : __('Motif') }}</label>
+                                    <textarea id="gain-reason" wire:model="gainReason" rows="2" class="{{ $textarea }} mt-1.5!" placeholder="{{ match ($gainMode) { 'credit' => __('Ex. : sujet repris au journal de 20 h'), 'decline' => __('Ex. : images inexploitables à l’antenne'), 'amend' => __('Ex. : relais exclusif, montant revu'), default => __('Ex. : doublon d’un autre relais') } }}"></textarea>
+                                </div>
+                                @error('gainAmount') <p class="text-[0.8125rem] font-medium text-status-rejected">{{ $message }}</p> @enderror
+                                @error('gainReason') <p class="text-[0.8125rem] font-medium text-status-rejected">{{ $message }}</p> @enderror
+                                <div class="flex justify-end gap-2">
+                                    <x-ui.button size="sm" variant="secondary" wire:click="$set('gainMode', '')">{{ __('Fermer') }}</x-ui.button>
+                                    <x-ui.button size="sm" type="submit" :variant="$gainMode === 'cancel' ? 'danger' : 'primary'" wire:loading.attr="disabled" wire:target="saveGain">
+                                        {{ match ($gainMode) { 'credit' => __('Créditer'), 'decline' => __('Enregistrer'), 'amend' => __('Corriger'), default => __('Annuler la rémunération') } }}
+                                    </x-ui.button>
+                                </div>
+                            </form>
+                        @endif
+                    @endif
+                    @if ($this->gainHistory->isNotEmpty())
+                        <ul class="border-t border-line text-[0.8125rem]">
+                            @foreach ($this->gainHistory as $decision)
+                                <li wire:key="gd-{{ $decision->uuid }}" class="px-4 py-2">
+                                    <span class="font-medium">{{ $decision->label() }}</span>
+                                    @if ($decision->amount !== null) · {{ $decision->previous_amount !== null ? number_format($decision->previous_amount, 0, ',', ' ').' → ' : '' }}{{ number_format($decision->amount, 0, ',', ' ') }} FCFA @elseif ($decision->previous_amount !== null) · {{ number_format($decision->previous_amount, 0, ',', ' ') }} FCFA @endif
+                                    <span class="block text-mute">{{ collect([$decision->decider?->name ?? __('Automatique'), $date($decision->created_at), $decision->reason])->filter()->join(' · ') }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </x-console.group>
+            @endif
+
             @can('validate', $r)
                 @if ($r->relaisProfile)
                     <x-ui.button variant="secondary" icon="inbox" class="w-full" wire:click="writeToRelais">{{ __('Écrire au Relais') }}</x-ui.button>

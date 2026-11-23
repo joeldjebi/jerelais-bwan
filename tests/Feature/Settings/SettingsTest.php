@@ -48,17 +48,17 @@ it('n’expose à l’application que les paramètres publics', function () {
 });
 
 it('ignore une valeur enregistrée pour un paramètre retiré de la configuration, et la page reste enregistrable', function () {
-    Setting::query()->create(['key' => 'gains.amount_per_validated', 'value' => 100]);
+    Setting::query()->create(['key' => 'gains.amount_per_broadcast', 'value' => 100]);
     Cache::flush();
 
-    expect(app(Settings::class)->all())->not->toHaveKey('gains.amount_per_validated');
+    expect(app(Settings::class)->all())->not->toHaveKey('gains.amount_per_broadcast');
 
     $admin = User::factory()->withTwoFactor()->withRole(Role::Admin)->create();
 
     Livewire::actingAs($admin)->test(Index::class)
-        ->set('values.gains__amount_per_broadcast', 1000)
+        ->set('values.gains__min_withdrawal', 2000)
         ->call('save', 'gains')
         ->assertHasNoErrors();
 
-    expect(app(Settings::class)->get('gains.amount_per_broadcast'))->toBe(1000);
+    expect(app(Settings::class)->get('gains.min_withdrawal'))->toBe(2000);
 });
