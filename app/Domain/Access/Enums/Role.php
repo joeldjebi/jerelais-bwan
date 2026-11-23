@@ -51,7 +51,7 @@ enum Role: string
             self::LectureSeule => [Permission::ConsoleAccess, Permission::RelaisViewPending, Permission::ReportsView],
             self::Superviseur => [
                 Permission::ConsoleAccess, Permission::RelaisViewPending, Permission::RelaisValidate,
-                Permission::CandidaturesValidate,
+                Permission::CandidaturesValidate, Permission::GainsDecide,
             ],
             self::Coordonnateur => [
                 Permission::ConsoleAccess, Permission::RelaisSubmit, Permission::RelaisViewOwn,

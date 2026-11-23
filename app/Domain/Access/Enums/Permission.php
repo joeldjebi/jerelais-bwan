@@ -25,6 +25,7 @@ enum Permission: string
     case SettingsManage = 'settings.manage';
     case CommissionsManage = 'commissions.manage';
     case NotificationsSend = 'notifications.send';
+    case GainsDecide = 'gains.decide';
     case TerritoireManage = 'territoire.manage';
     case UsersManage = 'users.manage';
     case AuditView = 'audit.view';
