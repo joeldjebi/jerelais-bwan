@@ -41,7 +41,8 @@ class Settings
      */
     public function all(): array
     {
-        return array_merge($this->defaults(), $this->overrides());
+        // Une valeur enregistrée pour un paramètre retiré de la configuration est ignorée.
+        return array_merge($this->defaults(), array_intersect_key($this->overrides(), $this->defaults()));
     }
 
     /**
