@@ -3,6 +3,7 @@
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Audit\Models\AuditLog;
+use App\Domain\Auth\Models\Device;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\InReview;
 use App\Domain\Contribution\States\Validated;
@@ -138,4 +139,22 @@ it('liste les relais validés à décider puis les relais décidés', function (
         ->assertSee('Marché inondé')->assertDontSee('Déjà rémunéré')
         ->set('tab', 'decides')
         ->assertSee('Déjà rémunéré')->assertSee('1 500 FCFA')->assertDontSee('Marché inondé');
+});
+
+it('prévient le Relais de sa rémunération par push, ou par SMS s’il n’a pas de téléphone joignable', function () {
+    $sms = fakeSms();
+    $gains = app(DecideRelaisGain::class);
+
+    $gains->credit($this->relais, $this->admin, 5000);
+    expect($this->push->sent)->toBeEmpty()
+        ->and($sms->sent)->toHaveCount(1)
+        ->and($sms->sent[0]['message'])->toContain('5 000 FCFA')->toContain('portefeuille')->toContain('Marché inondé');
+
+    Device::query()->create(['user_id' => $this->user->id, 'name' => 'Tecno', 'platform' => 'android', 'fcm_token' => 'jeton']);
+    $gains->amend($this->relais, $this->admin, 6000, 'Relais exclusif');
+
+    expect($this->push->sent)->toHaveCount(1)
+        ->and($this->push->sent[0]['message']->data['type'])->toBe('gains.updated')
+        ->and($this->push->sent[0]['message']->body)->toContain('6 000 FCFA')
+        ->and($sms->sent)->toHaveCount(1);
 });

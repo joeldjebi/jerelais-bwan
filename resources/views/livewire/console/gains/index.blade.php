@@ -32,9 +32,9 @@
     </div>
 
     @if ($tab === 'demandes')
-        <x-console.group :title="trans_choice(':count demande de retrait|:count demandes de retrait', $this->requests->total())" :footer="__('La plus ancienne d’abord. Le Relais choisit son opérateur et son numéro dans l’application.')">
+        <x-console.group :title="trans_choice(':count demande de retrait|:count demandes de retrait', $this->requests->total())" :footer="__('Les retraits partent immédiatement depuis l’application. Seuls ceux que le prestataire n’a pas pu envoyer attendent ici, la plus ancienne d’abord.')">
             @if ($this->requests->isEmpty())
-                <x-console.empty icon="check" tint="green" :title="__('Aucune demande de retrait')" :text="__('Les demandes envoyées par les Relais depuis l’application apparaîtront ici.')" />
+                <x-console.empty icon="check" tint="green" :title="__('Aucune demande de retrait')" :text="__('Les retraits sont envoyés immédiatement : rien à traiter.')" />
             @else
                 <ul data-stagger>
                     @foreach ($this->requests as $payout)
@@ -67,13 +67,16 @@
                                 <p class="truncate text-[0.9375rem] font-semibold">{{ $payout->user->name ?: __('Relais') }}</p>
                                 <p class="text-[0.8125rem] text-mute">
                                     @if ($payout->status->value === 'paid')
-                                        {{ __(':date · :method, réf. :reference', ['date' => $date($payout->paid_at), 'method' => $payout->method->label(), 'reference' => $payout->reference]) }}
+                                        {{ __(':date · :method :phone, réf. :reference', ['date' => $date($payout->paid_at), 'method' => $payout->method->label(), 'phone' => $payout->phone, 'reference' => $payout->reference]) }}
                                     @else
-                                        {{ __('Refusé le :date : :reason', ['date' => $date($payout->rejected_at), 'reason' => $payout->rejection_reason]) }}
+                                        {{ __('Refusé le :date : :reason', ['date' => $date($payout->rejected_at), 'reason' => $payout->rejection_reason]) }} · {{ $payout->method->label() }} {{ $payout->phone }}
                                     @endif
-                                    @if ($payout->payer) · {{ __('par :name', ['name' => $payout->payer->name]) }}@endif
+                                    @if ($payout->payer) · {{ __('par :name', ['name' => $payout->payer->name]) }}@elseif ($payout->status->value === 'paid') · {{ __('retrait instantané') }}@endif
                                 </p>
                             </div>
+                            @if ($payout->isSimulated())
+                                <x-console.badge tone="warning">{{ __('Simulation') }}</x-console.badge>
+                            @endif
                             <x-console.badge :tone="$statusTone[$payout->status->value]">{{ $payout->status->label() }}</x-console.badge>
                             <span class="w-28 text-right text-[1rem] font-semibold tabular-nums">{{ $fcfa($payout->amount) }}</span>
                         </li>
@@ -93,7 +96,7 @@
                             <div class="min-w-0 flex-1">
                                 <p class="truncate text-[0.9375rem] font-semibold">{{ $holder->relaisProfile?->display_name ?? $holder->name }} <span class="font-normal text-mute">{{ $holder->relaisProfile?->number }}</span></p>
                                 <p class="truncate text-[0.8125rem] text-mute">
-                                    {{ $holder->payoutAccount ? $holder->payoutAccount->method->label().' · '.$holder->payoutAccount->phone : __('Coordonnées de paiement non renseignées') }}
+                                    {{ $holder->payoutAccounts->isEmpty() ? __('Aucun numéro de retrait') : $holder->payoutAccounts->map(fn ($account) => $account->method->label().' '.$account->phone)->join(' · ') }}
                                     · {{ GainsPage::isVerified($holder) ? __('identité vérifiée') : __('identité non vérifiée') }}
                                 </p>
                             </div>
@@ -181,6 +184,14 @@
                             <p class="text-[1.0625rem] font-semibold tabular-nums">{{ $fcfa($amount) }}</p>
                         </div>
                     @endforeach
+                </div>
+                <div class="rounded-[0.9rem] ring-1 ring-line">
+                    <p class="px-4 pt-3 text-[0.75rem] font-medium text-mute">{{ __('Numéros de retrait enregistrés') }}</p>
+                    @forelse ($holder->payoutAccounts as $account)
+                        <p class="px-4 py-2 text-[0.9375rem]"><span class="font-semibold">{{ $account->method->label() }}</span> {{ $account->phone }} <span class="text-mute">· {{ $account->holder_name }}</span></p>
+                    @empty
+                        <p class="px-4 py-2 text-[0.9375rem] text-mute">{{ __('Aucun numéro enregistré.') }}</p>
+                    @endforelse
                 </div>
                 <ul class="divide-y divide-line rounded-[0.9rem] ring-1 ring-line">
                     @foreach ($this->holderCommissions as $commission)

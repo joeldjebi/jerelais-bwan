@@ -54,7 +54,7 @@ class Wallet
             $blockers['identity'] = __('gains.errors.identity_not_verified_relais');
         }
 
-        if (! $user->payoutAccount()->exists()) {
+        if (! $user->payoutAccounts()->exists()) {
             $blockers['payout_account'] = __('gains.errors.payout_account_missing');
         }
 

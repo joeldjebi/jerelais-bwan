@@ -19,7 +19,10 @@ use App\Domain\Contribution\Events\RelaisStatusChanged;
 use App\Domain\Contribution\Listeners\AnnounceRelaisStatusChange;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\Policies\RelaisItemPolicy;
+use App\Domain\Gains\Contracts\PayoutGateway;
 use App\Domain\Gains\Listeners\RecordRelaisCommission;
+use App\Domain\Gains\Payouts\ManualPayoutGateway;
+use App\Domain\Gains\Payouts\SimulatedPayoutGateway;
 use App\Domain\Media\Antivirus\ClamAvScanner;
 use App\Domain\Media\Antivirus\FakeVirusScanner;
 use App\Domain\Media\Contracts\VirusScanner;
@@ -57,6 +60,12 @@ class DomainServiceProvider extends ServiceProvider
             'fcm' => FcmPushGateway::fromConfig(),
             'log', 'none' => new LogPushGateway,
             default => throw new InvalidArgumentException('Passerelle push non configurée : '.config('jerelais.push.driver')),
+        });
+
+        $this->app->bind(PayoutGateway::class, fn () => match (config('jerelais.payouts.driver')) {
+            'simulation' => new SimulatedPayoutGateway,
+            'manual' => new ManualPayoutGateway,
+            default => throw new InvalidArgumentException('Passerelle de paiement non configurée : '.config('jerelais.payouts.driver')),
         });
 
         $this->app->bind(VirusScanner::class, function () {

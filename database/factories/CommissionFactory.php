@@ -24,7 +24,7 @@ class CommissionFactory extends Factory
     {
         return [
             'relais_item_id' => RelaisItem::factory(),
-            'user_id' => fn (array $attributes): int => RelaisItem::query()->findOrFail($attributes['relais_item_id'])->user_id,
+            'user_id' => fn (array $attributes): int => RelaisItem::query()->whereKey($attributes['relais_item_id'])->firstOrFail()->user_id,
             'kind' => CommissionKind::Validated,
             'amount' => 2000,
             'status' => CommissionStatus::Due,
