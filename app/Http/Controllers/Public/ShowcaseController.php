@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Domain\Contribution\Models\Category;
 use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Editorial\Enums\ShowcaseVisual;
 use App\Domain\Editorial\Support\ShowcaseVisuals;
+use App\Domain\Territoire\Models\Commune;
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -17,11 +20,45 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class ShowcaseController extends Controller
 {
-    public function index(): View
+    /** Périodes proposées dans les filtres : durée écoulée depuis la diffusion. */
+    public const PERIODS = ['semaine' => '7 days', 'mois' => '1 month', 'annee' => '1 year'];
+
+    /**
+     * Vitrine publique : 12 diffusions par page, filtres par recherche, commune, catégorie, période et ordre,
+     * conservés dans l'adresse (partageable, sans JavaScript).
+     */
+    public function index(Request $request): View
     {
+        $filters = self::filters($request);
+        $items = self::query($filters)->paginate(12)->withQueryString();
+
+        $published = RelaisItem::withoutCommuneRestriction()->whereNotNull('showcased_at');
+
         return view('public.showcase', [
-            'items' => self::query()->paginate(12),
+            'items' => $items,
+            'filters' => $filters,
+            'total' => (clone $published)->count(),
+            'communes' => Commune::query()->whereIn('id', (clone $published)->select('commune_id'))->orderBy('name')->get(['id', 'name', 'slug']),
+            'categories' => Category::query()->whereIn('id', (clone $published)->select('category_id'))->orderBy('position')->orderBy('name')->get(['id', 'name', 'slug']),
         ]);
+    }
+
+    /**
+     * Filtres lus dans l'adresse ; une valeur inconnue est ignorée.
+     *
+     * @return array{q: string, commune: string, categorie: string, periode: string, tri: string}
+     */
+    public static function filters(Request $request): array
+    {
+        $text = fn (string $key, int $max = 80): string => mb_substr(trim($request->string($key)->toString()), 0, $max);
+
+        return [
+            'q' => $text('q'),
+            'commune' => $text('commune', 120),
+            'categorie' => $text('categorie', 120),
+            'periode' => in_array($request->string('periode')->toString(), array_keys(self::PERIODS), true) ? $request->string('periode')->toString() : '',
+            'tri' => $request->string('tri')->toString() === 'anciens' ? 'anciens' : 'recents',
+        ];
     }
 
     /**
@@ -63,13 +100,31 @@ class ShowcaseController extends Controller
     }
 
     /**
+     * Relais publiés sur la vitrine, filtrés (site public et GET /diffusions).
+     *
+     * @param  array{q?: string, commune?: string, categorie?: string, periode?: string, tri?: string}  $filters
      * @return Builder<RelaisItem>
      */
-    public static function query(): Builder
+    public static function query(array $filters = []): Builder
     {
+        $q = $filters['q'] ?? '';
+        $commune = $filters['commune'] ?? '';
+        $categorie = $filters['categorie'] ?? '';
+        $period = self::PERIODS[$filters['periode'] ?? ''] ?? null;
+        $since = $period === null ? null : now()->sub($period);
+        $date = 'coalesce(relais_items.broadcast_at, relais_items.showcased_at)';
+
         return RelaisItem::withoutCommuneRestriction()
             ->whereNotNull('showcased_at')
-            ->with(['commune:id,name', 'category:id,name', 'relaisProfile.candidature'])
-            ->latest('showcased_at');
+            ->with(['commune:id,name,slug', 'category:id,name,slug', 'relaisProfile.candidature'])
+            ->when($q !== '', fn (Builder $query) => $query->where(fn (Builder $inner) => $inner
+                ->where('showcase_title', 'ilike', '%'.$q.'%')
+                ->orWhere('showcase_text', 'ilike', '%'.$q.'%')
+                ->orWhere('broadcast_programme', 'ilike', '%'.$q.'%')))
+            ->when($commune !== '', fn (Builder $query) => $query->whereHas('commune', fn (Builder $inner) => $inner->where('slug', $commune)))
+            ->when($categorie !== '', fn (Builder $query) => $query->whereHas('category', fn (Builder $inner) => $inner->where('slug', $categorie)))
+            ->when($since !== null, fn (Builder $query) => $query->whereRaw("{$date} >= ?", [$since]))
+            ->orderByRaw($date.(($filters['tri'] ?? 'recents') === 'anciens' ? ' asc' : ' desc'))
+            ->orderBy('relais_items.id', ($filters['tri'] ?? 'recents') === 'anciens' ? 'asc' : 'desc');
     }
 }

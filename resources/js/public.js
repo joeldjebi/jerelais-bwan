@@ -389,8 +389,19 @@ function finale() {
     });
 }
 
+/**
+ * Filtres de la vitrine : envoi automatique à chaque choix dans une liste (le bouton reste là sans JavaScript).
+ */
+function autosubmitFilters() {
+    document.querySelectorAll('form[data-autosubmit]').forEach((form) => {
+        form.querySelector('[data-autosubmit-button]')?.classList.add('sm:invisible');
+        form.querySelectorAll('select').forEach((select) => select.addEventListener('change', () => form.requestSubmit()));
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     adaptiveNav();
+    autosubmitFilters();
 
     const mm = gsap.matchMedia();
 
