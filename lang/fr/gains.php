@@ -4,6 +4,7 @@ return [
     'kinds' => [
         'validated' => 'Relais validé',
         'broadcast' => 'Relais diffusé',
+        'reward' => 'Rémunération du relais',
     ],
     'statuses' => [
         'due' => 'Crédité',
@@ -23,6 +24,12 @@ return [
         'cash' => 'Espèces',
         'other' => 'Autre',
     ],
+    'decisions' => [
+        'credited' => 'Rémunération accordée',
+        'declined' => 'Pas de rémunération',
+        'amended' => 'Montant corrigé',
+        'cancelled' => 'Rémunération annulée',
+    ],
     'cancelled_by_rejection' => 'Relais finalement rejeté par la rédaction.',
     'errors' => [
         'not_due' => 'Cette commission n’est plus à payer.',
@@ -36,6 +43,12 @@ return [
         'amount_above_balance' => 'Montant supérieur à votre solde disponible (:available).',
         'withdrawal_not_pending' => 'Cette demande de retrait a déjà été traitée.',
         'already_withdrawn' => 'Ce gain a déjà été retiré ou est en cours de retrait : il ne peut plus être annulé.',
+        'relais_not_validated' => 'Seul un relais validé peut être rémunéré.',
+        'already_rewarded' => 'Ce relais est déjà rémunéré : corrigez le montant ou annulez la rémunération.',
+        'not_rewarded' => 'Ce relais n’a pas de rémunération en cours.',
+        'amount_invalid' => 'Indiquez un montant en FCFA (entier, au moins 1).',
+        'reason_required' => 'Indiquez le motif.',
+        'amend_withdrawn' => 'Cette somme a déjà été retirée ou est en cours de retrait : le montant ne peut plus baisser autant.',
         'phone_invalid' => 'Numéro Mobile Money invalide : indiquez un numéro ivoirien, par exemple 0707070707 ou +2250707070707.',
         'method_unknown' => 'Opérateur inconnu : wave, orange_money, mtn_momo ou moov_money.',
     ],

@@ -13,10 +13,10 @@
     <x-console.page-header
         :eyebrow="__('Administration')"
         :title="__('Paiements')"
-        :subtitle="__('Chaque relais diffusé crédite le portefeuille de son Relais. Le Relais demande un retrait depuis l’application : versez la somme par Mobile Money, puis enregistrez la référence de la transaction. Il est prévenu.')"
+        :subtitle="__('La rémunération de chaque relais validé est décidée dans « Rémunérations » et créditée sur le portefeuille du Relais. Le Relais demande un retrait depuis l’application : versez la somme par Mobile Money, puis enregistrez la référence de la transaction. Il est prévenu.')"
     >
         <x-slot:actions>
-            <x-ui.button variant="secondary" icon="layers" :href="route('console.settings').'#groupe-gains'" wire:navigate>{{ __('Montants') }}</x-ui.button>
+            <x-ui.button variant="secondary" icon="cart" :href="route('console.rewards')" wire:navigate>{{ __('Rémunérations') }}</x-ui.button>
         </x-slot:actions>
     </x-console.page-header>
 
@@ -82,9 +82,9 @@
             @endif
         </x-console.group>
     @elseif ($tab === 'soldes')
-        <x-console.group :title="trans_choice(':count portefeuille|:count portefeuilles', $this->balances->total())" :footer="__('Gagné : total crédité par les relais diffusés. Disponible : ce que le Relais peut encore retirer.')">
+        <x-console.group :title="trans_choice(':count portefeuille|:count portefeuilles', $this->balances->total())" :footer="__('Gagné : total des rémunérations accordées. Disponible : ce que le Relais peut encore retirer.')">
             @if ($this->balances->isEmpty())
-                <x-console.empty icon="cart" tint="blue" :title="__('Aucun gain pour le moment')" :text="__('Les portefeuilles se remplissent quand un relais est diffusé, selon le montant fixé dans les Paramètres.')" />
+                <x-console.empty icon="cart" tint="blue" :title="__('Aucun gain pour le moment')" :text="__('Les portefeuilles se remplissent quand un relais validé est rémunéré (page « Rémunérations »).')" />
             @else
                 <ul data-stagger>
                     @foreach ($this->balances as $holder)

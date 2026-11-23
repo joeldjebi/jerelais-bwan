@@ -8,7 +8,7 @@
         'appels.local_requires_approval' => 'bell',
         'levels.silver_validated' => 'signal', 'levels.gold_validated' => 'signal',
         'alerts.surge_threshold' => 'chart', 'alerts.surge_window_minutes' => 'clock',
-        'gains.amount_per_broadcast' => 'signal', 'gains.min_withdrawal' => 'cart',
+        'gains.min_withdrawal' => 'cart',
         'candidature.quiz_min_score' => 'book', 'candidature.minimum_age' => 'users', 'candidature.minors_allowed' => 'users',
     ];
 @endphp

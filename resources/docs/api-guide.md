@@ -80,13 +80,13 @@ Limites par défaut, modifiables par l’administration et lisibles dans `GET /s
 
 ## Mes gains et portefeuille
 
-Chaque relais **diffusé** (validé par le coordonnateur puis par la rédaction) **crédite le portefeuille** du Relais d'un montant fixé par l'administration (notification `gains.earned`). Le Relais demande ensuite un **retrait** vers son compte Mobile Money ; l'administration le paie (notification `gains.paid`) ou le refuse avec un motif (notification `gains.withdrawal_rejected`, la somme revient dans le portefeuille).
+Quand un relais est **validé**, l'administration ou le superviseur **décide de le rémunérer ou non, et du montant** (libre, variable d'un relais à l'autre). La somme est alors **créditée sur le portefeuille** du Relais (notification `gains.earned`) ; elle peut ensuite être corrigée (`gains.updated`) ou annulée (`gains.cancelled`) tant qu'elle n'est pas retirée. Un relais validé n'est donc pas forcément rémunéré. Le Relais demande ensuite un **retrait** vers son compte Mobile Money ; l'administration le paie (notification `gains.paid`) ou le refuse avec un motif (notification `gains.withdrawal_rejected`, la somme revient dans le portefeuille).
 
 1. **Coordonnées Mobile Money** — `GET /me/payout-account` : `data` (ou `null`) et `meta.methods` (opérateurs à proposer dans une liste : `value` à envoyer, `label` à afficher). `PUT /me/payout-account` (JSON) : `method` (`wave`, `orange_money`, `mtn_momo`, `moov_money`), `phone` (`0707070707` ou `+2250707070707`), `holder_name` (titulaire). Le retrait part vers ces coordonnées.
 2. **Portefeuille** — `GET /me/wallet` : `available` (retirable), `pending` (retrait en cours), `withdrawn` (déjà reçu), `earned` (total gagné), `min_withdrawal`, `can_withdraw` et `blockers` (liste `{code, message}` à afficher quand le retrait est impossible : `identity` identité à vérifier, `payout_account` coordonnées à saisir, `pending` retrait déjà en cours, `balance` solde sous le minimum), `payout_account`, `pending_withdrawal`.
 3. **Demander un retrait** — `POST /me/wallet/withdrawals` (JSON) `{"amount": 5000}` → **201** avec la demande (`status: requested`). **422** avec le motif dans `errors.amount` si le montant est sous le minimum, au-dessus du solde disponible, ou si une condition manque. Un seul retrait en cours à la fois.
 4. **Historique des retraits** — `GET /me/payouts` : `amount`, `status` (`requested` en attente, `paid` payé avec `reference` et `paid_at`, `rejected` refusé avec `rejection_reason`), `method_label`, `phone` ; `meta.total_received`.
-5. **Gains crédités** — `GET /me/gains` : un gain par relais diffusé (`amount`, `relais` uuid et titre), `meta.totals.earned`.
+5. **Gains crédités** — `GET /me/gains` : une rémunération par relais rémunéré (`amount`, `label` « Rémunération du relais », `relais` uuid et titre), `meta.totals.earned`.
 
 ## Images et fichiers
 
@@ -154,7 +154,8 @@ Le Relais reçoit une **notification push** (Firebase Cloud Messaging) sur chaqu
 | `legal.updated` | Nouvelle version de la charte, des conditions ou de la politique de confidentialité | `document` : `charte`, `conditions`, `confidentialite`, `version` | `GET /legal`, puis `POST /consents` |
 | `message.received` | Message du coordonnateur | `uuid` (conversation) | `GET /conversations/{uuid}/messages` |
 | `appel.created` | Appel à relais dans la zone du Relais | `uuid` (appel) | `GET /appels/{uuid}` |
-| `gains.earned` | Gain crédité sur le portefeuille (relais diffusé) | `uuid` (gain), `amount` (FCFA) | `GET /me/wallet` |
+| `gains.earned` | Rémunération créditée sur le portefeuille (relais rémunéré) | `uuid` (gain), `amount` (FCFA) | `GET /me/wallet` |
+| `gains.updated` | Montant d'une rémunération corrigé | `uuid` (gain), `amount` (nouveau montant) | `GET /me/wallet` |
 | `gains.cancelled` | Gain annulé par l'administration | `uuid` (gain) | `GET /me/wallet` |
 | `gains.withdrawal_rejected` | Demande de retrait refusée (la somme revient dans le portefeuille) | `uuid` (retrait) | `GET /me/payouts` |
 | `gains.paid` | Retrait payé par Mobile Money | `uuid` (retrait), `amount` (FCFA) | `GET /me/payouts` |

@@ -26,7 +26,6 @@ use Livewire\Livewire;
 beforeEach(function () {
     $this->sms = fakeSms();
     $this->admin = User::factory()->withTwoFactor()->withRole(Role::Admin)->create();
-    app(Settings::class)->set('gains.amount_per_broadcast', 2000);
     app(Settings::class)->set('gains.min_withdrawal', 1000);
     $this->relais = RelaisItem::factory()->create(['commune_id' => Commune::factory()->create()->id, 'title' => 'Inondation à Niangon']);
     $this->user = $this->relais->user;
@@ -43,22 +42,8 @@ function readyForWithdrawal(User $user): void
     PayoutAccount::query()->create(['user_id' => $user->id, 'method' => 'orange_money', 'phone' => '+2250707070707', 'holder_name' => 'Awa Traoré']);
 }
 
-it('crédite le portefeuille une seule fois quand le relais est diffusé, jamais à la simple validation [MOB-26]', function () {
+it('ne crédite jamais le portefeuille automatiquement, ni à la validation ni à la diffusion [ADM-27]', function () {
     RelaisStatusChanged::dispatch($this->relais, 'in_review', 'validated');
-    expect(Commission::query()->count())->toBe(0);
-
-    RelaisStatusChanged::dispatch($this->relais, 'selected', 'broadcast');
-    RelaisStatusChanged::dispatch($this->relais, 'selected', 'broadcast');
-
-    $commission = Commission::query()->sole();
-    expect($commission->kind->value)->toBe('broadcast')
-        ->and($commission->amount)->toBe(2000)
-        ->and($commission->status)->toBe(CommissionStatus::Due);
-});
-
-it('ne crédite rien tant que le montant n’est pas fixé [ADM-27]', function () {
-    app(Settings::class)->set('gains.amount_per_broadcast', null);
-
     RelaisStatusChanged::dispatch($this->relais, 'selected', 'broadcast');
 
     expect(Commission::query()->count())->toBe(0);
