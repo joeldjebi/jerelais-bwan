@@ -8,6 +8,7 @@ use App\Domain\Contribution\Enums\CreditMode;
 use App\Domain\Contribution\Enums\PeopleConsent;
 use App\Domain\Contribution\Enums\Urgency;
 use App\Domain\Contribution\States\RelaisState;
+use App\Domain\Editorial\Enums\ShowcaseVisual;
 use App\Domain\Editorial\Models\RelaisCollection;
 use App\Domain\Media\Models\Media;
 use App\Domain\Relais\Models\RelaisProfile;
@@ -79,6 +80,11 @@ use Spatie\ModelStates\HasStates;
  * @property string|null $showcase_title
  * @property string|null $showcase_text
  * @property bool $showcase_with_image
+ * @property ShowcaseVisual $showcase_visual
+ * @property string|null $showcase_blurred_path
+ * @property string|null $showcase_media_path
+ * @property string|null $showcase_media_mime
+ * @property string|null $showcase_poster_path
  * @property-read User|null $assignee
  * @property-read Collection<int, RelaisCollection> $collections
  * @property CarbonImmutable|null $created_at
@@ -135,6 +141,7 @@ class RelaisItem extends Model
             'broadcast_at' => 'immutable_datetime',
             'showcased_at' => 'immutable_datetime',
             'showcase_with_image' => 'boolean',
+            'showcase_visual' => ShowcaseVisual::class,
         ];
     }
 

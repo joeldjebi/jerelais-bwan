@@ -14,8 +14,10 @@
             @forelse ($items as $relais)
                 <article class="overflow-hidden rounded-[1.75rem] bg-white" data-anim>
                     <div class="relative aspect-[4/3] bg-onyx">
-                        @if ($relais->showcase_with_image)
-                            <img src="{{ route('showcase.image', $relais) }}" alt="" class="size-full object-cover" loading="lazy">
+                        @if (\App\Http\Controllers\Public\ShowcaseController::hasVideo($relais))
+                            <video src="{{ route('showcase.video', $relais) }}" poster="{{ route('showcase.image', $relais) }}" controls playsinline preload="none" class="size-full object-cover"></video>
+                        @elseif ($imageUrl = \App\Http\Controllers\Public\ShowcaseController::imageUrl($relais))
+                            <img src="{{ $imageUrl }}" alt="" class="size-full object-cover" loading="lazy">
                         @else
                             <div class="grid size-full place-items-center"><x-ui.icon name="signal" class="size-10 text-white/30" /></div>
                         @endif

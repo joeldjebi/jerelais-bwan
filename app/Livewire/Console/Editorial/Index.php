@@ -9,18 +9,23 @@ use App\Domain\Contribution\States\Selected;
 use App\Domain\Contribution\States\Sensitive;
 use App\Domain\Contribution\States\Validated;
 use App\Domain\Editorial\Actions\BroadcastAndPublish;
+use App\Domain\Editorial\Enums\ShowcaseVisual;
 use App\Domain\Editorial\Exceptions\EditorialRefused;
+use App\Domain\Editorial\Support\ShowcaseVisuals;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
@@ -29,13 +34,14 @@ use Livewire\WithPagination;
  * validé ou sélectionné : diffusion et publication sur la page d'accueil sans ouvrir la fiche.
  *
  * @property-read RelaisItem|null $publishing
+ * @property-read bool $publishingHasThumbnail
  * @property-read LengthAwarePaginator<int, RelaisItem> $items
  * @property-read array<string, int> $counts
  */
 #[Title('Exploitation')]
 class Index extends Component
 {
-    use WithPagination;
+    use WithFileUploads, WithPagination;
 
     #[Url(as: 'onglet')]
     public string $tab = 'a-exploiter';
@@ -57,7 +63,10 @@ class Index extends Component
 
     public string $showcaseText = '';
 
-    public bool $showcaseImage = true;
+    /** Visuel public : none, original, blurred, edited (ShowcaseVisual). */
+    public string $showcaseVisual = 'none';
+
+    public ?TemporaryUploadedFile $editedFile = null;
 
     public function updated(string $property): void
     {
@@ -80,7 +89,9 @@ class Index extends Component
         $this->broadcastUrl = '';
         $this->showcaseTitle = (string) ($relais->showcase_title ?? $relais->title);
         $this->showcaseText = (string) $relais->showcase_text;
-        $this->showcaseImage = ! ($relais->blur_required || $relais->has_minors);
+        $hasThumbnail = app(ShowcaseVisuals::class)->hasThumbnail($relais);
+        $this->showcaseVisual = (! $hasThumbnail ? ShowcaseVisual::None : ($relais->blur_required || $relais->has_minors ? ShowcaseVisual::Blurred : ShowcaseVisual::Original))->value;
+        $this->editedFile = null;
         $this->publishOpen = true;
     }
 
@@ -100,7 +111,10 @@ class Index extends Component
             'broadcastUrl' => ['nullable', 'url:https,http', 'max:500'],
             'showcaseTitle' => ['required', 'string', 'max:150'],
             'showcaseText' => ['nullable', 'string', 'max:1000'],
+            'showcaseVisual' => ['required', Rule::enum(ShowcaseVisual::class)],
+            'editedFile' => [Rule::requiredIf($this->showcaseVisual === ShowcaseVisual::Edited->value), 'nullable', 'file', 'max:'.(ShowcaseVisuals::EDITED_MAX_MB * 1024), 'mimetypes:image/jpeg,image/png,video/mp4,video/quicktime'],
         ], attributes: [
+            'editedFile' => __('version floutée'),
             'broadcastAt' => __('date de diffusion'), 'broadcastProgramme' => __('émission'), 'broadcastUrl' => __('lien'),
             'showcaseTitle' => __('titre public'), 'showcaseText' => __('texte public'),
         ]);
@@ -108,7 +122,7 @@ class Index extends Component
         try {
             $publish->handle(
                 $relais, $user, CarbonImmutable::parse($this->broadcastAt, 'Africa/Abidjan'), $this->broadcastProgramme,
-                $this->broadcastUrl, $this->showcaseTitle, $this->showcaseText, $this->showcaseImage && ! ($relais->blur_required || $relais->has_minors),
+                $this->broadcastUrl, $this->showcaseTitle, $this->showcaseText, ShowcaseVisual::from($this->showcaseVisual), $this->editedFile,
             );
         } catch (EditorialRefused $exception) {
             $this->addError('publish', $exception->getMessage());
@@ -120,6 +134,12 @@ class Index extends Component
         $this->publishUuid = null;
         unset($this->items, $this->counts);
         $this->dispatch('toast', message: __('Relais diffusé et publié sur la page d’accueil. Le Relais est prévenu.'));
+    }
+
+    #[Computed]
+    public function publishingHasThumbnail(): bool
+    {
+        return $this->publishing !== null && app(ShowcaseVisuals::class)->hasThumbnail($this->publishing);
     }
 
     #[Computed]

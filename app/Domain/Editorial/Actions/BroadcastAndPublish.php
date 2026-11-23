@@ -6,9 +6,11 @@ use App\Domain\Contribution\Models\RelaisItem;
 use App\Domain\Contribution\States\Broadcast;
 use App\Domain\Contribution\States\Selected;
 use App\Domain\Contribution\States\Validated;
+use App\Domain\Editorial\Enums\ShowcaseVisual;
 use App\Domain\Editorial\Exceptions\EditorialRefused;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -34,17 +36,20 @@ class BroadcastAndPublish
         ?string $url,
         string $publicTitle,
         string $publicText,
-        bool $withImage,
+        bool|ShowcaseVisual $visual,
+        ?UploadedFile $edited = null,
     ): RelaisItem {
+        $visual = is_bool($visual) ? ($visual ? ShowcaseVisual::Original : ShowcaseVisual::None) : $visual;
+
         if (! $relais->state instanceof Validated && ! $relais->state instanceof Selected && ! $relais->state instanceof Broadcast) {
             throw new EditorialRefused(__('editorial.errors.not_validated'));
         }
 
-        if ($withImage && ($relais->blur_required === true || $relais->has_minors === true)) {
+        if ($visual === ShowcaseVisual::Original && ($relais->blur_required === true || $relais->has_minors === true)) {
             throw new EditorialRefused(__('editorial.errors.showcase_blur'));
         }
 
-        return DB::transaction(function () use ($relais, $editor, $broadcastAt, $programme, $url, $publicTitle, $publicText, $withImage): RelaisItem {
+        return DB::transaction(function () use ($relais, $editor, $broadcastAt, $programme, $url, $publicTitle, $publicText, $visual, $edited): RelaisItem {
             if ($relais->state instanceof Validated) {
                 // Diffusion annoncée dès la sélection : la notification « sélectionné » est sautée au profit de « diffusé ».
                 $relais->forceFill(['broadcast_at' => $broadcastAt])->save();
@@ -55,7 +60,7 @@ class BroadcastAndPublish
                 $this->select->markBroadcast($relais, $editor, $broadcastAt, $programme, $url);
             }
 
-            return $this->showcase->publish($relais, $editor, $publicTitle, $publicText, $withImage, notify: false);
+            return $this->showcase->publish($relais, $editor, $publicTitle, $publicText, $visual, notify: false, edited: $edited);
         });
     }
 }

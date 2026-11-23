@@ -406,7 +406,7 @@
                     @foreach ($showcase as $relais)
                         <article class="overflow-hidden rounded-[1.75rem] bg-white" data-anim>
                             <div class="aspect-[4/3] bg-onyx">
-                                @if ($relais->showcase_with_image)<img src="{{ route('showcase.image', $relais) }}" alt="" class="size-full object-cover" loading="lazy">@endif
+                                @if ($imageUrl = \App\Http\Controllers\Public\ShowcaseController::imageUrl($relais))<img src="{{ $imageUrl }}" alt="" class="size-full object-cover" loading="lazy">@endif
                             </div>
                             <div class="p-5">
                                 <p class="text-[0.8125rem] font-medium text-relais-600">{{ $relais->commune?->name }} · {{ $relais->broadcast_programme }}</p>

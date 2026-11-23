@@ -63,6 +63,7 @@ Route::view('/', 'public.home')->name('home');
 Route::get('textes/{type}', LegalPageController::class)->name('legal.show');
 Route::get('vu-sur-reflet-tv', [ShowcaseController::class, 'index'])->name('showcase');
 Route::get('vu-sur-reflet-tv/{relais}/image', [ShowcaseController::class, 'image'])->name('showcase.image');
+Route::get('vu-sur-reflet-tv/{relais}/video', [ShowcaseController::class, 'video'])->name('showcase.video');
 Route::get('reseau', [PublicPagesController::class, 'network'])->name('network');
 Route::get('mentions-legales', [PublicPagesController::class, 'legalNotice'])->name('legal-notice');
 Route::get('cookies', [PublicPagesController::class, 'cookies'])->name('cookies');
